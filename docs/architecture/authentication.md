@@ -22,8 +22,10 @@ Email addresses must be normalized before database lookup, validation, or persis
 
 ### Account Lifecycle
 - **Active:** Default state upon creation. User can authenticate and perform all authorized domain operations.
-- **Suspended / Disabled (Future-ready):** Flag `isActive` or `status` (`ACTIVE`, `SUSPENDED`). If suspended, any active sessions are revoked immediately, and authentication/authorization middleware rejects requests with `403 Forbidden` (`ACCOUNT_SUSPENDED`).
-- **Deletion:** Permanent hard-delete or scheduled tombstone. Hard deletion of a user account cascades to all user sessions, tasks, projects, and goals.
+- **Suspended / Disabled:** Flag `isActive` (`true` / `false`).
+  - **Suspension Invariant:** *A suspended account must not be able to establish or continue an authenticated session.*
+  - Suspending a user atomically updates `isActive = false` and deletes all active sessions for that user within a single database transaction. Furthermore, the authentication middleware verifies `user.isActive === true` on every session lookup to guarantee immediate enforcement.
+- **Deletion:** *Account deletion is outside the authentication MVP and will be specified separately.*
 
 ---
 
@@ -33,20 +35,19 @@ Email addresses must be normalized before database lookup, validation, or persis
 TrackUp specifies **Argon2id** (RFC 9106) as the primary password hashing function.
 
 #### Why Argon2id?
-- **State of the Art:** Winner of the Password Hashing Competition (PHC), recommended by OWASP, NIST, and cryptographic standards bodies.
-- **Side-Channel & GPU Resistance:** Combines Argon2d (data-dependent memory access resisting GPU/ASIC cracking) and Argon2i (data-independent memory access resisting side-channel timing attacks).
-- **Superior to bcrypt / scrypt:** bcrypt is limited to 72-byte passwords and does not offer memory-hardness controls against modern GPU brute-forcing. Argon2id allows tuning memory cost, time cost, and parallelism to match modern hardware constraints.
-- *Default Parameters:*
-  - Memory cost: 64 MB (65,536 KiB)
-  - Time cost (iterations): 3
-  - Parallelism: 4 threads
-  - Salt: Cryptographically secure random 16 bytes per password.
+Argon2id is a modern, memory-hard password hashing algorithm designed to make large-scale password guessing substantially more expensive while providing resistance against relevant side-channel and hardware-accelerated (GPU/ASIC) attacks.
+
+*Default Parameters:*
+- Memory cost: 64 MB (65,536 KiB)
+- Time cost (iterations): 3
+- Parallelism: 4 threads
+- Salt: Cryptographically secure random 16 bytes per password.
 
 ### Password Requirements
-- Minimum length: **10 characters** (prevents simple dictionary and brute-force attacks).
+- Minimum length: **10 characters** (favors length and passphrases, e.g., *"correct horse battery staple"*).
 - Maximum length: **128 characters** (prevents algorithmic DoS via oversized payload hashing).
-- Complexity: Minimum of 1 lowercase letter, 1 uppercase letter, and 1 numeric digit or special character.
-- Breached password screening: Recommended in future production iterations against known breach datasets (HaveIBeenPwned k-anonymity API).
+- Composition rules: **None**. Modern security guidance favors length and screening over arbitrary character requirements (such as forced uppercase, lowercase, numbers, or symbols).
+- Breached / common password screening: Deferred to future production hardening.
 
 ### Plaintext Password Handling
 - Plaintext passwords exist **only in ephemeral memory** during transit within HTTPS and during hashing in the authentication handler.
@@ -55,7 +56,7 @@ TrackUp specifies **Argon2id** (RFC 9106) as the primary password hashing functi
 
 ### Password Logging Rules
 - **Absolute Prohibition:** Plaintext passwords, password hashes, password reset tokens, and temporary credentials must **NEVER** appear in application logs, database logs, monitoring metrics, exception traces, or error payloads.
-- Request payload sanitizers in the logging layer must automatically redact fields named `password`, `confirmPassword`, `newPassword`, `currentPassword`, and `token`.
+- **Complete Body Redaction:** Never log complete request bodies for authentication endpoints (`/api/auth/*`), preventing generic HTTP logging middleware from accidentally bypassing field-level redaction.
 
 ---
 
@@ -73,9 +74,9 @@ TrackUp adopts a **Database-Backed Stateful Session Model** using opaque, crypto
 ### Session Identifier & Token Generation
 - **Token Generation:** 32 bytes (256 bits) of cryptographically secure random entropy generated via Node.js `crypto.randomBytes(32)`, encoded as a URL-safe Base64 or Hex string.
 - **Storage Strategy (Hash-at-Rest):**
-  - The client receives the raw session token in the cookie (`trackup_session`).
+  - The client receives the raw session token in the cookie.
   - The database **does not** store the raw session token. It stores a SHA-256 hash of the token (`token_hash = SHA256(raw_token)`).
-  - *Security Benefit:* If the database is compromised, the attacker cannot impersonate active sessions because the raw token cannot be reversed from the SHA-256 hash.
+  - *Security Benefit:* If the database is compromised, an attacker cannot impersonate active sessions because the raw token cannot be reversed from the SHA-256 hash.
 
 ### Database Session Schema
 | Field | Type | Description |
@@ -85,13 +86,18 @@ TrackUp adopts a **Database-Backed Stateful Session Model** using opaque, crypto
 | `token_hash` | VARCHAR(64) | SHA-256 digest of the session token (`UNIQUE INDEX`) |
 | `ip_address` | VARCHAR(45) | Client IP address at session creation |
 | `user_agent` | TEXT | Browser User-Agent at session creation |
-| `expires_at` | TIMESTAMPTZ | Hard expiration timestamp |
 | `created_at` | TIMESTAMPTZ | Creation timestamp |
+| `expires_at` | TIMESTAMPTZ | Absolute expiration timestamp (`created_at + 30 days`) |
 | `last_seen_at` | TIMESTAMPTZ | Timestamp of the most recent authenticated activity |
 
 ### Session Expiration Policy
-- **Absolute Lifetime:** 30 days maximum. After 30 days, the session expires unconditionally regardless of activity.
-- **Idle / Inactivity Lifetime:** 7 days. If a user is inactive for 7 consecutive days, the session expires.
+Effective expiration is defined precisely as:
+
+$$\mathbf{\text{Effective Expiration}} = \mathbf{\min(\text{Absolute Expiration}, \text{Idle Expiration})}$$
+
+- **Absolute Expiration:** `created_at + 30 days` unconditionally.
+- **Idle Expiration:** `last_seen_at + 7 days`. If inactive for 7 consecutive days, the session expires.
+- Whichever occurs first terminates the session.
 - **Rolling Update:** `last_seen_at` is updated at most once every 15 minutes to reduce database write amplification.
 
 ### Session Revocation
@@ -100,30 +106,35 @@ TrackUp adopts a **Database-Backed Stateful Session Model** using opaque, crypto
 
 ---
 
-## 4. Cookie Model
+## 4. Production Topology & Cookie Model
 
-TrackUp issues authenticated sessions exclusively through a secure, modern cookie specification.
+### Production Deployment Topology
+Production frontend and API will use subdomains of the same registrable TrackUp-controlled domain where practical:
+- **Frontend App:** `https://app.trackup.example`
+- **Backend API:** `https://api.trackup.example`
+*(The exact deployment provider is deferred.)*
 
-```http
-Set-Cookie: trackup_session=<raw_token>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000
-```
+This establishes a clean **same-site, cross-origin** relationship:
+- Requests from `app.trackup.example` to `api.trackup.example` via `fetch(..., { credentials: "include" })` remain **same-site**, making cookie-based session management predictable and standard without fighting third-party cookie blocking.
 
 ### Cookie Attributes & Rationales
 
-1. **`HttpOnly`**
-   - *Rationale:* Disallows client-side JavaScript (`document.cookie`) from accessing the session token. Completely neutralizes session token theft via Cross-Site Scripting (XSS).
-2. **`Secure`**
-   - *Rationale:* Instructs the browser to only transmit the cookie over encrypted TLS (`https://`). In local development (`NODE_ENV === "development"` on `localhost`), this is toggled to `false` unless local TLS is configured.
-3. **`SameSite=Lax`**
-   - *Rationale:* Prevents the cookie from being sent on cross-site subresource requests (e.g. `<img>`, `<iframe>`, `fetch` POST from third-party sites), providing a strong baseline defense against Cross-Site Request Forgery (CSRF). It still allows top-level navigation links so a user clicking a link to TrackUp arrives authenticated.
-4. **`Path=/`**
-   - *Rationale:* Ensures the session cookie is available across all API routes (`/api/*`, `/health`, etc.) without path fragmentation.
-5. **`Domain`**
-   - *Rationale:* Left unset by default. An omitted domain attribute restricts cookie scope to the exact origin host that set it, preventing subdomain leakage.
-6. **Cookie Prefix (`__Host-` in Production):**
+```http
+Set-Cookie: __Host-trackup_session=<raw_token>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000
+```
+
+1. **Not Encrypted — Secret Bearer Credential:**
+   The cookie itself is **not** encrypted by the application.
+   - **HTTPS (TLS)** encrypts the HTTP transport in flight.
+   - **`HttpOnly`** prevents client-side JavaScript (`document.cookie`) from reading the cookie, neutralizing XSS token theft.
+   - **`Secure`** prevents the browser from transmitting the cookie over unencrypted HTTP.
+   - **`SameSite=Lax`** controls cross-site sending, preventing cross-site subresource POSTs while allowing top-level link navigations.
+2. **`Path=/`:**
+   Ensures the cookie is sent to all routes on the host.
+3. **Cookie Prefix (`__Host-` in Production):**
    - *Production Cookie Name:* `__Host-trackup_session`
    - *Development Cookie Name:* `trackup_session`
-   - *Rationale:* The `__Host-` prefix enforces browser-level security requirements: the cookie must be `Secure`, must originate from a secure host (HTTPS), cannot specify a `Domain` attribute, and its `Path` must be `/`. This prevents cookie tossing and DNS spoofing across subdomains.
+   - **Host-Only Behavior:** `__Host-` cookies belong strictly to the issuing host (e.g., `api.trackup.example`). They omit the `Domain` attribute and cannot be read by `app.trackup.example` or any other subdomain. The browser automatically handles attaching the cookie to credentialed requests destined for the API host, meaning the frontend never needs direct access to the cookie.
 
 ---
 
@@ -154,13 +165,13 @@ User (Browser)               API Gateway / Fastify                 Database
      │    Body: { user: { id, email } }│                               │
 ```
 
-1. **Input Validation:** Request body is validated against a strict schema (email format, password constraints, name length).
+1. **Input Validation:** Request body validated against schema (email format, 10–128 character password, name).
 2. **Email Normalization:** Trimming and lowercasing.
-3. **Collision Check:** Verify email does not already exist. If it exists, return `409 Conflict` (or generic `400 Bad Request` depending on account-enumeration policy).
-4. **Password Hashing:** Hash plaintext password with Argon2id.
+3. **Collision Check:** Verify email does not already exist. If it exists, return error cleanly without revealing unexpected details.
+4. **Password Hashing:** Hash password with Argon2id.
 5. **Persistence:** Insert user record into `users` table.
 6. **Session Creation:** Generate 32-byte token, hash with SHA-256, insert into `sessions` table.
-7. **Response:** Attach `Set-Cookie` header with secure attributes and return sanitized user entity.
+7. **Response:** Attach `Set-Cookie` with secure attributes and return sanitized user entity.
 
 ---
 
@@ -192,8 +203,8 @@ User (Browser)               API Gateway / Fastify                 Database
 2. **User Lookup:** Query database by normalized email.
    - *Constant-Time Defense:* If the user does not exist, perform a dummy Argon2id verification against a static hash to eliminate timing discrepancies between existing and non-existing accounts.
 3. **Password Verification:** Verify candidate password against stored Argon2id hash. If invalid, return `401 Unauthorized` with generic message: `"Invalid email or password"`.
-4. **Session Creation:** Generate new 32-byte raw token, store SHA-256 hash in `sessions` table with expiration timestamp.
-5. **Cookie Issuance:** Send `Set-Cookie` with the raw token; return sanitized user record (`id`, `email`, `name`, `createdAt`).
+4. **Session Creation:** Generate new 32-byte raw token, store SHA-256 hash in `sessions` table with expiration timestamps.
+5. **Cookie Issuance:** Send `Set-Cookie` with raw token; return sanitized user record (`id`, `email`, `name`, `createdAt`).
 
 ---
 
@@ -228,7 +239,7 @@ Every incoming request to a protected endpoint traverses a centralized Fastify `
 Incoming Request
       │
       ▼
-1. Extract Cookie: `trackup_session`
+1. Extract Cookie: `trackup_session` (or `__Host-trackup_session`)
       │
       ├─── [Cookie missing] ───────────► Abort: 401 Unauthorized ("Authentication required")
       │
@@ -243,7 +254,7 @@ Incoming Request
       ▼
 4. Expiration & Status Checks:
       │
-      ├─── [expires_at < NOW()] ───────► Delete Session + Clear Cookie + Abort: 401 ("Session expired")
+      ├─── [NOW() > effective_exp] ────► Delete Session + Clear Cookie + Abort: 401 ("Session expired")
       ├─── [user.isActive === false] ──► Delete Session + Abort: 403 Forbidden ("Account suspended")
       │
       ▼
@@ -328,12 +339,13 @@ $$\text{Ownership Invariant: } \mathbf{resource.userId \equiv authenticatedUser.
 
 ---
 
-## 9. Error Semantics: 401 vs. 403
+## 9. Error Semantics: 401 vs. 403 vs. 404
 
 | Status Code | Meaning | When to Return | Client Action |
 | :--- | :--- | :--- | :--- |
 | **`401 Unauthorized`** | Missing or invalid identity | - No session cookie provided<br>- Session token not found in database<br>- Session has expired<br>- Invalid token formatting | Clear local auth state; redirect to `/login` |
-| **`403 Forbidden`** | Identity is known, but access is refused | - Authenticated user account is disabled/suspended<br>- Authenticated user attempts an administrative endpoint | Show permission error page; do not log out |
+| **`403 Forbidden`** | Identity is known, but access is refused | - Authenticated user account is disabled/suspended<br>- Authenticated user attempts an administrative endpoint<br>- CSRF origin validation failure | Show permission error page; do not log out |
+| **`404 Not Found`** | Resource does not exist | - Resource does not exist<br>- Cross-tenant ownership failure (User A requests User B's resource) | Show resource not found message |
 
 ### IDOR & Ownership Failures: Why 404 Instead of 403?
 When User A requests User B's task (`GET /api/tasks/:id`):
@@ -345,7 +357,7 @@ When User A requests User B's task (`GET /api/tasks/:id`):
 ## 10. Session Expiration & Invalidation Lifecycle
 
 1. **Natural Expiration:**
-   - When `NOW() > session.expires_at`, the authentication middleware flags the session as expired.
+   - When `NOW() > effective_expiration`, the authentication middleware flags the session as expired.
    - The session row is immediately deleted from the database.
    - A `Set-Cookie` header is sent with `Max-Age=0` to clear the browser cookie.
    - Response: `401 Unauthorized` (`code: "SESSION_EXPIRED"`).
@@ -363,22 +375,32 @@ When User A requests User B's task (`GET /api/tasks/:id`):
 
 ## 11. Cross-Site Request Forgery (CSRF) Strategy
 
-### Threat Model in Monorepo & Decoupled Deployments
-TrackUp uses cookie-based authentication. While `SameSite=Lax` cookies provide strong baseline protection against top-level cross-site POSTs in modern browsers, `SameSite` alone does not represent a complete defense-in-depth CSRF strategy because:
-1. Older or non-standard user agents may not enforce `SameSite`.
-2. Cross-origin requests from subdomains or compromised sibling origins might bypass domain isolation.
-3. Top-level GET requests can trigger state-changing mutations if developers mistakenly implement mutations on GET endpoints.
+### Threat Model & Defense Boundary
+TrackUp uses cookie-based authentication. The primary defense against CSRF is a strict defense-in-depth model combining:
+1. **Origin Header Validation**
+2. **`SameSite=Lax` Cookie Policy**
+3. **Strict CORS Policy**
+4. **Non-simple Authenticated API Requests**
 
-### TrackUp's Defense-in-Depth CSRF Architecture
+### Deterministic Origin / Referer Validation Rule
+For all state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`):
 
-1. **Strict HTTP Verb Semantics:**
-   - GET, HEAD, and OPTIONS requests must be strictly idempotent and safe. Never perform mutations on GET.
-2. **Origin & Referer Header Verification:**
-   - For all state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`), the Fastify server validates the `Origin` (or `Referer` if `Origin` is missing) header against the permitted frontend origin whitelist (`APP_URL` / `https://trackup.vercel.app` or `http://localhost:5173`).
-   - If the `Origin` header is present and does not match the whitelist, the request is immediately rejected with `403 Forbidden` (`code: "CSRF_ORIGIN_INVALID"`).
-3. **Custom Request Header Enforcement:**
-   - In cross-origin deployments (Frontend on Vercel, Backend on Render), API requests use standard `fetch` with custom metadata headers (e.g. `X-Requested-With: XMLHttpRequest` or `Content-Type: application/json`).
-   - Browsers will not send custom headers in cross-origin form submissions without passing a CORS pre-flight (`OPTIONS`), blocking traditional HTML form-based CSRF attacks.
+```
+Is Origin header present?
+  ├── YES: Does Origin match allowed frontend origins?
+  │          ├── YES: Proceed
+  │          └── NO:  Reject with 403 Forbidden ("CSRF_ORIGIN_INVALID")
+  │
+  └── NO:  Is Referer header present?
+             ├── YES: Does Referer origin match allowed origins?
+             │          ├── YES: Proceed
+             │          └── NO:  Reject with 403 Forbidden ("CSRF_REFERER_INVALID")
+             │
+             └── NO:  Reject with 403 Forbidden ("CSRF_HEADER_MISSING")
+                      (Browser-facing authenticated mutations must identify origin)
+```
+
+Safe methods (`GET`, `HEAD`, `OPTIONS`) must remain strictly idempotent and safe; they must never trigger state-changing side effects.
 
 ---
 
@@ -393,12 +415,13 @@ Rate limiting is mandatory for all unauthenticated authentication endpoints:
 - `POST /api/auth/forgot-password` (future)
 - `POST /api/auth/reset-password` (future)
 
-### Policy Specifications
+### Policy Specifications (Initial MVP Limits — Subject to Tuning)
 - **Per-IP Rate Limit:**
   - Login attempts: Maximum 5 failed attempts per IP address per 15-minute window.
   - Signup attempts: Maximum 3 registrations per IP address per hour (prevents automated bot creation).
 - **Per-Account Rate Limit (Credential Stuffing Protection):**
   - Maximum 5 failed attempts per target normalized email address within a 15-minute window, triggering temporary exponential backoff.
+  - *Side-Channel Prevention:* Per-account rate limits must return consistent error messages and response structures to ensure rate limiting does not become an account-enumeration vector.
 - **Handling Breaches:**
   - Return `429 Too Many Requests` with a `Retry-After: <seconds>` response header.
 
@@ -420,6 +443,7 @@ Rate limiting is mandatory for all unauthenticated authentication endpoints:
 3. **Raw session tokens** (the 32-byte secret sent to the browser).
 4. **Password reset tokens / email verification codes**.
 5. **Authorization / Session headers** in unredacted HTTP dump logs.
+6. **Complete request bodies** on authentication endpoints (`/api/auth/*`).
 
 ---
 
@@ -454,8 +478,8 @@ Rate limiting is mandatory for all unauthenticated authentication endpoints:
 5. API returns `404 Not Found` with `{ "error": "Task not found" }`. No data is leaked, and User A cannot determine if `task_999` exists.
 
 ### Scenario 5: Expired Session
-1. User submits request with cookie whose session has exceeded `expires_at`.
-2. Fastify looks up session by token hash, finds `expires_at < NOW()`.
+1. User submits request with cookie whose session has exceeded `effective_expiration`.
+2. Fastify looks up session by token hash, finds expiration condition met.
 3. Fastify deletes session from DB, sets `Set-Cookie` with `Max-Age=0`, and returns `401 Unauthorized` (`code: "SESSION_EXPIRED"`).
 4. Frontend auth interceptor catches 401, clears local state, and prompts user to log in again.
 
