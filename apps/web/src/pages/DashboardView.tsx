@@ -9,9 +9,12 @@ import {
   FolderKanban,
   Loader2,
   Plus,
+  RefreshCw,
   Sparkles,
+  Target,
   TrendingUp,
 } from "lucide-react";
+import { fetchGoals, formatTargetDate, type Goal } from "../api/goals";
 import { fetchProjects, type Project } from "../api/projects";
 import {
   fetchTasks,
@@ -28,8 +31,11 @@ export function DashboardView() {
   const { navigate } = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [goalsLoading, setGoalsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
@@ -46,7 +52,6 @@ export function DashboardView() {
       setTasks(tasksData);
 
       // Projects preview is an auxiliary layout section.
-      // If Projects API is not yet active or returns 404/errors, gracefully default to empty list
       try {
         const projectsData = await fetchProjects();
         setProjects(projectsData.filter((p) => p.status === "ACTIVE"));
@@ -60,8 +65,30 @@ export function DashboardView() {
     }
   };
 
+  const loadGoalsData = async () => {
+    try {
+      setGoalsLoading(true);
+      setGoalsError(null);
+      const goalsData = await fetchGoals("ACTIVE");
+      const sorted = [...goalsData].sort((a, b) => {
+        if (!a.targetDate && !b.targetDate) return 0;
+        if (!a.targetDate) return 1;
+        if (!b.targetDate) return -1;
+        return a.targetDate.localeCompare(b.targetDate);
+      });
+      setGoals(sorted);
+    } catch (err: unknown) {
+      setGoalsError(
+        err instanceof Error ? err.message : "Failed to load active goals"
+      );
+    } finally {
+      setGoalsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
+    loadGoalsData();
   }, []);
 
   const handleToggleTask = async (task: Task) => {
@@ -446,6 +473,130 @@ export function DashboardView() {
                           style={{ width: `${percent}%` }}
                         />
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Active Goals Section (Milestone 4) */}
+          <section
+            className="dashboard-panel"
+            aria-labelledby="active-goals-heading"
+          >
+            <div className="panel-title-bar">
+              <h2 id="active-goals-heading" className="panel-heading">
+                Active Goals
+              </h2>
+              <Link
+                to="/goals"
+                style={{ fontSize: "0.75rem", color: "var(--primary)" }}
+              >
+                View all →
+              </Link>
+            </div>
+
+            {goalsLoading ? (
+              <div className="dash-loading-wrap" role="status">
+                <Loader2 size={16} className="spin-icon" />
+                <span>Loading goals...</span>
+              </div>
+            ) : goalsError ? (
+              <div
+                className="dash-empty-upcoming"
+                style={{
+                  minHeight: "80px",
+                  borderColor: "var(--border-danger, #ef4444)",
+                  color: "var(--danger, #ef4444)",
+                }}
+                role="alert"
+              >
+                <AlertCircle size={18} />
+                <p className="dash-empty-text" style={{ color: "var(--danger, #ef4444)" }}>
+                  {goalsError}
+                </p>
+                <button
+                  id="btn-dash-goals-retry"
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={loadGoalsData}
+                  style={{ marginTop: "4px" }}
+                  aria-label="Retry goals"
+                >
+                  <RefreshCw size={12} />
+                  <span>Retry goals</span>
+                </button>
+              </div>
+            ) : goals.length === 0 ? (
+              <div className="dash-empty-upcoming" style={{ minHeight: "80px" }}>
+                <Target size={22} className="dash-empty-icon" />
+                <p className="dash-empty-text">No active goals yet.</p>
+                <Link to="/goals" className="btn-dash-create">
+                  <Plus size={14} />
+                  <span>Create goal</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="dash-projects-list">
+                {goals.slice(0, 3).map((goal) => {
+                  const clamped = Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      isNaN(Number(goal.progress)) ? 0 : Math.round(Number(goal.progress))
+                    )
+                  );
+                  const formattedTarget = formatTargetDate(goal.targetDate);
+
+                  return (
+                    <div
+                      key={goal.id}
+                      className="dash-project-item"
+                      onClick={() => navigate(`/goals/${goal.id}`)}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") navigate(`/goals/${goal.id}`);
+                      }}
+                      aria-label={`Open goal ${goal.title}`}
+                    >
+                      <div className="dash-project-meta-row">
+                        <span className="dash-project-name">{goal.title}</span>
+                        <span className="dash-project-ratio">{clamped}%</span>
+                      </div>
+                      <div
+                        className="dash-project-track"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={clamped}
+                        aria-label={`${goal.title} progress: ${clamped}%`}
+                      >
+                        <div
+                          className="dash-project-fill"
+                          style={{
+                            width: `${clamped}%`,
+                            backgroundColor:
+                              clamped === 100 ? "#10b981" : "var(--primary)",
+                          }}
+                        />
+                      </div>
+                      {formattedTarget && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            fontSize: "0.6875rem",
+                            color: "var(--text-muted)",
+                            marginTop: "2px",
+                          }}
+                        >
+                          <Clock size={11} />
+                          <span>Target {formattedTarget}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -6,13 +6,14 @@ import {
   Receipt,
   Settings,
   Sparkles,
-  Target,
 } from "lucide-react";
 
 import { AppShell } from "./components/AppShell";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
+import { GoalDetailPage } from "./pages/GoalDetailPage";
+import { GoalsPage } from "./pages/GoalsPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
@@ -27,6 +28,15 @@ function AppRoutes() {
     return (
       <AppShell>
         <ProjectDetailPage projectId={projectId} />
+      </AppShell>
+    );
+  }
+
+  if (path.startsWith("/goals/")) {
+    const goalId = path.replace("/goals/", "").split("/")[0];
+    return (
+      <AppShell>
+        <GoalDetailPage goalId={goalId} />
       </AppShell>
     );
   }
@@ -62,16 +72,10 @@ function AppRoutes() {
         </AppShell>
       );
 
-
     case "/goals":
       return (
         <AppShell>
-          <FeaturePlaceholder
-            title="Goals & Objectives"
-            description="Set high-level annual and quarterly targets, track milestone percentages, and tie day-to-day actions directly to strategic objectives."
-            icon={Target}
-            plannedMilestone="Phase 2 Milestone"
-          />
+          <GoalsPage />
         </AppShell>
       );
 

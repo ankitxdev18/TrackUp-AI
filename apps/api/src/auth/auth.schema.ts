@@ -40,11 +40,15 @@ export const registerSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 /**
- * Login Input Validation Schema
+ * Canonical Password Policy:
+ * Defined in apps/api/src/auth/password.ts (PASSWORD_POLICY):
+ * - minLength: 10 Unicode code points
+ * - maxLength: 128 Unicode code points
  *
- * Rules:
- * - email: String, trimmed, lowercased, valid email format.
- * - password: String, non-empty, max 128 characters.
+ * Registration strictly enforces: 10 <= length <= 128.
+ * Login schema accepts non-empty strings up to maxLength (128) characters,
+ * preventing password policy leakage during credential verification while protecting
+ * against algorithmic complexity DoS on Argon2id hashing.
  */
 export const loginSchema = z.object({
   email: z
@@ -56,7 +60,7 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Password cannot be empty")
-    .max(128, "Password must not exceed 128 characters"),
+    .max(PASSWORD_POLICY.maxLength, `Password must not exceed ${PASSWORD_POLICY.maxLength} characters`),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

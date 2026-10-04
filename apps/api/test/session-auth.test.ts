@@ -172,7 +172,10 @@ describe("M2.5 Production Authentication & Session Slice", () => {
     });
 
     it("7. failed login does not create session", async () => {
-      const sessionsBefore = await db.select().from(sessions);
+      const sessionsBefore = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.userId, userAId));
 
       const res = await app.inject({
         method: "POST",
@@ -184,7 +187,10 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       });
 
       expect(res.statusCode).toBe(401);
-      const sessionsAfter = await db.select().from(sessions);
+      const sessionsAfter = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.userId, userAId));
       expect(sessionsAfter.length).toBe(sessionsBefore.length);
     });
   });

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   pgTable,
   timestamp,
   uniqueIndex,
@@ -166,4 +167,46 @@ export const sessions = pgTable(
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+/**
+ * TrackUp Goal Entity Schema (Milestone 4)
+ *
+ * Implements high-level outcomes:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - title: Required goal outcome summary (1-500 chars)
+ * - description: Optional narrative description (<= 2000 chars)
+ * - status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED' (default: 'ACTIVE')
+ * - progress: Integer 0-100 (default: 0)
+ * - targetDate: ISO calendar date 'YYYY-MM-DD' (nullable)
+ * - createdAt: Timestamp of creation
+ * - updatedAt: Timestamp of last modification
+ */
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: varchar("description", { length: 2000 }),
+    status: varchar("status", { length: 20 }).default("ACTIVE").notNull(),
+    progress: integer("progress").default(0).notNull(),
+    targetDate: varchar("target_date", { length: 10 }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("goals_user_id_idx").on(table.userId),
+    index("goals_user_status_idx").on(table.userId, table.status),
+  ]
+);
+
+export type Goal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
 

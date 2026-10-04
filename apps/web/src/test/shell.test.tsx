@@ -174,9 +174,18 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
+  describe("Active Goals Route (Milestone 4)", () => {
+    it("renders active Goals page at /goals", async () => {
+      window.history.pushState({}, "", "/goals");
+      render(<App />);
+
+      expect(screen.getByRole("heading", { name: "Goals" })).toBeInTheDocument();
+      expect(screen.getByText("Create Goal")).toBeInTheDocument();
+    });
+  });
+
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
-      { path: "/goals", title: "Goals & Objectives", milestone: "Phase 2 Milestone" },
       { path: "/habits", title: "Atomic Habits", milestone: "Phase 3 Milestone" },
       { path: "/calendar", title: "Calendar & Agenda", milestone: "Phase 3 Milestone" },
       { path: "/notes", title: "Notes & Focus Journal", milestone: "Phase 4 Milestone" },
