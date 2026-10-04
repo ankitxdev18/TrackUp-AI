@@ -1,6 +1,9 @@
 import pg from "pg";
 import { env } from "../config/env.js";
 
+import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
+import * as schema from "./schema.js";
+
 const { Pool } = pg;
 
 export interface DatabaseHealthResult {
@@ -18,6 +21,15 @@ export function createDatabasePool(connectionString: string = env.DATABASE_URL):
 
 // Singleton connection pool instance for server runtime
 export const pool = createDatabasePool();
+
+export function createDrizzleClient(
+  dbPool: pg.Pool = pool
+): NodePgDatabase<typeof schema> {
+  return drizzle(dbPool, { schema });
+}
+
+// Singleton Drizzle ORM database instance
+export const db = createDrizzleClient(pool);
 
 /**
  * Executes a lightweight `SELECT 1` query to verify database connectivity.

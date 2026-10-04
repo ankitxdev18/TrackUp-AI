@@ -9,6 +9,8 @@
     "dev:api": "npm run dev --workspace=apps/api",
     "test:api": "npm run test --workspace=apps/api",
     "build:api": "npm run build --workspace=apps/api",
-    "typecheck:api": "npm run typecheck --workspace=apps/api"
+    "typecheck:api": "npm run typecheck --workspace=apps/api",
+    "db:generate:api": "npm run db:generate --workspace=apps/api",
+    "db:migrate:api": "npm run db:migrate --workspace=apps/api"
   }
 }
