@@ -25,17 +25,32 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { path } = useRouter();
 
-  const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Tasks", href: "/tasks", icon: CheckSquare },
-    { label: "Projects", href: "/projects", icon: FolderKanban },
-    { label: "Goals", href: "/goals", icon: Target },
-    { label: "Habits", href: "/habits", icon: Sparkles },
-    { label: "Calendar", href: "/calendar", icon: Calendar },
-    { label: "Notes", href: "/notes", icon: BookOpen },
-    { label: "Expenses", href: "/expenses", icon: Receipt },
-    { label: "Health", href: "/health", icon: HeartPulse },
-    { label: "Settings", href: "/settings", icon: Settings },
+  const navSections = [
+    {
+      group: "Overview",
+      items: [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Tasks", href: "/tasks", icon: CheckSquare },
+        { label: "Projects", href: "/projects", icon: FolderKanban },
+      ],
+    },
+    {
+      group: "Systems",
+      items: [
+        { label: "Goals", href: "/goals", icon: Target },
+        { label: "Habits", href: "/habits", icon: Sparkles },
+        { label: "Calendar", href: "/calendar", icon: Calendar },
+        { label: "Notes", href: "/notes", icon: BookOpen },
+      ],
+    },
+    {
+      group: "Workspace",
+      items: [
+        { label: "Expenses", href: "/expenses", icon: Receipt },
+        { label: "Health", href: "/health", icon: HeartPulse },
+        { label: "Settings", href: "/settings", icon: Settings },
+      ],
+    },
   ];
 
   return (
@@ -45,8 +60,8 @@ export function AppShell({ children }: AppShellProps) {
         <div className="sidebar-header">
           <Link to="/" className="brand-icon" aria-label="TrackUp Home">
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -65,21 +80,26 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = path === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`nav-item ${isActive ? "active" : ""}`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {navSections.map((sec) => (
+            <div key={sec.group} className="nav-group">
+              <span className="nav-group-title">{sec.group}</span>
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = path === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`nav-item ${isActive ? "active" : ""}`}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <Icon size={16} className="nav-icon" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-footer">
@@ -98,9 +118,9 @@ export function AppShell({ children }: AppShellProps) {
         {/* Top Header */}
         <header className="shell-header" role="banner">
           <div className="search-box">
-            <Search size={15} />
-            <span>Search tasks, projects, notes...</span>
-            <span className="search-shortcut">⌘K</span>
+            <Search size={14} className="search-icon" aria-hidden="true" />
+            <span className="search-placeholder">Search tasks, projects, notes...</span>
+            <kbd className="search-shortcut">⌘K</kbd>
           </div>
 
           <div className="header-actions">
@@ -108,7 +128,7 @@ export function AppShell({ children }: AppShellProps) {
               <span>Good morning, Alex 👋</span>
             </div>
             <button className="header-icon-btn" aria-label="Notifications">
-              <Bell size={18} />
+              <Bell size={16} />
               <span className="icon-badge" aria-label="Unread notification" />
             </button>
             <div className="user-avatar-sm" aria-label="User profile">
@@ -129,14 +149,14 @@ export function AppShell({ children }: AppShellProps) {
           to="/dashboard"
           className={`mobile-nav-item ${path === "/dashboard" ? "active" : ""}`}
         >
-          <Home size={20} />
+          <Home size={18} />
           <span>Home</span>
         </Link>
         <Link
           to="/tasks"
           className={`mobile-nav-item ${path === "/tasks" ? "active" : ""}`}
         >
-          <CheckSquare size={20} />
+          <CheckSquare size={18} />
           <span>Tasks</span>
         </Link>
         <Link
@@ -144,20 +164,20 @@ export function AppShell({ children }: AppShellProps) {
           className="mobile-fab-btn"
           aria-label="Create new task"
         >
-          <Plus size={24} />
+          <Plus size={20} />
         </Link>
         <Link
-          to="/calendar"
-          className={`mobile-nav-item ${path === "/calendar" ? "active" : ""}`}
+          to="/projects"
+          className={`mobile-nav-item ${path === "/projects" ? "active" : ""}`}
         >
-          <Calendar size={20} />
-          <span>Calendar</span>
+          <FolderKanban size={18} />
+          <span>Projects</span>
         </Link>
         <Link
           to="/settings"
           className={`mobile-nav-item ${path === "/settings" ? "active" : ""}`}
         >
-          <Settings size={20} />
+          <Settings size={18} />
           <span>More</span>
         </Link>
       </nav>

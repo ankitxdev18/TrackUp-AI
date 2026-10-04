@@ -2,15 +2,13 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(6, 14, 32, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 16px;
-  animation: modalFadeIn 0.15s ease-out;
+  animation: modalFadeIn 0.12s ease-out;
 }
 
 @keyframes modalFadeIn {
@@ -25,12 +23,12 @@
 .modal-card {
   width: 100%;
   max-width: 480px;
-  background-color: var(--surface);
-  border: 1px solid var(--border-light);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-dropdown);
   overflow: hidden;
-  animation: modalScaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalScaleUp 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalScaleUp {
@@ -271,20 +269,19 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, #82aaff 100%);
-  color: #060e20;
-  border: none;
+  padding: 8px 18px;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-modal-submit:hover:not(:disabled) {
-  opacity: 0.95;
-  transform: translateY(-1px);
+  background-color: var(--primary-hover);
 }
 
 .btn-modal-submit:disabled {

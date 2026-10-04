@@ -38,21 +38,19 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, var(--primary) 0%, #82aaff 100%);
-  color: #060e20;
-  border: none;
+  padding: 6px 14px;
+  background: var(--primary);
+  color: #ffffff;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(173, 198, 255, 0.25);
   transition: all 0.15s ease;
 }
 
 .btn-create-project:hover {
-  opacity: 0.95;
-  transform: translateY(-1px);
+  background: var(--primary-hover);
 }
 
 .projects-filter-bar {
@@ -98,18 +96,16 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background-color: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: border-color 0.15s ease;
   position: relative;
 }
 
 .project-card:hover {
-  border-color: var(--border-light);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-color: var(--border-focus);
 }
 
 .project-archived {
@@ -200,17 +196,17 @@
 
 .project-progress-track {
   width: 100%;
-  height: 6px;
-  background-color: var(--surface-elevated);
-  border-radius: 9999px;
+  height: 4px;
+  background-color: var(--bg-surface-elevated);
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
 .project-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary) 0%, #38bdf8 100%);
-  border-radius: 9999px;
-  transition: width 0.3s ease;
+  background: var(--primary);
+  border-radius: var(--radius-xs);
+  transition: width 0.2s ease;
 }
 
 .project-card-bottom-bar {
@@ -264,10 +260,10 @@
   right: 0;
   margin-top: 4px;
   width: 160px;
-  background-color: var(--surface-elevated);
-  border: 1px solid var(--border-light);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-dropdown);
   padding: 4px;
   z-index: 50;
   display: flex;

@@ -140,32 +140,6 @@ export function DashboardView() {
 
   return (
     <div className="dashboard-view">
-      {/* Milestone 3 Active Banner */}
-      <div className="dashboard-banner">
-        <div className="banner-content">
-          <span className="banner-badge">Milestone 3 Live</span>
-          <span className="banner-text">
-            <strong>Projects & Initiatives Active.</strong> Group tasks into strategic initiatives and track milestone velocity.
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Link
-            to="/projects"
-            className="btn-secondary"
-            style={{ padding: "4px 12px", fontSize: "0.75rem" }}
-          >
-            View Projects →
-          </Link>
-          <Link
-            to="/tasks"
-            className="btn-secondary"
-            style={{ padding: "4px 12px", fontSize: "0.75rem" }}
-          >
-            Manage Tasks →
-          </Link>
-        </div>
-      </div>
-
       {/* Greeting Header */}
       <div className="dashboard-hero">
         <div>
