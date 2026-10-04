@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { and, desc, eq, asc, isNull } from "drizzle-orm";
+import { requireAuth } from "../auth/authenticate.js";
 import { IdentityError, resolveUserIdentity } from "../auth/dev-user.js";
 import { db } from "../db/index.js";
 import { projects, tasks } from "../db/schema.js";
@@ -13,6 +14,8 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const taskRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
+  server.addHook("preHandler", requireAuth);
+
   // GET /api/tasks — Retrieve current user's tasks with optional project filtering
   server.get("/", async (request, reply) => {
     try {

@@ -79,45 +79,74 @@ export class IdentityError extends Error {
   }
 }
 
+import { validateSession, SESSION_COOKIE_NAME } from "./session.js";
+
 export async function resolveUserIdentity(
   request: FastifyRequest
 ): Promise<UserIdentity> {
-  const explicitDevUserId = request.headers["x-dev-user-id"];
-
-  if (explicitDevUserId && typeof explicitDevUserId === "string") {
-    if (!UUID_REGEX.test(explicitDevUserId)) {
-      throw new IdentityError(
-        400,
-        "INVALID_DEV_USER_ID",
-        "The provided x-dev-user-id must be a valid UUIDv4 string."
-      );
-    }
-
-    const [targetUser] = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-      })
-      .from(users)
-      .where(eq(users.id, explicitDevUserId))
-      .limit(1);
-
-    if (!targetUser) {
-      throw new IdentityError(
-        401,
-        "USER_NOT_FOUND",
-        "The specified user identity does not exist."
-      );
-    }
-
-    return targetUser;
+  // 1. If request.user was already set by requireAuth middleware
+  if (request.user) {
+    return {
+      id: request.user.id,
+      email: request.user.email,
+      name: request.user.name,
+    };
   }
 
-  const devUser = await getOrCreateDevUser();
-  return {
-    id: devUser.id,
-    email: devUser.email,
-    name: devUser.name,
-  };
+  // 2. Check for real session cookie
+  const rawToken = request.cookies?.[SESSION_COOKIE_NAME];
+  if (rawToken) {
+    const sessionWithUser = await validateSession(rawToken);
+    if (sessionWithUser) {
+      return {
+        id: sessionWithUser.user.id,
+        email: sessionWithUser.user.email,
+        name: sessionWithUser.user.name,
+      };
+    }
+  }
+
+  // 3. Isolated test-only fallback (STRICTLY when NODE_ENV === "test")
+  if (process.env.NODE_ENV === "test") {
+    const explicitDevUserId = request.headers["x-dev-user-id"];
+
+    if (explicitDevUserId && typeof explicitDevUserId === "string") {
+      if (!UUID_REGEX.test(explicitDevUserId)) {
+        throw new IdentityError(
+          400,
+          "INVALID_DEV_USER_ID",
+          "The provided x-dev-user-id must be a valid UUIDv4 string."
+        );
+      }
+
+      const [targetUser] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+        })
+        .from(users)
+        .where(eq(users.id, explicitDevUserId))
+        .limit(1);
+
+      if (!targetUser) {
+        throw new IdentityError(
+          401,
+          "USER_NOT_FOUND",
+          "The specified user identity does not exist."
+        );
+      }
+
+      return targetUser;
+    }
+  }
+
+  // 4. In all other environments and when unauthenticated, reject with 401
+  // NEVER fall back to Alex Mercer or first DB user.
+  throw new IdentityError(
+    401,
+    "UNAUTHENTICATED",
+    "Authentication required."
+  );
 }
+

@@ -14,7 +14,9 @@ import {
   Settings,
   Sparkles,
   Target,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
 import "./AppShell.css";
 
@@ -23,7 +25,13 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { path } = useRouter();
+  const { path, navigate } = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const navSections = [
     {
@@ -104,12 +112,21 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className="sidebar-footer">
           <div className="user-avatar-sm" aria-hidden="true">
-            AM
+            {user ? user.name.slice(0, 2).toUpperCase() : "AM"}
           </div>
           <div className="user-info">
-            <span className="user-name">Alex Mercer</span>
-            <span className="user-role">Free Workspace</span>
+            <span className="user-name">{user ? user.name : "Alex Mercer"}</span>
+            <span className="user-role">{user ? user.email : "Free Workspace"}</span>
           </div>
+          <button
+            type="button"
+            className="btn-shell-logout"
+            onClick={handleLogout}
+            aria-label="Log Out"
+            title="Log Out"
+          >
+            <LogOut size={14} />
+          </button>
         </div>
       </aside>
 

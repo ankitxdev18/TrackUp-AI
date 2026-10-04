@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { requireAuth } from "../auth/authenticate.js";
 import { IdentityError, resolveUserIdentity } from "../auth/dev-user.js";
 import { db } from "../db/index.js";
 import { projects, tasks } from "../db/schema.js";
@@ -10,6 +11,8 @@ import {
 } from "../projects/project.schema.js";
 
 export const projectRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
+  server.addHook("preHandler", requireAuth);
+
   // GET /api/projects — Retrieve current user's projects with aggregated task metrics
   server.get("/", async (request, reply) => {
     try {

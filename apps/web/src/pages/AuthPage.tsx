@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { registerApi } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
 import "./AuthPage.css";
 
@@ -9,6 +11,7 @@ interface AuthPageProps {
 
 export function AuthPage({ mode }: AuthPageProps) {
   const { navigate } = useRouter();
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,29 +40,39 @@ export function AuthPage({ mode }: AuthPageProps) {
 
       setLoading(true);
       try {
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || "Registration failed.");
-        } else {
-          setSuccess("Account created successfully! Redirecting to workspace...");
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 1200);
-        }
-      } catch {
-        setError("Unable to connect to the server. Please check your backend.");
+        await registerApi({ name, email, password });
+        setSuccess("Account created successfully! Please sign in with your credentials.");
+        setTimeout(() => {
+          navigate("/login");
+        }, 1200);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Registration failed.");
       } finally {
         setLoading(false);
       }
     } else {
-      // Login mode informational handling (scheduled for next auth milestone)
-      setError("Login sessions are scheduled for the next authentication milestone. You can explore the workspace shell via the Dashboard Preview.");
+      // Login mode
+      if (!email.trim() || !email.includes("@")) {
+        setError("Please enter your email address.");
+        return;
+      }
+      if (!password) {
+        setError("Please enter your password.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await login({ email, password });
+        setSuccess("Logged in successfully! Loading workspace...");
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 400);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Invalid email or password.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -91,12 +104,6 @@ export function AuthPage({ mode }: AuthPageProps) {
               : "Good to see you again. Enter your credentials."}
           </p>
         </div>
-
-        {mode === "login" && (
-          <div className="auth-info-note">
-            <strong>Architecture Notice:</strong> The backend registration API is active. Full cookie session persistence and login authentication will be integrated in the upcoming milestone.
-          </div>
-        )}
 
         {error && (
           <div className="auth-message error" role="alert">
@@ -174,7 +181,9 @@ export function AuthPage({ mode }: AuthPageProps) {
             disabled={loading}
           >
             {loading
-              ? "Creating Account..."
+              ? mode === "signup"
+                ? "Creating Account..."
+                : "Signing In..."
               : mode === "signup"
               ? "Create Account"
               : "Log In"}

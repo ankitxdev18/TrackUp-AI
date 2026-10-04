@@ -38,3 +38,25 @@ export const registerSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/**
+ * Login Input Validation Schema
+ *
+ * Rules:
+ * - email: String, trimmed, lowercased, valid email format.
+ * - password: String, non-empty, max 128 characters.
+ */
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email format")
+    .max(255, "Email must not exceed 255 characters"),
+  password: z
+    .string()
+    .min(1, "Password cannot be empty")
+    .max(128, "Password must not exceed 128 characters"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;

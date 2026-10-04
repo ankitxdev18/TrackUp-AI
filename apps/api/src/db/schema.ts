@@ -130,3 +130,40 @@ export const tasks = pgTable(
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 
+/**
+ * TrackUp Session Entity Schema (Milestone 2.5)
+ *
+ * Implements server-side session persistence:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - tokenHash: SHA-256 hash of the 32-byte cryptographically secure random session token (hex, 64 chars)
+ * - expiresAt: Expiration timestamp with timezone
+ * - createdAt: Creation timestamp with timezone
+ * - userAgent: Optional User-Agent metadata
+ * - ipAddress: Optional client IP address
+ */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    userAgent: varchar("user_agent", { length: 500 }),
+    ipAddress: varchar("ip_address", { length: 45 }),
+  },
+  (table) => [
+    uniqueIndex("sessions_token_hash_unique_idx").on(table.tokenHash),
+    index("sessions_user_id_idx").on(table.userId),
+    index("sessions_expires_at_idx").on(table.expiresAt),
+  ]
+);
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+

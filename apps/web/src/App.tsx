@@ -161,12 +161,17 @@ function AppRoutes() {
   }
 }
 
+import { AuthProvider } from "./context/AuthContext";
+
 export function App() {
   return (
-    <RouterProvider>
-      <AppRoutes />
-    </RouterProvider>
+    <AuthProvider>
+      <RouterProvider>
+        <AppRoutes />
+      </RouterProvider>
+    </AuthProvider>
   );
 }
 
 export default App;
+

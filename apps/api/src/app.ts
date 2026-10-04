@@ -1,4 +1,5 @@
 import Fastify, { FastifyInstance } from "fastify";
+import fastifyCookie from "@fastify/cookie";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { projectRoutes } from "./routes/project.routes.js";
@@ -13,6 +14,28 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const server = Fastify({
     logger: options.logger ?? true,
   });
+
+  server.register(fastifyCookie, {
+    secret: process.env.COOKIE_SECRET || "trackup-session-cookie-secret-dev",
+    parseOptions: {},
+  });
+
+  server.addContentTypeParser(
+    ["application/json", "text/plain"],
+    { parseAs: "string" },
+    (_req, body, done) => {
+      if (!body || (typeof body === "string" && body.trim() === "")) {
+        done(null, {});
+        return;
+      }
+      try {
+        done(null, JSON.parse(body as string));
+      } catch (err: any) {
+        err.statusCode = 400;
+        done(err, undefined);
+      }
+    }
+  );
 
   const checkDb = options.checkDbHealth ?? checkDatabaseHealth;
 

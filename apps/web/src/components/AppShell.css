@@ -170,6 +170,25 @@
   text-overflow: ellipsis;
 }
 
+.btn-shell-logout {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: all 0.15s ease;
+}
+
+.btn-shell-logout:hover {
+  color: var(--color-danger);
+  background-color: var(--bg-surface-elevated);
+}
+
 /* Main Shell Content Wrapper */
 .shell-main {
   flex: 1;
