@@ -40,12 +40,19 @@ export function DashboardView() {
     try {
       setLoading(true);
       setError(null);
-      const [tasksData, projectsData] = await Promise.all([
-        fetchTasks(),
-        fetchProjects(),
-      ]);
+
+      // Tasks is the primary core operating surface of TrackUp
+      const tasksData = await fetchTasks();
       setTasks(tasksData);
-      setProjects(projectsData.filter((p) => p.status === "ACTIVE"));
+
+      // Projects preview is an auxiliary layout section.
+      // If Projects API is not yet active or returns 404/errors, gracefully default to empty list
+      try {
+        const projectsData = await fetchProjects();
+        setProjects(projectsData.filter((p) => p.status === "ACTIVE"));
+      } catch {
+        setProjects([]);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
     } finally {

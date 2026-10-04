@@ -354,7 +354,75 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
       await waitFor(() => {
         expect(screen.getByText("Dashboard quick action")).toBeInTheDocument();
       });
+    });
 
+    it("loads real tasks and metrics successfully even when /api/projects returns 404 (M2.6.1 regression test)", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return {
+            ok: false,
+            status: 404,
+            json: async () => ({
+              message: "Route GET:/api/projects not found",
+              error: "Not Found",
+              statusCode: 404,
+            }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Dashboard should NOT show the error banner
+      await waitFor(() => {
+        expect(screen.queryByText(/Unable to load dashboard data/i)).not.toBeInTheDocument();
+      });
+
+      // Real tasks and metrics must still be rendered
+      expect(screen.getByText("1 of 2 completed")).toBeInTheDocument();
+      expect(screen.getByText("50%")).toBeInTheDocument();
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      expect(screen.getByText("No active projects yet.")).toBeInTheDocument();
+    });
+
+    it("displays error banner when /api/tasks genuinely fails and allows retry", async () => {
+      let fail = true;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        if (fail) {
+          return {
+            ok: false,
+            status: 500,
+            json: async () => ({ error: "Internal Server Error" }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Error banner should be displayed
+      await waitFor(() => {
+        expect(screen.getByText(/Unable to load dashboard data:/i)).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+
+      // Click Retry after server recovers
+      fail = false;
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+      // Tasks should successfully load after retry
+      await waitFor(() => {
+        expect(screen.queryByText(/Unable to load dashboard data/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
     });
   });
 });
