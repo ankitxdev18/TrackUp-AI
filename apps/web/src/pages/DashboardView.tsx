@@ -6,11 +6,13 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  FolderKanban,
   Loader2,
   Plus,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { fetchProjects, type Project } from "../api/projects";
 import {
   fetchTasks,
   getTodayDateString,
@@ -19,11 +21,13 @@ import {
   updateTask,
 } from "../api/tasks";
 import { CreateTaskModal } from "../components/CreateTaskModal";
-import { Link } from "../router/Router";
+import { Link, useRouter } from "../router/Router";
 import "./DashboardView.css";
 
 export function DashboardView() {
+  const { navigate } = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,12 +36,16 @@ export function DashboardView() {
   const todayStr = getTodayDateString();
   const tomorrowStr = getTomorrowDateString();
 
-  const loadTasks = async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTasks();
-      setTasks(data);
+      const [tasksData, projectsData] = await Promise.all([
+        fetchTasks(),
+        fetchProjects(),
+      ]);
+      setTasks(tasksData);
+      setProjects(projectsData.filter((p) => p.status === "ACTIVE"));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
     } finally {
@@ -46,7 +54,7 @@ export function DashboardView() {
   };
 
   useEffect(() => {
-    loadTasks();
+    loadDashboardData();
   }, []);
 
   const handleToggleTask = async (task: Task) => {
@@ -57,6 +65,20 @@ export function DashboardView() {
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? updated : t))
       );
+
+      // Optimistically update project completion progress if task belongs to a project
+      if (task.projectId) {
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id !== task.projectId) return p;
+            const diff = nextStatus === "COMPLETED" ? 1 : -1;
+            return {
+              ...p,
+              completedTaskCount: Math.max(0, (p.completedTaskCount ?? 0) + diff),
+            };
+          })
+        );
+      }
     } catch (err: unknown) {
       alert("Failed to update task state. Please try again.");
     } finally {
@@ -66,6 +88,17 @@ export function DashboardView() {
 
   const handleTaskCreated = (newTask: Task) => {
     setTasks((prev) => [newTask, ...prev]);
+    if (newTask.projectId) {
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== newTask.projectId) return p;
+          return {
+            ...p,
+            taskCount: (p.taskCount ?? 0) + 1,
+          };
+        })
+      );
+    }
   };
 
   // Metric & segment calculations based on real tasks
@@ -107,21 +140,30 @@ export function DashboardView() {
 
   return (
     <div className="dashboard-view">
-      {/* Milestone 2 Active Banner */}
+      {/* Milestone 3 Active Banner */}
       <div className="dashboard-banner">
         <div className="banner-content">
-          <span className="banner-badge">Milestone 2 Live</span>
+          <span className="banner-badge">Milestone 3 Live</span>
           <span className="banner-text">
-            <strong>PostgreSQL Persistence Active.</strong> Your tasks and dashboard metrics are persisted in real time.
+            <strong>Projects & Initiatives Active.</strong> Group tasks into strategic initiatives and track milestone velocity.
           </span>
         </div>
-        <Link
-          to="/tasks"
-          className="btn-secondary"
-          style={{ padding: "4px 12px", fontSize: "0.75rem" }}
-        >
-          Manage All Tasks →
-        </Link>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <Link
+            to="/projects"
+            className="btn-secondary"
+            style={{ padding: "4px 12px", fontSize: "0.75rem" }}
+          >
+            View Projects →
+          </Link>
+          <Link
+            to="/tasks"
+            className="btn-secondary"
+            style={{ padding: "4px 12px", fontSize: "0.75rem" }}
+          >
+            Manage Tasks →
+          </Link>
+        </div>
       </div>
 
       {/* Greeting Header */}
@@ -153,7 +195,7 @@ export function DashboardView() {
           <div className="error-text">
             <strong>Unable to load dashboard data:</strong> {error}
           </div>
-          <button type="button" className="btn-retry" onClick={loadTasks}>
+          <button type="button" className="btn-retry" onClick={loadDashboardData}>
             Retry
           </button>
         </div>
@@ -245,7 +287,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      {/* Main Grid: Tasks & Activity */}
+      {/* Main Grid: Tasks & Activity & Projects */}
       <div className="dashboard-grid">
         {/* Left Column: Today's Tasks */}
         <section
@@ -328,6 +370,12 @@ export function DashboardView() {
                       {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
                     </span>
 
+                    {task.projectName && (
+                      <span className="tag-project">
+                        {task.projectName}
+                      </span>
+                    )}
+
                     {task.dueDate && (
                       <span className="tag-project">
                         {task.dueDate === todayStr
@@ -344,7 +392,7 @@ export function DashboardView() {
           )}
         </section>
 
-        {/* Right Column: Upcoming & Recent Activity */}
+        {/* Right Column: Active Projects, Upcoming & Recent Activity */}
         <div
           style={{
             display: "flex",
@@ -352,6 +400,78 @@ export function DashboardView() {
             gap: "var(--space-6)",
           }}
         >
+          {/* Active Projects Section (Milestone 3) */}
+          <section
+            className="dashboard-panel"
+            aria-labelledby="active-projects-heading"
+          >
+            <div className="panel-title-bar">
+              <h2 id="active-projects-heading" className="panel-heading">
+                Active Projects
+              </h2>
+              <Link
+                to="/projects"
+                style={{ fontSize: "0.75rem", color: "var(--primary)" }}
+              >
+                View all →
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="dash-loading-wrap" role="status">
+                <Loader2 size={16} className="spin-icon" />
+                <span>Loading projects...</span>
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="dash-empty-upcoming" style={{ minHeight: "80px" }}>
+                <FolderKanban size={22} className="dash-empty-icon" />
+                <p className="dash-empty-text">No active projects yet.</p>
+                <Link to="/projects" className="btn-dash-create">
+                  <Plus size={14} />
+                  <span>Create project</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="dash-projects-list">
+                {projects.slice(0, 3).map((project) => {
+                  const total = project.taskCount ?? 0;
+                  const completed = project.completedTaskCount ?? 0;
+                  const percent =
+                    total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                  return (
+                    <div
+                      key={project.id}
+                      className="dash-project-item"
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") navigate(`/projects/${project.id}`);
+                      }}
+                      aria-label={`Open project ${project.name}`}
+                    >
+                      <div className="dash-project-meta-row">
+                        <span className="dash-project-name">{project.name}</span>
+                        <span className="dash-project-ratio">
+                          {total === 0
+                            ? "0 tasks"
+                            : `${completed}/${total} (${percent}%)`}
+                        </span>
+                      </div>
+                      <div className="dash-project-track">
+                        <div
+                          className="dash-project-fill"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           {/* Upcoming Section */}
           <section
             className="dashboard-panel"

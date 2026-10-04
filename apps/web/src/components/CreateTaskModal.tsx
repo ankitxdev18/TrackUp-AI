@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { AlertCircle, Calendar, Check, Loader2, X } from "lucide-react";
+import { AlertCircle, Calendar, Check, FolderKanban, Loader2, X } from "lucide-react";
+import { fetchProjects, type Project } from "../api/projects";
 import {
   createTask,
   getTodayDateString,
@@ -14,6 +15,7 @@ interface CreateTaskModalProps {
   onClose: () => void;
   onTaskCreated: (task: Task) => void;
   initialDueDate?: string | null;
+  initialProjectId?: string | null;
 }
 
 export function CreateTaskModal({
@@ -21,10 +23,13 @@ export function CreateTaskModal({
   onClose,
   onTaskCreated,
   initialDueDate,
+  initialProjectId,
 }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [dueDate, setDueDate] = useState<string>(initialDueDate || "");
+  const [projectId, setProjectId] = useState<string>(initialProjectId || "");
+  const [projectsList, setProjectsList] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,12 +40,22 @@ export function CreateTaskModal({
       setTitle("");
       setPriority("MEDIUM");
       setDueDate(initialDueDate || "");
+      setProjectId(initialProjectId || "");
       setError(null);
       setLoading(false);
-      // Autofocus input
+
+      // Load user's projects for project selector
+      fetchProjects()
+        .then((data) => {
+          setProjectsList(data.filter((p) => p.status === "ACTIVE"));
+        })
+        .catch(() => {
+          // ignore background failure to fetch projects list
+        });
+
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [isOpen, initialDueDate]);
+  }, [isOpen, initialDueDate, initialProjectId]);
 
   // Handle escape key
   useEffect(() => {
@@ -71,6 +86,7 @@ export function CreateTaskModal({
         title: trimmedTitle,
         priority,
         dueDate: dueDate ? dueDate : null,
+        projectId: projectId ? projectId : null,
       });
 
       onTaskCreated(newTask);
@@ -146,8 +162,35 @@ export function CreateTaskModal({
           </div>
 
           <div className="form-group">
+            <label htmlFor="task-project-select" className="form-label">
+              Project (Optional)
+            </label>
+            <div className="date-input-wrapper">
+              <FolderKanban size={15} className="date-icon" aria-hidden="true" />
+              <select
+                id="task-project-select"
+                className="modal-input modal-input-date"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">No Project (Standalone Task)</option>
+                {projectsList.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">Priority</label>
-            <div className="priority-pill-selector" role="radiogroup" aria-label="Task Priority">
+            <div
+              className="priority-pill-selector"
+              role="radiogroup"
+              aria-label="Task Priority"
+            >
               {(["LOW", "MEDIUM", "HIGH"] as const).map((p) => {
                 const isSelected = priority === p;
                 return (

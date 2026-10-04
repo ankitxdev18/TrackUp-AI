@@ -1,6 +1,8 @@
 export interface Task {
   id: string;
   userId: string;
+  projectId?: string | null;
+  projectName?: string | null;
   title: string;
   status: "TODO" | "COMPLETED";
   priority: "LOW" | "MEDIUM" | "HIGH";
@@ -14,6 +16,7 @@ export interface CreateTaskInput {
   title: string;
   priority?: "LOW" | "MEDIUM" | "HIGH";
   dueDate?: string | null;
+  projectId?: string | null;
 }
 
 export interface UpdateTaskInput {
@@ -21,6 +24,7 @@ export interface UpdateTaskInput {
   status?: "TODO" | "COMPLETED";
   priority?: "LOW" | "MEDIUM" | "HIGH";
   dueDate?: string | null;
+  projectId?: string | null;
 }
 
 export class TaskApiError extends Error {
@@ -35,8 +39,12 @@ export class TaskApiError extends Error {
   }
 }
 
-export async function fetchTasks(): Promise<Task[]> {
-  const response = await fetch("/api/tasks", {
+export async function fetchTasks(projectId?: string): Promise<Task[]> {
+  const url = projectId
+    ? `/api/tasks?projectId=${encodeURIComponent(projectId)}`
+    : "/api/tasks";
+
+  const response = await fetch(url, {
     headers: {
       Accept: "application/json",
     },
@@ -59,6 +67,7 @@ export async function fetchTasks(): Promise<Task[]> {
   const data = await response.json();
   return data.tasks || [];
 }
+
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
   const response = await fetch("/api/tasks", {

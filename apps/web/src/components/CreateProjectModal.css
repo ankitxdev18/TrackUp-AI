@@ -1,0 +1,8 @@
+/* CreateProjectModal.css */
+@import "./CreateTaskModal.css";
+
+.modal-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}

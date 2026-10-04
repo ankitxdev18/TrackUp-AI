@@ -5,10 +5,12 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  FolderKanban,
   Loader2,
   Plus,
   Trash2,
 } from "lucide-react";
+import { fetchProjects, type Project } from "../api/projects";
 import {
   deleteTask,
   fetchTasks,
@@ -24,9 +26,11 @@ type FilterType = "all" | "today" | "upcoming" | "completed";
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projectsList, setProjectsList] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
@@ -37,7 +41,9 @@ export function TasksPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTasks();
+      const projParam =
+        selectedProjectFilter !== "all" ? selectedProjectFilter : undefined;
+      const data = await fetchTasks(projParam);
       setTasks(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load tasks");
@@ -47,8 +53,14 @@ export function TasksPage() {
   };
 
   useEffect(() => {
-    loadTasks();
+    fetchProjects()
+      .then((projs) => setProjectsList(projs))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadTasks();
+  }, [selectedProjectFilter]);
 
   const handleToggleTask = async (task: Task) => {
     const nextStatus = task.status === "COMPLETED" ? "TODO" : "COMPLETED";
@@ -77,7 +89,14 @@ export function TasksPage() {
   };
 
   const handleTaskCreated = (newTask: Task) => {
-    setTasks((prev) => [newTask, ...prev]);
+    // If filter matches, add to list
+    if (
+      selectedProjectFilter === "all" ||
+      (selectedProjectFilter === "none" && !newTask.projectId) ||
+      selectedProjectFilter === newTask.projectId
+    ) {
+      setTasks((prev) => [newTask, ...prev]);
+    }
   };
 
   // Filter tasks based on selected tab
@@ -129,57 +148,78 @@ export function TasksPage() {
         </button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="tasks-filter-bar" role="tablist" aria-label="Task Filters">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeFilter === "all"}
-          className={`filter-tab ${activeFilter === "all" ? "active" : ""}`}
-          onClick={() => setActiveFilter("all")}
-        >
-          <span>All Tasks</span>
-          <span className="filter-count">{tasks.length}</span>
-        </button>
+      {/* Filter Tabs & Project Selector Bar */}
+      <div className="tasks-filters-row">
+        <div className="tasks-filter-bar" role="tablist" aria-label="Task Filters">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "all"}
+            className={`filter-tab ${activeFilter === "all" ? "active" : ""}`}
+            onClick={() => setActiveFilter("all")}
+          >
+            <span>All Tasks</span>
+            <span className="filter-count">{tasks.length}</span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeFilter === "today"}
-          className={`filter-tab ${activeFilter === "today" ? "active" : ""}`}
-          onClick={() => setActiveFilter("today")}
-        >
-          <span>Today</span>
-          <span className="filter-count">
-            {tasks.filter((t) => t.dueDate === todayStr).length}
-          </span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "today"}
+            className={`filter-tab ${activeFilter === "today" ? "active" : ""}`}
+            onClick={() => setActiveFilter("today")}
+          >
+            <span>Today</span>
+            <span className="filter-count">
+              {tasks.filter((t) => t.dueDate === todayStr).length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeFilter === "upcoming"}
-          className={`filter-tab ${activeFilter === "upcoming" ? "active" : ""}`}
-          onClick={() => setActiveFilter("upcoming")}
-        >
-          <span>Upcoming</span>
-          <span className="filter-count">
-            {tasks.filter((t) => t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED").length}
-          </span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "upcoming"}
+            className={`filter-tab ${activeFilter === "upcoming" ? "active" : ""}`}
+            onClick={() => setActiveFilter("upcoming")}
+          >
+            <span>Upcoming</span>
+            <span className="filter-count">
+              {tasks.filter((t) => t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED").length}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeFilter === "completed"}
-          className={`filter-tab ${activeFilter === "completed" ? "active" : ""}`}
-          onClick={() => setActiveFilter("completed")}
-        >
-          <span>Completed</span>
-          <span className="filter-count">
-            {tasks.filter((t) => t.status === "COMPLETED").length}
-          </span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "completed"}
+            className={`filter-tab ${activeFilter === "completed" ? "active" : ""}`}
+            onClick={() => setActiveFilter("completed")}
+          >
+            <span>Completed</span>
+            <span className="filter-count">
+              {tasks.filter((t) => t.status === "COMPLETED").length}
+            </span>
+          </button>
+        </div>
+
+        {/* Project Filter Select */}
+        <div className="tasks-project-filter-wrap">
+          <FolderKanban size={14} className="project-filter-icon" aria-hidden="true" />
+          <select
+            className="tasks-project-select"
+            value={selectedProjectFilter}
+            onChange={(e) => setSelectedProjectFilter(e.target.value)}
+            aria-label="Filter tasks by project"
+          >
+            <option value="all">All Projects</option>
+            <option value="none">No Project</option>
+            {projectsList.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Error State */}
@@ -224,7 +264,7 @@ export function TasksPage() {
                   ? "No upcoming tasks scheduled."
                   : activeFilter === "completed"
                   ? "No completed tasks yet."
-                  : "No tasks created yet."}
+                  : "No tasks found."}
               </h3>
               <p className="empty-desc">
                 {activeFilter === "today"
@@ -233,7 +273,7 @@ export function TasksPage() {
                   ? "Tasks due in future dates will automatically show up here."
                   : activeFilter === "completed"
                   ? "Finish a task from your active list to see it recorded here."
-                  : "Start by adding your first action item to your personal Life OS."}
+                  : "Start by adding your first action item or adjusting your project filter."}
               </p>
               {activeFilter !== "completed" && (
                 <button
@@ -287,6 +327,13 @@ export function TasksPage() {
                           {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
                         </span>
 
+                        {task.projectName && (
+                          <span className="task-project-pill">
+                            <FolderKanban size={11} aria-hidden="true" />
+                            <span>{task.projectName}</span>
+                          </span>
+                        )}
+
                         {getDueDateLabel(task.dueDate, isCompleted)}
 
                         <span className="task-time-indicator">
@@ -323,6 +370,11 @@ export function TasksPage() {
         onClose={() => setIsModalOpen(false)}
         onTaskCreated={handleTaskCreated}
         initialDueDate={activeFilter === "today" ? todayStr : null}
+        initialProjectId={
+          selectedProjectFilter !== "all" && selectedProjectFilter !== "none"
+            ? selectedProjectFilter
+            : undefined
+        }
       />
     </div>
   );

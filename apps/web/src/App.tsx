@@ -2,23 +2,34 @@ import {
   BookOpen,
   Calendar,
   Compass,
-  FolderKanban,
   HeartPulse,
   Receipt,
   Settings,
   Sparkles,
   Target,
 } from "lucide-react";
+
 import { AppShell } from "./components/AppShell";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
 import { LandingPage } from "./pages/LandingPage";
+import { ProjectDetailPage } from "./pages/ProjectDetailPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { RouterProvider, useRouter } from "./router/Router";
 
 function AppRoutes() {
   const { path } = useRouter();
+
+  if (path.startsWith("/projects/")) {
+    const projectId = path.replace("/projects/", "").split("/")[0];
+    return (
+      <AppShell>
+        <ProjectDetailPage projectId={projectId} />
+      </AppShell>
+    );
+  }
 
   switch (path) {
     case "/":
@@ -47,14 +58,10 @@ function AppRoutes() {
     case "/projects":
       return (
         <AppShell>
-          <FeaturePlaceholder
-            title="Projects & Roadmaps"
-            description="Group related tasks into strategic initiatives, manage completion velocity, and organize milestones with timeline clarity."
-            icon={FolderKanban}
-            plannedMilestone="Phase 2 Milestone"
-          />
+          <ProjectsPage />
         </AppShell>
       );
+
 
     case "/goals":
       return (

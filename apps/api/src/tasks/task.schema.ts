@@ -41,6 +41,16 @@ export const dueDateSchema = z
     message: "Due date must be a valid calendar date in YYYY-MM-DD format",
   });
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const projectIdSchema = z
+  .string()
+  .trim()
+  .refine((val) => UUID_REGEX.test(val), {
+    message: "Project ID must be a valid UUIDv4 string",
+  });
+
 /**
  * Task Creation Validation Schema
  * Client cannot supply userId. The server sets ownership strictly from the identity provider.
@@ -56,6 +66,7 @@ export const createTaskSchema = z
       .max(500, "Title must not exceed 500 characters"),
     priority: priorityEnum.default("MEDIUM"),
     dueDate: dueDateSchema.nullable().optional(),
+    projectId: projectIdSchema.nullable().optional(),
   })
   .strict();
 
@@ -76,6 +87,7 @@ export const updateTaskSchema = z
     status: statusEnum.optional(),
     priority: priorityEnum.optional(),
     dueDate: dueDateSchema.nullable().optional(),
+    projectId: projectIdSchema.nullable().optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, {
@@ -87,9 +99,6 @@ export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 /**
  * Task ID Parameter Schema
  */
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export const taskIdParamSchema = z.object({
   id: z
     .string()
@@ -100,3 +109,4 @@ export const taskIdParamSchema = z.object({
 });
 
 export type TaskIdParam = z.infer<typeof taskIdParamSchema>;
+

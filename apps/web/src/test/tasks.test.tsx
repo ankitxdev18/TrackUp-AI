@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
 import { getTodayDateString, type Task } from "../api/tasks";
 
-describe("Milestone 2: Tasks & Dashboard Integration", () => {
+describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
   const todayStr = getTodayDateString();
 
   const mockTasks: Task[] = [
@@ -53,10 +53,13 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
 
   describe("Tasks Page (/tasks)", () => {
     it("renders loading state then tasks list with real tasks", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ tasks: mockTasks }),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
@@ -85,28 +88,37 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
     });
 
     it("displays deliberate empty state when no tasks exist", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ tasks: [] }),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [] }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByText("No tasks created yet.")).toBeInTheDocument();
-        expect(screen.getByText("Start by adding your first action item to your personal Life OS.")).toBeInTheDocument();
+        expect(screen.getByText("No tasks found.")).toBeInTheDocument();
+        expect(screen.getByText(/Start by adding your first action item/i)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Create Task" })).toBeInTheDocument();
       });
     });
 
     it("displays error banner when fetch fails and allows retry", async () => {
-      vi.spyOn(globalThis, "fetch")
-        .mockRejectedValueOnce(new Error("Network connection error"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ tasks: mockTasks }),
-        } as Response);
+      let callCount = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        callCount++;
+        if (callCount === 1) {
+          throw new Error("Network connection error");
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
@@ -126,33 +138,39 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
     });
 
     it("opens task creation modal and adds newly created task to list", async () => {
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ tasks: [] }),
-        } as Response) // initial load
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            task: {
-              id: "t-new",
-              userId: "user-1",
-              title: "Write integration tests",
-              status: "TODO",
-              priority: "HIGH",
-              dueDate: null,
-              completedAt: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          }),
-        } as Response); // create task call
+      let taskList: Task[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "POST") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const created: Task = {
+            id: "t-new",
+            userId: "user-1",
+            title: body.title,
+            status: "TODO",
+            priority: body.priority || "HIGH",
+            dueDate: null,
+            completedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return { ok: true, json: async () => ({ task: created }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: taskList }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByText("No tasks created yet.")).toBeInTheDocument();
+        expect(screen.getByText("No tasks found.")).toBeInTheDocument();
       });
 
       // Open creation modal
@@ -180,18 +198,31 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
     });
 
     it("toggles task completion state with optimistic update", async () => {
-      const taskToToggle = mockTasks[0];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ tasks: [taskToToggle] }),
-        } as Response) // initial load
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            task: { ...taskToToggle, status: "COMPLETED", completedAt: new Date().toISOString() },
-          }),
-        } as Response); // patch call
+      const taskToToggle = { ...mockTasks[0] };
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          return {
+            ok: true,
+            json: async () => ({
+              task: {
+                ...taskToToggle,
+                status: body.status,
+                completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+              },
+            }),
+          } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [taskToToggle] }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
@@ -216,10 +247,13 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
     });
 
     it("filters tasks by tab selection", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ tasks: mockTasks }),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
 
       window.history.pushState({}, "", "/tasks");
       render(<App />);
@@ -241,10 +275,13 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
 
   describe("Dashboard Integration (/dashboard)", () => {
     it("loads real task data and computes live summary metrics", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ tasks: mockTasks }),
-      } as Response);
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
 
       window.history.pushState({}, "", "/dashboard");
       render(<App />);
@@ -266,27 +303,33 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
     });
 
     it("allows creating a task directly from Dashboard quick-add", async () => {
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ tasks: [] }),
-        } as Response) // initial load
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            task: {
-              id: "dash-created",
-              userId: "user-1",
-              title: "Dashboard quick action",
-              status: "TODO",
-              priority: "MEDIUM",
-              dueDate: todayStr,
-              completedAt: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          }),
-        } as Response); // create call
+      let taskList: Task[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "POST") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const created: Task = {
+            id: "dash-created",
+            userId: "user-1",
+            title: body.title,
+            status: "TODO",
+            priority: "MEDIUM",
+            dueDate: todayStr,
+            completedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return { ok: true, json: async () => ({ task: created }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: taskList }) } as Response;
+      });
 
       window.history.pushState({}, "", "/dashboard");
       render(<App />);
@@ -299,17 +342,19 @@ describe("Milestone 2: Tasks & Dashboard Integration", () => {
       const addBtns = screen.getAllByRole("button", { name: /Add.*task/i });
       fireEvent.click(addBtns[0]);
 
-      expect(screen.getByRole("heading", { name: "Create New Task" })).toBeInTheDocument();
+      const modal = screen.getByRole("dialog");
+      expect(within(modal).getByRole("heading", { name: "Create New Task" })).toBeInTheDocument();
 
-      const input = screen.getByLabelText(/Task Title/i);
+      const input = within(modal).getByLabelText(/Task Title/i);
       fireEvent.change(input, { target: { value: "Dashboard quick action" } });
 
-      const submitBtn = screen.getByRole("button", { name: "Create Task" });
+      const submitBtn = within(modal).getByRole("button", { name: "Create Task" });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
         expect(screen.getByText("Dashboard quick action")).toBeInTheDocument();
       });
+
     });
   });
 });

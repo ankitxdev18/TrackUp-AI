@@ -6,25 +6,35 @@ import { App } from "../App";
 describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/");
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        tasks: [
-          {
-            id: "shell-task-1",
-            userId: "user-1",
-            title: "Design new landing page",
-            status: "TODO",
-            priority: "HIGH",
-            dueDate: new Date().toISOString().split("T")[0],
-            completedAt: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ],
-      }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/projects")) {
+        return {
+          ok: true,
+          json: async () => ({ projects: [] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          tasks: [
+            {
+              id: "shell-task-1",
+              userId: "user-1",
+              title: "Design new landing page",
+              status: "TODO",
+              priority: "HIGH",
+              dueDate: new Date().toISOString().split("T")[0],
+              completedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      } as Response;
+    });
   });
+
 
   describe("Landing Page", () => {
     it("renders the TrackUp landing page at root URL", () => {
@@ -154,9 +164,18 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
+  describe("Active Projects Route (Milestone 3)", () => {
+    it("renders active Projects page at /projects", async () => {
+      window.history.pushState({}, "", "/projects");
+      render(<App />);
+
+      expect(screen.getByRole("heading", { name: "Projects & Initiatives" })).toBeInTheDocument();
+      expect(screen.getByText("New Project")).toBeInTheDocument();
+    });
+  });
+
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
-      { path: "/projects", title: "Projects & Roadmaps", milestone: "Phase 2 Milestone" },
       { path: "/goals", title: "Goals & Objectives", milestone: "Phase 2 Milestone" },
       { path: "/habits", title: "Atomic Habits", milestone: "Phase 3 Milestone" },
       { path: "/calendar", title: "Calendar & Agenda", milestone: "Phase 3 Milestone" },
@@ -176,6 +195,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
         expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
       });
     });
+
 
     it("renders 404 placeholder for unknown routes", () => {
       window.history.pushState({}, "", "/unknown-random-route");

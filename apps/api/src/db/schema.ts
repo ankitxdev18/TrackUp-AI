@@ -45,11 +45,50 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
 /**
- * TrackUp Task Entity Schema (Milestone 2)
+ * TrackUp Project Entity Schema (Milestone 3)
  *
- * Implements the first core Life OS execution model:
+ * Implements high-level project initiatives grouping tasks:
  * - id: UUIDv4 primary key
  * - userId: Foreign key reference to users.id with cascade on delete
+ * - name: Required project name (1-255 chars)
+ * - description: Optional narrative description (<= 1000 chars)
+ * - status: 'ACTIVE' | 'ARCHIVED' (default: 'ACTIVE')
+ * - createdAt: Timestamp of creation
+ * - updatedAt: Timestamp of last modification
+ */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: varchar("description", { length: 1000 }),
+    status: varchar("status", { length: 20 }).default("ACTIVE").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("projects_user_id_idx").on(table.userId),
+    index("projects_user_status_idx").on(table.userId, table.status),
+  ]
+);
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+
+/**
+ * TrackUp Task Entity Schema (Milestone 2 & 3)
+ *
+ * Implements the core Life OS execution model:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - projectId: Optional foreign key reference to projects.id (set null on delete)
  * - title: Required task summary (1-500 chars)
  * - status: 'TODO' | 'COMPLETED' (default: 'TODO')
  * - priority: 'LOW' | 'MEDIUM' | 'HIGH' (default: 'MEDIUM')
@@ -65,6 +104,9 @@ export const tasks = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
     title: varchar("title", { length: 500 }).notNull(),
     status: varchar("status", { length: 20 }).default("TODO").notNull(),
     priority: varchar("priority", { length: 10 }).default("MEDIUM").notNull(),
@@ -81,8 +123,10 @@ export const tasks = pgTable(
     index("tasks_user_id_idx").on(table.userId),
     index("tasks_user_status_idx").on(table.userId, table.status),
     index("tasks_user_due_date_idx").on(table.userId, table.dueDate),
+    index("tasks_user_project_idx").on(table.userId, table.projectId),
   ]
 );
 
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+
