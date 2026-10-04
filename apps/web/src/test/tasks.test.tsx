@@ -1,0 +1,315 @@
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { App } from "../App";
+import { getTodayDateString, type Task } from "../api/tasks";
+
+describe("Milestone 2: Tasks & Dashboard Integration", () => {
+  const todayStr = getTodayDateString();
+
+  const mockTasks: Task[] = [
+    {
+      id: "t-1",
+      userId: "user-1",
+      title: "Complete quarterly review",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: todayStr,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: "t-2",
+      userId: "user-1",
+      title: "Daily morning workout",
+      status: "COMPLETED",
+      priority: "MEDIUM",
+      dueDate: todayStr,
+      completedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: "t-3",
+      userId: "user-1",
+      title: "Plan road trip itinerary",
+      status: "TODO",
+      priority: "LOW",
+      dueDate: "2099-12-31", // Upcoming
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe("Tasks Page (/tasks)", () => {
+    it("renders loading state then tasks list with real tasks", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tasks: mockTasks }),
+      } as Response);
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      // Shows heading and action CTA
+      expect(screen.getByRole("heading", { name: "Tasks & Planning" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add Task" })).toBeInTheDocument();
+
+      // Filter tabs exist
+      expect(screen.getByRole("tab", { name: /All Tasks/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Today/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Upcoming/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Completed/i })).toBeInTheDocument();
+
+      // Tasks appear after load
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+        expect(screen.getByText("Daily morning workout")).toBeInTheDocument();
+        expect(screen.getByText("Plan road trip itinerary")).toBeInTheDocument();
+      });
+
+      // Priority badges
+      expect(screen.getAllByText("High").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Medium").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Low").length).toBeGreaterThan(0);
+    });
+
+    it("displays deliberate empty state when no tasks exist", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tasks: [] }),
+      } as Response);
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("No tasks created yet.")).toBeInTheDocument();
+        expect(screen.getByText("Start by adding your first action item to your personal Life OS.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Create Task" })).toBeInTheDocument();
+      });
+    });
+
+    it("displays error banner when fetch fails and allows retry", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockRejectedValueOnce(new Error("Network connection error"))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ tasks: mockTasks }),
+        } as Response);
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+        expect(screen.getByText(/Network connection error/i)).toBeInTheDocument();
+      });
+
+      // Click retry button
+      const retryBtn = screen.getByRole("button", { name: "Retry" });
+      fireEvent.click(retryBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+    });
+
+    it("opens task creation modal and adds newly created task to list", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ tasks: [] }),
+        } as Response) // initial load
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            task: {
+              id: "t-new",
+              userId: "user-1",
+              title: "Write integration tests",
+              status: "TODO",
+              priority: "HIGH",
+              dueDate: null,
+              completedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        } as Response); // create task call
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("No tasks created yet.")).toBeInTheDocument();
+      });
+
+      // Open creation modal
+      const addBtn = screen.getByRole("button", { name: "Add Task" });
+      fireEvent.click(addBtn);
+
+      expect(screen.getByRole("heading", { name: "Create New Task" })).toBeInTheDocument();
+
+      // Fill in title
+      const input = screen.getByLabelText(/Task Title/i);
+      fireEvent.change(input, { target: { value: "Write integration tests" } });
+
+      // Select high priority
+      const highPill = screen.getByRole("radio", { name: /High/i });
+      fireEvent.click(highPill);
+
+      // Submit form
+      const modal = screen.getByRole("dialog");
+      const submitBtn = within(modal).getByRole("button", { name: "Create Task" });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Write integration tests")).toBeInTheDocument();
+      });
+    });
+
+    it("toggles task completion state with optimistic update", async () => {
+      const taskToToggle = mockTasks[0];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ tasks: [taskToToggle] }),
+        } as Response) // initial load
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            task: { ...taskToToggle, status: "COMPLETED", completedAt: new Date().toISOString() },
+          }),
+        } as Response); // patch call
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(taskToToggle.title)).toBeInTheDocument();
+      });
+
+      const checkbox = screen.getByRole("checkbox", {
+        name: `Mark ${taskToToggle.title} as complete`,
+      });
+      expect(checkbox).toHaveAttribute("aria-checked", "false");
+
+      fireEvent.click(checkbox);
+
+      await waitFor(() => {
+        const updatedCheckbox = screen.getByRole("checkbox", {
+          name: `Mark ${taskToToggle.title} as incomplete`,
+        });
+        expect(updatedCheckbox).toHaveAttribute("aria-checked", "true");
+      });
+    });
+
+    it("filters tasks by tab selection", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tasks: mockTasks }),
+      } as Response);
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      // Click "Completed" tab
+      const completedTab = screen.getByRole("tab", { name: /Completed/i });
+      fireEvent.click(completedTab);
+
+      // Daily morning workout is COMPLETED
+      expect(screen.getByText("Daily morning workout")).toBeInTheDocument();
+      // Complete quarterly review is TODO so should not be in Completed tab
+      expect(screen.queryByText("Complete quarterly review")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Dashboard Integration (/dashboard)", () => {
+    it("loads real task data and computes live summary metrics", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tasks: mockTasks }),
+      } as Response);
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        // Today total = 2 (t-1 and t-2 are today)
+        expect(screen.getByText("1 of 2 completed")).toBeInTheDocument();
+        // Progress = 1 of 2 = 50%
+        expect(screen.getByText("50%")).toBeInTheDocument();
+        // Remaining = 2 - 1 = 1
+        expect(screen.getByText("1")).toBeInTheDocument();
+      });
+
+      // Today's tasks list contains real items
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+
+      // Upcoming section contains upcoming items
+      expect(screen.getByText("Plan road trip itinerary")).toBeInTheDocument();
+    });
+
+    it("allows creating a task directly from Dashboard quick-add", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ tasks: [] }),
+        } as Response) // initial load
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            task: {
+              id: "dash-created",
+              userId: "user-1",
+              title: "Dashboard quick action",
+              status: "TODO",
+              priority: "MEDIUM",
+              dueDate: todayStr,
+              completedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        } as Response); // create call
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("You're clear for today.")).toBeInTheDocument();
+      });
+
+      // Click "Add Task" button in panel title bar
+      const addBtns = screen.getAllByRole("button", { name: /Add.*task/i });
+      fireEvent.click(addBtns[0]);
+
+      expect(screen.getByRole("heading", { name: "Create New Task" })).toBeInTheDocument();
+
+      const input = screen.getByLabelText(/Task Title/i);
+      fireEvent.change(input, { target: { value: "Dashboard quick action" } });
+
+      const submitBtn = screen.getByRole("button", { name: "Create Task" });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Dashboard quick action")).toBeInTheDocument();
+      });
+    });
+  });
+});

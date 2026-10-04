@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance } from "fastify";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
+import { taskRoutes } from "./routes/task.routes.js";
 
 export interface BuildAppOptions {
   checkDbHealth?: () => Promise<{ ok: boolean }>;
@@ -32,6 +33,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   server.register(authRoutes, { prefix: "/api/auth" });
+  server.register(taskRoutes, { prefix: "/api/tasks" });
 
   return server;
 }

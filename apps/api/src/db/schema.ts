@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { boolean, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  pgTable,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 /**
  * TrackUp User Entity Schema
@@ -35,3 +43,46 @@ export const users = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+/**
+ * TrackUp Task Entity Schema (Milestone 2)
+ *
+ * Implements the first core Life OS execution model:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - title: Required task summary (1-500 chars)
+ * - status: 'TODO' | 'COMPLETED' (default: 'TODO')
+ * - priority: 'LOW' | 'MEDIUM' | 'HIGH' (default: 'MEDIUM')
+ * - dueDate: ISO calendar date 'YYYY-MM-DD' (nullable)
+ * - completedAt: Timestamp of completion (nullable)
+ * - createdAt: Timestamp of creation
+ * - updatedAt: Timestamp of last modification
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 500 }).notNull(),
+    status: varchar("status", { length: 20 }).default("TODO").notNull(),
+    priority: varchar("priority", { length: 10 }).default("MEDIUM").notNull(),
+    dueDate: varchar("due_date", { length: 10 }),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("tasks_user_id_idx").on(table.userId),
+    index("tasks_user_status_idx").on(table.userId, table.status),
+    index("tasks_user_due_date_idx").on(table.userId, table.dueDate),
+  ]
+);
+
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;

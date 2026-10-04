@@ -1,7 +1,6 @@
 import {
   BookOpen,
   Calendar,
-  CheckSquare,
   Compass,
   FolderKanban,
   HeartPulse,
@@ -15,6 +14,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
 import { LandingPage } from "./pages/LandingPage";
+import { TasksPage } from "./pages/TasksPage";
 import { RouterProvider, useRouter } from "./router/Router";
 
 function AppRoutes() {
@@ -40,12 +40,7 @@ function AppRoutes() {
     case "/tasks":
       return (
         <AppShell>
-          <FeaturePlaceholder
-            title="Tasks & Planning"
-            description="Capture, prioritize, and complete daily tasks with high-density views, priority tags, and clean virtual lists. Full task creation, completion, and database persistence is scheduled as the very next vertical milestone!"
-            icon={CheckSquare}
-            plannedMilestone="Milestone 2 Priority"
-          />
+          <TasksPage />
         </AppShell>
       );
 

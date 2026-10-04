@@ -1,11 +1,29 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
 
-describe("TrackUp Product Shell & Landing Page (Milestone 1)", () => {
+describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tasks: [
+          {
+            id: "shell-task-1",
+            userId: "user-1",
+            title: "Design new landing page",
+            status: "TODO",
+            priority: "HIGH",
+            dueDate: new Date().toISOString().split("T")[0],
+            completedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      }),
+    } as Response);
   });
 
   describe("Landing Page", () => {
@@ -49,14 +67,16 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1)", () => {
       expect(screen.getByText("Create Your Free Account")).toBeInTheDocument();
     });
 
-    it("navigates to dashboard live preview on CTA click", () => {
+    it("navigates to dashboard live preview on CTA click", async () => {
       render(<App />);
 
       const previewBtn = screen.getByText("Explore Dashboard Preview");
       fireEvent.click(previewBtn);
 
       expect(window.location.pathname).toBe("/dashboard");
-      expect(screen.getAllByText(/Good morning, Alex/i).length).toBeGreaterThan(0);
+      await waitFor(() => {
+        expect(screen.getAllByText(/Good morning, Alex/i).length).toBeGreaterThan(0);
+      });
     });
 
     it("navigates to signup on 'Start Your Workspace' click", () => {
@@ -94,7 +114,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1)", () => {
   });
 
   describe("AppShell & Navigation Structure", () => {
-    it("renders the application shell with sidebar and header at /dashboard", () => {
+    it("renders the application shell with sidebar and header at /dashboard", async () => {
       window.history.pushState({}, "", "/dashboard");
       render(<App />);
 
@@ -114,28 +134,28 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1)", () => {
       expect(screen.getAllByRole("link", { name: /Expenses/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Health/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
+
+      await waitFor(() => {
+        expect(screen.getByText("Design new landing page")).toBeInTheDocument();
+      });
     });
 
-    it("allows toggling tasks in the dashboard preview", () => {
-      window.history.pushState({}, "", "/dashboard");
+    it("renders real Tasks page at /tasks with action controls", async () => {
+      window.history.pushState({}, "", "/tasks");
       render(<App />);
 
-      const taskCheckboxes = screen.getAllByRole("checkbox");
-      expect(taskCheckboxes.length).toBeGreaterThan(0);
+      expect(screen.getByRole("heading", { name: "Tasks & Planning" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add Task" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /All Tasks/i })).toBeInTheDocument();
 
-      const firstCheckbox = taskCheckboxes[0];
-      const initialChecked = firstCheckbox.getAttribute("aria-checked");
-      
-      fireEvent.click(firstCheckbox);
-      
-      const newChecked = firstCheckbox.getAttribute("aria-checked");
-      expect(newChecked).not.toBe(initialChecked);
+      await waitFor(() => {
+        expect(screen.getByText("Design new landing page")).toBeInTheDocument();
+      });
     });
   });
 
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
-      { path: "/tasks", title: "Tasks & Planning", milestone: "Milestone 2 Priority" },
       { path: "/projects", title: "Projects & Roadmaps", milestone: "Phase 2 Milestone" },
       { path: "/goals", title: "Goals & Objectives", milestone: "Phase 2 Milestone" },
       { path: "/habits", title: "Atomic Habits", milestone: "Phase 3 Milestone" },
