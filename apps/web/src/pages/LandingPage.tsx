@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Activity,
   ArrowRight,
@@ -11,15 +12,39 @@ import {
   FolderKanban,
   LayoutDashboard,
   Layers,
+  Menu,
   ShieldCheck,
   Sparkles,
   Target,
+  X,
   Zap,
 } from "lucide-react";
 import { Link } from "../router/Router";
 import "./LandingPage.css";
 
 export function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
     <div className="landing-page">
       {/* Background Ambient Atmosphere */}
@@ -29,54 +54,126 @@ export function LandingPage() {
         <div className="ambient-grid-overlay" />
       </div>
 
-      {/* Top Header */}
-      <header className="landing-header" role="banner">
-        <div className="landing-header-inner">
-          <Link to="/" className="landing-brand" aria-label="TrackUp Home">
-            <div className="landing-brand-logo" aria-hidden="true">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
-            </div>
-            <div className="landing-brand-title-wrap">
-              <span className="landing-brand-text">TrackUp</span>
-              <span className="landing-brand-tag">Life OS</span>
-            </div>
-          </Link>
-
-          <nav className="landing-nav" aria-label="Main Navigation">
-            <a href="#pillars" className="landing-nav-link">
-              Product
-            </a>
-            <a href="#features" className="landing-nav-link">
-              Features
-            </a>
-            <a href="#workflow" className="landing-nav-link">
-              How It Works
-            </a>
-          </nav>
-
-          <div className="landing-auth-actions">
-            <Link to="/login" className="btn-ghost">
-              Sign In
+      {/* Top Floating Header */}
+      <div className={`landing-header-wrapper ${isScrolled ? "is-scrolled" : ""}`}>
+        <header className="landing-header" role="banner">
+          <div className="landing-header-inner">
+            <Link
+              to="/"
+              className="landing-brand"
+              aria-label="TrackUp Home"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <div className="landing-brand-logo" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </div>
+              <div className="landing-brand-title-wrap">
+                <span className="landing-brand-text">TrackUp</span>
+                <span className="landing-brand-tag">Life OS</span>
+              </div>
             </Link>
-            <Link to="/signup" className="btn-cta-nav">
-              <span>Get Started</span>
-              <ArrowRight size={14} className="btn-cta-nav-arrow" aria-hidden="true" />
-            </Link>
+
+            <nav className="landing-nav" aria-label="Main Navigation">
+              <a href="#pillars" className="landing-nav-link">
+                Product
+              </a>
+              <a href="#features" className="landing-nav-link">
+                Features
+              </a>
+              <a href="#workflow" className="landing-nav-link">
+                How It Works
+              </a>
+            </nav>
+
+            <div className="landing-auth-actions">
+              <Link to="/login" className="btn-ghost">
+                Sign In
+              </Link>
+              <Link to="/signup" className="btn-cta-nav">
+                <span>Get Started</span>
+                <ArrowRight size={14} className="btn-cta-nav-arrow" aria-hidden="true" />
+              </Link>
+            </div>
+
+            {/* Mobile Menu Toggle Button */}
+            <button
+              type="button"
+              className="landing-mobile-toggle"
+              aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="landing-mobile-menu"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
-        </div>
-      </header>
+
+          {/* Mobile Navigation Dropdown */}
+          {mobileMenuOpen && (
+            <div
+              id="landing-mobile-menu"
+              className="landing-mobile-menu"
+              role="dialog"
+              aria-modal="false"
+              aria-label="Mobile Navigation"
+            >
+              <nav className="mobile-nav-links" aria-label="Mobile Navigation Links">
+                <a
+                  href="#pillars"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Product
+                </a>
+                <a
+                  href="#features"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Features
+                </a>
+                <a
+                  href="#workflow"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  How It Works
+                </a>
+              </nav>
+              <div className="mobile-auth-divider" />
+              <div className="mobile-auth-actions">
+                <Link
+                  to="/login"
+                  className="btn-mobile-secondary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="btn-mobile-primary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span>Get Started</span>
+                  <ArrowRight size={15} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </header>
+      </div>
 
       {/* Main Content */}
       <main id="main-content">
