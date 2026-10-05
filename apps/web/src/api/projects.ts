@@ -37,6 +37,7 @@ export class ProjectApiError extends Error {
 
 export async function fetchProjects(): Promise<Project[]> {
   const response = await fetch("/api/projects", {
+    credentials: "include",
     headers: {
       Accept: "application/json",
     },
@@ -64,6 +65,7 @@ export async function fetchProject(
   id: string
 ): Promise<{ project: Project; tasks: Task[] }> {
   const response = await fetch(`/api/projects/${id}`, {
+    credentials: "include",
     headers: {
       Accept: "application/json",
     },
@@ -91,6 +93,7 @@ export async function createProject(
 ): Promise<Project> {
   const response = await fetch("/api/projects", {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -122,6 +125,7 @@ export async function updateProject(
 ): Promise<Project> {
   const response = await fetch(`/api/projects/${id}`, {
     method: "PATCH",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -152,6 +156,7 @@ export async function deleteProject(
 ): Promise<{ success: boolean; id: string }> {
   const response = await fetch(`/api/projects/${id}`, {
     method: "DELETE",
+    credentials: "include",
     headers: {
       Accept: "application/json",
     },

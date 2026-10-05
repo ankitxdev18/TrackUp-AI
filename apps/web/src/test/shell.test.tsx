@@ -2,8 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
+import { getTodayDateString } from "../api/tasks";
 
 describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
+  const todayStr = getTodayDateString();
+
   beforeEach(() => {
     window.history.pushState({}, "", "/");
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
@@ -24,7 +27,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
               title: "Design new landing page",
               status: "TODO",
               priority: "HIGH",
-              dueDate: new Date().toISOString().split("T")[0],
+              dueDate: todayStr,
               completedAt: null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -34,7 +37,6 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       } as Response;
     });
   });
-
 
   describe("Landing Page", () => {
     it("renders the TrackUp landing page at root URL", () => {
@@ -77,7 +79,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getByText("Create Your Free Account")).toBeInTheDocument();
     });
 
-    it("navigates to dashboard live preview on CTA click", async () => {
+    it("navigates to dashboard live preview on CTA click with dynamic time-aware greeting", async () => {
       render(<App />);
 
       const previewBtn = screen.getByText("Explore Dashboard Preview");
@@ -85,7 +87,8 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
 
       expect(window.location.pathname).toBe("/dashboard");
       await waitFor(() => {
-        expect(screen.getAllByText(/Good morning, Alex/i).length).toBeGreaterThan(0);
+        expect(screen.getByText(/Good (morning|afternoon|evening)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Here's what you need to focus on today/i)).toBeInTheDocument();
       });
     });
 
@@ -123,31 +126,49 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
-  describe("AppShell & Navigation Structure", () => {
-    it("renders the application shell with sidebar and header at /dashboard", async () => {
+  describe("AppShell & Responsive Navigation Structure", () => {
+    it("renders the application shell with active sidebar, header, and mobile navigation at /dashboard", async () => {
       window.history.pushState({}, "", "/dashboard");
       render(<App />);
 
-      // Header and user elements
-      expect(screen.getByText("Alex Mercer")).toBeInTheDocument();
-      expect(screen.getByText(/Search tasks, projects, notes/i)).toBeInTheDocument();
+      // Dynamic workspace identity (no hardcoded Alex Mercer)
+      expect(screen.getAllByText("Workspace").length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Life OS/i).length).toBeGreaterThan(0);
 
-      // Navigation links exist in sidebar
+      // Top application header breadcrumb
+      expect(screen.getAllByText("Dashboard").length).toBeGreaterThan(0);
+
+      // Primary navigation links in desktop sidebar
       expect(screen.getAllByRole("link", { name: /Dashboard/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Tasks/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Goals/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Habits/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Calendar/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Notes/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Expenses/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Health/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
+
+      // Persistent 5-destination mobile bottom nav trigger
+      expect(screen.getByRole("button", { name: /More navigation/i })).toBeInTheDocument();
 
       await waitFor(() => {
         expect(screen.getByText("Design new landing page")).toBeInTheDocument();
       });
+    });
+
+    it("opens and closes mobile More drawer properly", async () => {
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      const moreBtn = screen.getByRole("button", { name: /More navigation/i });
+      fireEvent.click(moreBtn);
+
+      // More drawer should be open
+      expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Log Out/i }).length).toBeGreaterThan(0);
+
+      // Close drawer
+      const closeBtn = screen.getByRole("button", { name: /Close more navigation/i });
+      fireEvent.click(closeBtn);
+
+      expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
     });
 
     it("renders real Tasks page at /tasks with action controls", async () => {
@@ -204,7 +225,6 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
         expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
       });
     });
-
 
     it("renders 404 placeholder for unknown routes", () => {
       window.history.pushState({}, "", "/unknown-random-route");

@@ -1,20 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Bell,
-  BookOpen,
-  Calendar,
   CheckSquare,
   FolderKanban,
-  HeartPulse,
-  Home,
   LayoutDashboard,
-  Plus,
-  Receipt,
-  Search,
-  Settings,
-  Sparkles,
-  Target,
   LogOut,
+  MoreHorizontal,
+  Settings,
+  Target,
+  User as UserIcon,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
@@ -27,39 +21,60 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { path, navigate } = useRouter();
   const { user, logout } = useAuth();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  // Close drawer on path change
+  useEffect(() => {
+    setIsMoreOpen(false);
+  }, [path]);
+
+  // Handle ESC key to close More drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMoreOpen) {
+        setIsMoreOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMoreOpen]);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  const navSections = [
-    {
-      group: "Overview",
-      items: [
-        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-        { label: "Tasks", href: "/tasks", icon: CheckSquare },
-        { label: "Projects", href: "/projects", icon: FolderKanban },
-      ],
-    },
-    {
-      group: "Systems",
-      items: [
-        { label: "Goals", href: "/goals", icon: Target },
-        { label: "Habits", href: "/habits", icon: Sparkles },
-        { label: "Calendar", href: "/calendar", icon: Calendar },
-        { label: "Notes", href: "/notes", icon: BookOpen },
-      ],
-    },
-    {
-      group: "Workspace",
-      items: [
-        { label: "Expenses", href: "/expenses", icon: Receipt },
-        { label: "Health", href: "/health", icon: HeartPulse },
-        { label: "Settings", href: "/settings", icon: Settings },
-      ],
-    },
+  const navPrimary = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Tasks", href: "/tasks", icon: CheckSquare },
+    { label: "Goals", href: "/goals", icon: Target },
+    { label: "Projects", href: "/projects", icon: FolderKanban },
   ];
+
+  const navSecondary = [
+    { label: "Settings", href: "/settings", icon: Settings },
+  ];
+
+  // Derive current section name for top bar
+  const getCurrentSectionTitle = () => {
+    if (path.startsWith("/tasks")) return "Tasks";
+    if (path.startsWith("/projects")) return "Projects";
+    if (path.startsWith("/goals")) return "Goals";
+    if (path.startsWith("/settings")) return "Settings";
+    return "Dashboard";
+  };
+
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U";
+
+  const displayName = user?.name || "Workspace";
+  const displayRole = user?.email || "Personal OS";
 
   return (
     <div className="app-shell">
@@ -81,42 +96,59 @@ export function AppShell({ children }: AppShellProps) {
               <path d="m9 12 2 2 4-4" />
             </svg>
           </Link>
-          <Link to="/" className="brand-title">
+          <Link to="/dashboard" className="brand-title">
             <span>TrackUp</span>
             <span className="brand-subtitle">Life OS</span>
           </Link>
         </div>
 
         <nav className="sidebar-nav">
-          {navSections.map((sec) => (
-            <div key={sec.group} className="nav-group">
-              <span className="nav-group-title">{sec.group}</span>
-              {sec.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = path === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`nav-item ${isActive ? "active" : ""}`}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    <Icon size={16} className="nav-icon" aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          <div className="nav-group">
+            <span className="nav-group-title">Main</span>
+            {navPrimary.map((item) => {
+              const Icon = item.icon;
+              const isActive = path === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon size={16} className="nav-icon" aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-title">System</span>
+            {navSecondary.map((item) => {
+              const Icon = item.icon;
+              const isActive = path === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon size={16} className="nav-icon" aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         <div className="sidebar-footer">
           <div className="user-avatar-sm" aria-hidden="true">
-            {user ? user.name.slice(0, 2).toUpperCase() : "AM"}
+            {userInitials}
           </div>
           <div className="user-info">
-            <span className="user-name">{user ? user.name : "Alex Mercer"}</span>
-            <span className="user-role">{user ? user.email : "Free Workspace"}</span>
+            <span className="user-name" title={displayName}>{displayName}</span>
+            <span className="user-role" title={displayRole}>{displayRole}</span>
           </div>
           <button
             type="button"
@@ -132,24 +164,17 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Main Area */}
       <div className="shell-main">
-        {/* Top Header */}
+        {/* Top Application Bar */}
         <header className="shell-header" role="banner">
-          <div className="search-box">
-            <Search size={14} className="search-icon" aria-hidden="true" />
-            <span className="search-placeholder">Search tasks, projects, notes...</span>
-            <kbd className="search-shortcut">⌘K</kbd>
+          <div className="header-breadcrumbs">
+            <span className="breadcrumb-brand">TrackUp</span>
+            <span className="breadcrumb-separator">/</span>
+            <span className="breadcrumb-current">{getCurrentSectionTitle()}</span>
           </div>
 
           <div className="header-actions">
-            <div className="header-greeting">
-              <span>Good morning, Alex 👋</span>
-            </div>
-            <button className="header-icon-btn" aria-label="Notifications">
-              <Bell size={16} />
-              <span className="icon-badge" aria-label="Unread notification" />
-            </button>
-            <div className="user-avatar-sm" aria-label="User profile">
-              AM
+            <div className="user-avatar-sm" aria-label="User profile" title={`${displayName} (${displayRole})`}>
+              {userInitials}
             </div>
           </div>
         </header>
@@ -160,44 +185,117 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation (Persistent, 5 destinations) */}
       <nav className="mobile-nav" aria-label="Mobile Navigation">
         <Link
           to="/dashboard"
           className={`mobile-nav-item ${path === "/dashboard" ? "active" : ""}`}
+          aria-current={path === "/dashboard" ? "page" : undefined}
         >
-          <Home size={18} />
-          <span>Home</span>
+          <LayoutDashboard size={18} />
+          <span>Dashboard</span>
         </Link>
         <Link
           to="/tasks"
           className={`mobile-nav-item ${path === "/tasks" ? "active" : ""}`}
+          aria-current={path === "/tasks" ? "page" : undefined}
         >
           <CheckSquare size={18} />
           <span>Tasks</span>
         </Link>
         <Link
-          to="/tasks"
-          className="mobile-fab-btn"
-          aria-label="Create new task"
+          to="/goals"
+          className={`mobile-nav-item ${path === "/goals" ? "active" : ""}`}
+          aria-current={path === "/goals" ? "page" : undefined}
         >
-          <Plus size={20} />
+          <Target size={18} />
+          <span>Goals</span>
         </Link>
         <Link
           to="/projects"
           className={`mobile-nav-item ${path === "/projects" ? "active" : ""}`}
+          aria-current={path === "/projects" ? "page" : undefined}
         >
           <FolderKanban size={18} />
           <span>Projects</span>
         </Link>
-        <Link
-          to="/settings"
-          className={`mobile-nav-item ${path === "/settings" ? "active" : ""}`}
+        <button
+          type="button"
+          className={`mobile-nav-item btn-more-trigger ${isMoreOpen ? "active" : ""}`}
+          onClick={() => setIsMoreOpen(true)}
+          aria-label="More navigation"
+          aria-expanded={isMoreOpen}
         >
-          <Settings size={18} />
+          <MoreHorizontal size={18} />
           <span>More</span>
-        </Link>
+        </button>
       </nav>
+
+      {/* Mobile More Drawer / Surface */}
+      {isMoreOpen && (
+        <div className="more-drawer-backdrop" onClick={() => setIsMoreOpen(false)} role="presentation">
+          <div
+            className="more-drawer-sheet"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="More navigation"
+          >
+            <div className="more-drawer-header">
+              <div className="more-drawer-title-wrap">
+                <span className="more-drawer-title">Navigation & Account</span>
+              </div>
+              <button
+                type="button"
+                className="btn-drawer-close"
+                onClick={() => setIsMoreOpen(false)}
+                aria-label="Close more navigation"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="more-drawer-user">
+              <div className="user-avatar-sm" aria-hidden="true">
+                {userInitials}
+              </div>
+              <div className="user-info">
+                <span className="user-name">{displayName}</span>
+                <span className="user-role">{displayRole}</span>
+              </div>
+            </div>
+
+            <div className="more-drawer-nav">
+              <Link
+                to="/settings"
+                className={`drawer-nav-item ${path === "/settings" ? "active" : ""}`}
+              >
+                <Settings size={16} />
+                <span>Settings</span>
+              </Link>
+              <Link
+                to="/"
+                className="drawer-nav-item"
+              >
+                <UserIcon size={16} />
+                <span>TrackUp Home</span>
+              </Link>
+            </div>
+
+            <div className="more-drawer-footer">
+              <button
+                type="button"
+                className="btn-drawer-logout"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
