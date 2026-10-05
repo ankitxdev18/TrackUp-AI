@@ -51,6 +51,7 @@ export function LandingPage() {
       <div className="landing-ambient-canvas" aria-hidden="true">
         <div className="ambient-glow ambient-glow-primary" />
         <div className="ambient-glow ambient-glow-secondary" />
+        <div className="ambient-glow ambient-glow-mockup" />
         <div className="ambient-grid-overlay" />
       </div>
 
@@ -193,7 +194,7 @@ export function LandingPage() {
             </h1>
 
             <p className="hero-subhead">
-              A unified personal operating system designed to turn daily actions into long-term momentum. Tasks, projects, habits, and focus — all in one calm command center.
+              Plan your days, manage tasks and projects, track goals and habits, and understand your progress — all in one calm command center.
             </p>
 
             <div className="hero-actions">
