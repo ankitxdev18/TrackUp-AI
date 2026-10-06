@@ -1,25 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   AlertCircle,
   Calendar,
-  Check,
   CheckCircle2,
-  Clock,
   FolderKanban,
-  Loader2,
   Plus,
-  Trash2,
 } from "lucide-react";
 import { fetchProjects, type Project } from "../api/projects";
 import {
+  createTask,
   deleteTask,
   fetchTasks,
   getTodayDateString,
-  getTomorrowDateString,
   type Task,
   updateTask,
 } from "../api/tasks";
 import { CreateTaskModal } from "../components/CreateTaskModal";
+import { QuickAddTask } from "./dashboard/QuickAddTask";
+import { TaskItem } from "../components/TaskItem";
 import "./TasksPage.css";
 
 type FilterType = "all" | "today" | "upcoming" | "completed";
@@ -35,9 +33,8 @@ export function TasksPage() {
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   const todayStr = getTodayDateString();
-  const tomorrowStr = getTomorrowDateString();
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -50,7 +47,7 @@ export function TasksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedProjectFilter]);
 
   useEffect(() => {
     fetchProjects()
@@ -60,36 +57,58 @@ export function TasksPage() {
 
   useEffect(() => {
     loadTasks();
-  }, [selectedProjectFilter]);
+  }, [loadTasks]);
 
+  // Completion toggle with optimistic UI and error rollback
   const handleToggleTask = async (task: Task) => {
     const nextStatus = task.status === "COMPLETED" ? "TODO" : "COMPLETED";
+    const previousTasks = [...tasks];
+
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
+    );
+
     try {
       setUpdatingTaskId(task.id);
       const updated = await updateTask(task.id, { status: nextStatus });
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? updated : t))
-      );
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
     } catch (err: unknown) {
-      alert("Failed to update task state. Please try again.");
+      setTasks(previousTasks);
+      alert(err instanceof Error ? err.message : "Failed to update task state. Reverting.");
     } finally {
       setUpdatingTaskId(null);
     }
   };
 
+  // Safe task deletion with optimistic removal and error rollback
   const handleDeleteTask = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
+    const previousTasks = [...tasks];
+    setTasks((prev) => prev.filter((t) => t.id !== id));
 
     try {
       await deleteTask(id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
     } catch (err: unknown) {
-      alert("Failed to delete task. Please try again.");
+      setTasks(previousTasks);
+      alert(err instanceof Error ? err.message : "Failed to delete task. Restoring.");
     }
   };
 
+  // Inline Quick Add
+  const handleQuickAdd = async (title: string) => {
+    const newTask = await createTask({
+      title,
+      dueDate: activeFilter === "today" ? todayStr : null,
+      priority: "MEDIUM",
+      projectId:
+        selectedProjectFilter !== "all" && selectedProjectFilter !== "none"
+          ? selectedProjectFilter
+          : null,
+    });
+    setTasks((prev) => [newTask, ...prev]);
+  };
+
   const handleTaskCreated = (newTask: Task) => {
-    // If filter matches, add to list
     if (
       selectedProjectFilter === "all" ||
       (selectedProjectFilter === "none" && !newTask.projectId) ||
@@ -99,33 +118,62 @@ export function TasksPage() {
     }
   };
 
-  // Filter tasks based on selected tab
-  const filteredTasks = tasks.filter((t) => {
-    if (activeFilter === "today") {
-      return t.dueDate === todayStr;
-    }
-    if (activeFilter === "upcoming") {
-      return t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED";
-    }
-    if (activeFilter === "completed") {
-      return t.status === "COMPLETED";
-    }
-    return true; // 'all'
-  });
+  // Derived filtered tasks memoized for performance
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (activeFilter === "today") {
+        return t.dueDate === todayStr;
+      }
+      if (activeFilter === "upcoming") {
+        return t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED";
+      }
+      if (activeFilter === "completed") {
+        return t.status === "COMPLETED";
+      }
+      return true; // 'all'
+    });
+  }, [tasks, activeFilter, todayStr]);
 
-  const getDueDateLabel = (dueDate: string | null, isCompleted: boolean) => {
-    if (!dueDate) return null;
-    if (dueDate === todayStr) {
-      return <span className="task-date-badge task-date-today">Today</span>;
+  // Derived counts for tabs
+  const allCount = tasks.length;
+  const todayCount = tasks.filter((t) => t.dueDate === todayStr).length;
+  const upcomingCount = tasks.filter(
+    (t) => t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED"
+  ).length;
+  const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
+
+  const emptyStateConfig = useMemo(() => {
+    switch (activeFilter) {
+      case "today":
+        return {
+          title: "No tasks scheduled for today.",
+          desc: "You're clear for today. Plan your actions and build momentum.",
+          actionText: "Add Task",
+          showAction: true,
+        };
+      case "upcoming":
+        return {
+          title: "No upcoming tasks.",
+          desc: "Tasks scheduled for future dates will automatically show up here.",
+          actionText: "Add Task",
+          showAction: true,
+        };
+      case "completed":
+        return {
+          title: "No completed tasks yet.",
+          desc: "Finish tasks from your active list to see them recorded here.",
+          actionText: null,
+          showAction: false,
+        };
+      default:
+        return {
+          title: "No tasks found.",
+          desc: "Add something you want to accomplish. Start by adding your first action item or adjusting your project filter.",
+          actionText: "Create Task",
+          showAction: true,
+        };
     }
-    if (dueDate === tomorrowStr) {
-      return <span className="task-date-badge task-date-tomorrow">Tomorrow</span>;
-    }
-    if (dueDate < todayStr && !isCompleted) {
-      return <span className="task-date-badge task-date-overdue">Overdue</span>;
-    }
-    return <span className="task-date-badge">{dueDate}</span>;
-  };
+  }, [activeFilter]);
 
   return (
     <div className="tasks-page-container">
@@ -134,7 +182,7 @@ export function TasksPage() {
         <div className="tasks-header-text">
           <h1 className="tasks-title">Tasks & Planning</h1>
           <p className="tasks-subtitle">
-            Manage your daily actions, prioritize work, and build momentum.
+            Manage your daily actions and build momentum.
           </p>
         </div>
 
@@ -142,8 +190,9 @@ export function TasksPage() {
           type="button"
           className="btn-create-task"
           onClick={() => setIsModalOpen(true)}
+          aria-label="Add Task"
         >
-          <Plus size={16} />
+          <Plus size={15} />
           <span>Add Task</span>
         </button>
       </div>
@@ -159,7 +208,7 @@ export function TasksPage() {
             onClick={() => setActiveFilter("all")}
           >
             <span>All Tasks</span>
-            <span className="filter-count">{tasks.length}</span>
+            <span className="filter-count">{allCount}</span>
           </button>
 
           <button
@@ -170,9 +219,7 @@ export function TasksPage() {
             onClick={() => setActiveFilter("today")}
           >
             <span>Today</span>
-            <span className="filter-count">
-              {tasks.filter((t) => t.dueDate === todayStr).length}
-            </span>
+            <span className="filter-count">{todayCount}</span>
           </button>
 
           <button
@@ -183,9 +230,7 @@ export function TasksPage() {
             onClick={() => setActiveFilter("upcoming")}
           >
             <span>Upcoming</span>
-            <span className="filter-count">
-              {tasks.filter((t) => t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED").length}
-            </span>
+            <span className="filter-count">{upcomingCount}</span>
           </button>
 
           <button
@@ -196,15 +241,13 @@ export function TasksPage() {
             onClick={() => setActiveFilter("completed")}
           >
             <span>Completed</span>
-            <span className="filter-count">
-              {tasks.filter((t) => t.status === "COMPLETED").length}
-            </span>
+            <span className="filter-count">{completedCount}</span>
           </button>
         </div>
 
         {/* Project Filter Select */}
         <div className="tasks-project-filter-wrap">
-          <FolderKanban size={14} className="project-filter-icon" aria-hidden="true" />
+          <FolderKanban size={13} className="project-filter-icon" aria-hidden="true" />
           <select
             className="tasks-project-select"
             value={selectedProjectFilter}
@@ -235,13 +278,24 @@ export function TasksPage() {
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Inline Quick Add Surface */}
+      {!loading && !error && (
+        <div className="tasks-quick-add-wrap">
+          <QuickAddTask
+            onQuickAdd={handleQuickAdd}
+            onOpenDetailedModal={() => setIsModalOpen(true)}
+            disabled={loading}
+          />
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
       {loading && !error && (
-        <div className="tasks-loading-skeleton" role="status" aria-label="Loading tasks">
-          <div className="loading-spinner-wrap">
-            <Loader2 size={24} className="spin-icon" />
-            <span>Loading tasks...</span>
-          </div>
+        <div className="tasks-skeleton-list" role="status" aria-label="Loading tasks">
+          <div className="tasks-skeleton-row" />
+          <div className="tasks-skeleton-row" />
+          <div className="tasks-skeleton-row" />
+          <div className="tasks-skeleton-row" />
         </div>
       )}
 
@@ -252,113 +306,35 @@ export function TasksPage() {
             <div className="tasks-empty-state">
               <div className="empty-icon-wrap" aria-hidden="true">
                 {activeFilter === "completed" ? (
-                  <CheckCircle2 size={36} />
+                  <CheckCircle2 size={32} />
                 ) : (
-                  <Calendar size={36} />
+                  <Calendar size={32} />
                 )}
               </div>
-              <h3 className="empty-title">
-                {activeFilter === "today"
-                  ? "You're clear for today."
-                  : activeFilter === "upcoming"
-                  ? "No upcoming tasks scheduled."
-                  : activeFilter === "completed"
-                  ? "No completed tasks yet."
-                  : "No tasks found."}
-              </h3>
-              <p className="empty-desc">
-                {activeFilter === "today"
-                  ? "Enjoy the focus or plan your next move by scheduling tasks for today."
-                  : activeFilter === "upcoming"
-                  ? "Tasks due in future dates will automatically show up here."
-                  : activeFilter === "completed"
-                  ? "Finish a task from your active list to see it recorded here."
-                  : "Start by adding your first action item or adjusting your project filter."}
-              </p>
-              {activeFilter !== "completed" && (
+              <h3 className="empty-title">{emptyStateConfig.title}</h3>
+              <p className="empty-desc">{emptyStateConfig.desc}</p>
+              {emptyStateConfig.showAction && (
                 <button
                   type="button"
                   className="btn-empty-action"
                   onClick={() => setIsModalOpen(true)}
                 >
-                  <Plus size={16} />
-                  <span>Create Task</span>
+                  <Plus size={14} />
+                  <span>{emptyStateConfig.actionText}</span>
                 </button>
               )}
             </div>
           ) : (
             <div className="tasks-items-list">
-              {filteredTasks.map((task) => {
-                const isCompleted = task.status === "COMPLETED";
-                const isUpdating = updatingTaskId === task.id;
-
-                return (
-                  <div
-                    key={task.id}
-                    className={`task-row-card ${isCompleted ? "task-completed" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isCompleted}
-                      className={`task-checkbox-circle ${
-                        isCompleted ? "completed" : ""
-                      }`}
-                      onClick={() => handleToggleTask(task)}
-                      disabled={isUpdating}
-                      aria-label={
-                        isCompleted
-                          ? `Mark ${task.title} as incomplete`
-                          : `Mark ${task.title} as complete`
-                      }
-                    >
-                      {isCompleted && <Check size={12} strokeWidth={3} />}
-                    </button>
-
-                    <div className="task-row-content">
-                      <span className={`task-row-title ${isCompleted ? "done" : ""}`}>
-                        {task.title}
-                      </span>
-
-                      <div className="task-row-meta">
-                        <span
-                          className={`task-priority-badge priority-${task.priority.toLowerCase()}`}
-                        >
-                          {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
-                        </span>
-
-                        {task.projectName && (
-                          <span className="task-project-pill">
-                            <FolderKanban size={11} aria-hidden="true" />
-                            <span>{task.projectName}</span>
-                          </span>
-                        )}
-
-                        {getDueDateLabel(task.dueDate, isCompleted)}
-
-                        <span className="task-time-indicator">
-                          <Clock size={12} />
-                          <span>
-                            {new Date(task.createdAt).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="task-btn-delete"
-                      onClick={() => handleDeleteTask(task.id)}
-                      aria-label={`Delete task: ${task.title}`}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                );
-              })}
+              {filteredTasks.map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggle={handleToggleTask}
+                  onDelete={handleDeleteTask}
+                  isUpdating={updatingTaskId === task.id}
+                />
+              ))}
             </div>
           )}
         </div>

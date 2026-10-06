@@ -271,6 +271,82 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
       // Complete quarterly review is TODO so should not be in Completed tab
       expect(screen.queryByText("Complete quarterly review")).not.toBeInTheDocument();
     });
+
+    it("handles safe inline deletion of a task", async () => {
+      let deletedId: string | null = null;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "DELETE") {
+          deletedId = url.split("/").pop() || null;
+          return { ok: true, json: async () => ({ success: true }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [...mockTasks] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      // Click delete button on the first task
+      const deleteBtn = screen.getByRole("button", {
+        name: "Delete task: Complete quarterly review",
+      });
+      fireEvent.click(deleteBtn);
+
+      // Inline confirmation box appears with Yes / No
+      expect(screen.getByText("Delete?")).toBeInTheDocument();
+      const confirmYesBtn = screen.getByRole("button", {
+        name: "Confirm delete task: Complete quarterly review",
+      });
+      fireEvent.click(confirmYesBtn);
+
+      // Task is optimistically removed and DELETE was called
+      await waitFor(() => {
+        expect(deletedId).toBe("t-1");
+        expect(screen.queryByText("Complete quarterly review")).not.toBeInTheDocument();
+      });
+    });
+
+    it("renders overdue badge with days overdue for past due tasks", async () => {
+      const overdueTask: Task = {
+        id: "t-overdue",
+        userId: "user-1",
+        title: "Overdue report submission",
+        status: "TODO",
+        priority: "HIGH",
+        dueDate: "2020-01-01",
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [overdueTask] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+      expect(screen.getByRole("heading", { name: "Tasks & Planning" })).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByText("Overdue report submission")).toBeInTheDocument();
+        expect(screen.getByText(/Overdue \d+d/i)).toBeInTheDocument();
+      });
+    });
   });
 
   describe("Dashboard Integration (/dashboard)", () => {
