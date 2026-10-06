@@ -93,3 +93,83 @@ export const updateHabitSchema = z
   );
 
 export type UpdateHabitInput = z.infer<typeof updateHabitSchema>;
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Validates that an ISO date string 'YYYY-MM-DD' corresponds to a valid calendar date
+ */
+export function isValidCalendarDate(dateStr: string): boolean {
+  if (!DATE_REGEX.test(dateStr)) return false;
+  const [yearStr, monthStr, dayStr] = dateStr.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/**
+ * Checks if a valid calendar date is in the future relative to server local and UTC date
+ */
+export function isFutureDate(dateStr: string): boolean {
+  const now = new Date();
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const utcToday = now.toISOString().slice(0, 10);
+  const maxToday = localToday > utcToday ? localToday : utcToday;
+  return dateStr > maxToday;
+}
+
+/**
+ * Habit Completion Creation Validation Schema (H01-C)
+ */
+export const createCompletionSchema = z
+  .object({
+    date: z
+      .string({
+        message: "Date is required and must be a string",
+      })
+      .trim()
+      .refine(isValidCalendarDate, {
+        message: "Date must be a valid calendar date in YYYY-MM-DD format",
+      })
+      .refine((val) => !isFutureDate(val), {
+        message: "Completion date cannot be in the future",
+      }),
+  })
+  .strict();
+
+export type CreateCompletionInput = z.infer<typeof createCompletionSchema>;
+
+/**
+ * Habit Completion Route Parameters Schema (H01-C)
+ */
+export const habitCompletionDateParamSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .refine((val) => UUID_REGEX.test(val), {
+      message: "Habit ID must be a valid UUIDv4 string",
+    }),
+  date: z
+    .string()
+    .trim()
+    .refine(isValidCalendarDate, {
+      message: "Date must be a valid calendar date in YYYY-MM-DD format",
+    }),
+});
+
+/**
+ * Habit History Query Parameters Schema (H01-C)
+ */
+export const habitHistoryQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(30).optional().default(7),
+});

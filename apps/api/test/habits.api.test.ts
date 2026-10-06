@@ -739,4 +739,493 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       expect(completionsAfter.length).toBe(0);
     });
   });
+
+  // ==========================================
+  // 7. COMPLETION & HISTORY AUTHENTICATION
+  // ==========================================
+  describe("Completion & History Authentication", () => {
+    it("36. POST /api/habits/:id/completions without auth → 401", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/habits/00000000-0000-0000-0000-000000000000/completions",
+        payload: { date: "2026-10-06" },
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("UNAUTHENTICATED");
+    });
+
+    it("37. DELETE /api/habits/:id/completions/:date without auth → 401", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: "/api/habits/00000000-0000-0000-0000-000000000000/completions/2026-10-06",
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("UNAUTHENTICATED");
+    });
+
+    it("38. GET /api/habits/:id/history without auth → 401", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/habits/00000000-0000-0000-0000-000000000000/history",
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("UNAUTHENTICATED");
+    });
+  });
+
+  // ==========================================
+  // 8. CREATE COMPLETION
+  // ==========================================
+  describe("Create Habit Completion (POST /api/habits/:id/completions)", () => {
+    let habitAId: string;
+    let habitBId: string;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    const pastDate = new Date(now);
+    pastDate.setDate(pastDate.getDate() - 3);
+    const pastDateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, "0")}-${String(pastDate.getDate()).padStart(2, "0")}`;
+
+    beforeAll(async () => {
+      const resA = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userACookie },
+        payload: { title: "Complete Habit Test A" },
+      });
+      habitAId = resA.json().habit.id;
+
+      const resB = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userBCookie },
+        payload: { title: "Complete Habit Test B" },
+      });
+      habitBId = resB.json().habit.id;
+    });
+
+    it("39. creates completion for own habit on today's date", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr },
+      });
+
+      expect([200, 201]).toContain(res.statusCode);
+      const body = res.json();
+      expect(body.completion).toBeDefined();
+      expect(body.completion.completedDate).toBe(todayStr);
+      expect(body.completion.habitId).toBe(habitAId);
+      expect(body.completion.userId).toBe(userAId);
+    });
+
+    it("40. creates completion for own habit on a valid past date", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: pastDateStr },
+      });
+
+      expect([200, 201]).toContain(res.statusCode);
+      const body = res.json();
+      expect(body.completion).toBeDefined();
+      expect(body.completion.completedDate).toBe(pastDateStr);
+    });
+
+    it("41. rejects malformed dates (e.g. 2026-1-6, 06-10-2026, 2026/10/06, timestamps) with HTTP 400", async () => {
+      const malformedExamples = [
+        "2026-1-6",
+        "06-10-2026",
+        "2026/10/06",
+        "2026-10-06T10:30:00Z",
+        "random-string",
+      ];
+
+      for (const malformed of malformedExamples) {
+        const res = await app.inject({
+          method: "POST",
+          url: `/api/habits/${habitAId}/completions`,
+          headers: { Cookie: userACookie },
+          payload: { date: malformed },
+        });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.json().code).toBe("VALIDATION_ERROR");
+      }
+    });
+
+    it("42. rejects impossible dates (e.g. 2026-02-30) with HTTP 400", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: "2026-02-30" },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("43. rejects future dates with HTTP 400", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: "2099-12-31" },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("44. rejects client attempting to pass userId in completion payload", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr, userId: userBId },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("45. rejects client attempting to pass habitId in completion payload", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr, habitId: habitBId },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("46. duplicate completion request does not create duplicate row (idempotent)", async () => {
+      // First attempt
+      const res1 = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr },
+      });
+      expect([200, 201]).toContain(res1.statusCode);
+
+      // Second attempt on the same habit and date
+      const res2 = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr },
+      });
+      expect(res2.statusCode).toBe(200);
+      expect(res2.json().completion).toBeDefined();
+
+      // Database verification: exactly 1 row exists
+      const rows = await db
+        .select()
+        .from(habitCompletions)
+        .where(
+          sql`habit_id = ${habitAId} AND completed_date = ${todayStr}`
+        );
+      expect(rows.length).toBe(1);
+    });
+
+    it("47. User B cannot complete User A's habit (IDOR defense returns 404)", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userBCookie },
+        payload: { date: todayStr },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+  });
+
+  // ==========================================
+  // 9. DELETE COMPLETION (UNCHECK)
+  // ==========================================
+  describe("Delete Habit Completion (DELETE /api/habits/:id/completions/:date)", () => {
+    let habitAId: string;
+    let habitBId: string;
+    const testDate = "2026-10-01";
+
+    beforeAll(async () => {
+      const resA = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userACookie },
+        payload: { title: "Uncheck Habit Test A" },
+      });
+      habitAId = resA.json().habit.id;
+
+      const resB = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userBCookie },
+        payload: { title: "Uncheck Habit Test B" },
+      });
+      habitBId = resB.json().habit.id;
+
+      // Complete habit A for testDate
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: testDate },
+      });
+
+      // Complete habit B for testDate
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitBId}/completions`,
+        headers: { Cookie: userBCookie },
+        payload: { date: testDate },
+      });
+    });
+
+    it("48. deletes existing completion successfully", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/habits/${habitAId}/completions/${testDate}`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.habitId).toBe(habitAId);
+      expect(body.completedDate).toBe(testDate);
+    });
+
+    it("49. ensures completion no longer exists in database after deletion", async () => {
+      const rows = await db
+        .select()
+        .from(habitCompletions)
+        .where(
+          sql`habit_id = ${habitAId} AND completed_date = ${testDate}`
+        );
+      expect(rows.length).toBe(0);
+    });
+
+    it("50. returns 404 when attempting to delete non-existent completion", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/habits/${habitAId}/completions/${testDate}`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+
+    it("51. User B cannot delete User A's completion (IDOR defense returns 404)", async () => {
+      // Re-create completion on habit A
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: testDate },
+      });
+
+      // User B attempts to delete User A's completion
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/habits/${habitAId}/completions/${testDate}`,
+        headers: { Cookie: userBCookie },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+
+      // Verify User A's completion was not deleted
+      const rows = await db
+        .select()
+        .from(habitCompletions)
+        .where(
+          sql`habit_id = ${habitAId} AND completed_date = ${testDate}`
+        );
+      expect(rows.length).toBe(1);
+    });
+
+    it("52. rejects malformed completion date in DELETE path with HTTP 400", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/habits/${habitAId}/completions/invalid-date`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("INVALID_DATE");
+    });
+  });
+
+  // ==========================================
+  // 10. HABIT COMPLETION HISTORY
+  // ==========================================
+  describe("Habit Completion History (GET /api/habits/:id/history)", () => {
+    let habitAId: string;
+    let habitBId: string;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const twoDaysAgoStr = `${twoDaysAgo.getFullYear()}-${String(twoDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(twoDaysAgo.getDate()).padStart(2, "0")}`;
+
+    const tenDaysAgo = new Date(now);
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const tenDaysAgoStr = `${tenDaysAgo.getFullYear()}-${String(tenDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(tenDaysAgo.getDate()).padStart(2, "0")}`;
+
+    beforeAll(async () => {
+      const resA = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userACookie },
+        payload: { title: "History Habit Test A" },
+      });
+      habitAId = resA.json().habit.id;
+
+      const resB = await app.inject({
+        method: "POST",
+        url: "/api/habits",
+        headers: { Cookie: userBCookie },
+        payload: { title: "History Habit Test B" },
+      });
+      habitBId = resB.json().habit.id;
+
+      // Create completions for Habit A on today, 2 days ago, and 10 days ago (outside 7-day window)
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: todayStr },
+      });
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: twoDaysAgoStr },
+      });
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: tenDaysAgoStr },
+      });
+
+      // Create completion for Habit B on today
+      await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitBId}/completions`,
+        headers: { Cookie: userBCookie },
+        payload: { date: todayStr },
+      });
+    });
+
+    it("53. returns 7-day bounded history window by default with deterministic descending date order", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/habits/${habitAId}/history`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.habitId).toBe(habitAId);
+      expect(body.days).toBe(7);
+      expect(Array.isArray(body.history)).toBe(true);
+      expect(body.history.length).toBe(7);
+
+      // Verify descending date order
+      for (let i = 0; i < body.history.length - 1; i++) {
+        expect(body.history[i].date > body.history[i + 1].date).toBe(true);
+      }
+
+      // Today's entry is completed
+      const todayEntry = body.history.find((h: any) => h.date === todayStr);
+      expect(todayEntry).toBeDefined();
+      expect(todayEntry.completed).toBe(true);
+      expect(todayEntry.completedAt).toBeDefined();
+
+      // 2 days ago entry is completed
+      const twoDaysAgoEntry = body.history.find((h: any) => h.date === twoDaysAgoStr);
+      expect(twoDaysAgoEntry).toBeDefined();
+      expect(twoDaysAgoEntry.completed).toBe(true);
+
+      // 10 days ago entry is NOT in the 7-day history window
+      const tenDaysAgoEntry = body.history.find((h: any) => h.date === tenDaysAgoStr);
+      expect(tenDaysAgoEntry).toBeUndefined();
+
+      // Completions array contains only completions within the 7-day window
+      expect(body.completions.length).toBe(2);
+      const completionDates = body.completions.map((c: any) => c.completedDate);
+      expect(completionDates).toContain(todayStr);
+      expect(completionDates).toContain(twoDaysAgoStr);
+      expect(completionDates).not.toContain(tenDaysAgoStr);
+    });
+
+    it("54. supports custom bounded history window up to allowed limit (e.g. ?days=14)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/habits/${habitAId}/history?days=14`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.days).toBe(14);
+      expect(body.history.length).toBe(14);
+
+      // 10 days ago is within the 14-day window
+      const tenDaysAgoEntry = body.history.find((h: any) => h.date === tenDaysAgoStr);
+      expect(tenDaysAgoEntry).toBeDefined();
+      expect(tenDaysAgoEntry.completed).toBe(true);
+    });
+
+    it("55. User B cannot retrieve User A's history (IDOR defense returns 404)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/habits/${habitAId}/history`,
+        headers: { Cookie: userBCookie },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+
+    it("56. history excludes another user's completions completely", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/habits/${habitAId}/history`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      for (const comp of body.completions) {
+        expect(comp.userId).toBe(userAId);
+        expect(comp.habitId).toBe(habitAId);
+      }
+    });
+
+    it("57. returns 404 for non-existent habit history", async () => {
+      const nonExistentId = "ffffffff-ffff-4fff-bfff-ffffffffffff";
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/habits/${nonExistentId}/history`,
+        headers: { Cookie: userACookie },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+  });
 });
