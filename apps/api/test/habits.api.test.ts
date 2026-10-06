@@ -891,6 +891,37 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       expect(res.json().code).toBe("VALIDATION_ERROR");
     });
 
+    it("42b. rejects non-leap year Feb 29 (2025-02-29) and 30-day month April 31 (2026-04-31) with HTTP 400", async () => {
+      const resNonLeap = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: "2025-02-29" },
+      });
+      expect(resNonLeap.statusCode).toBe(400);
+      expect(resNonLeap.json().code).toBe("VALIDATION_ERROR");
+
+      const resApril31 = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: "2026-04-31" },
+      });
+      expect(resApril31.statusCode).toBe(400);
+      expect(resApril31.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("42c. accepts valid leap year Feb 29 (2024-02-29) as a valid past calendar date", async () => {
+      const resLeap = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: { date: "2024-02-29" },
+      });
+      expect([200, 201]).toContain(resLeap.statusCode);
+      expect(resLeap.json().completion.completedDate).toBe("2024-02-29");
+    });
+
     it("43. rejects future dates with HTTP 400", async () => {
       const res = await app.inject({
         method: "POST",
