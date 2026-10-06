@@ -4,6 +4,7 @@ import {
   index,
   integer,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -294,4 +295,45 @@ export const habitCompletions = pgTable(
 
 export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type NewHabitCompletion = typeof habitCompletions.$inferInsert;
+
+/**
+ * TrackUp Journal Entry Entity Schema (Journal Milestone 1 / H02-B)
+ *
+ * Implements daily reflection and narrative log capture:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - entryDate: ISO calendar date string 'YYYY-MM-DD' (user-local calendar date)
+ * - title: Optional narrative headline/title (<= 255 chars)
+ * - content: Markdown/plain text journal narrative body
+ * - createdAt: Timestamp of record creation with timezone
+ * - updatedAt: Timestamp of last modification with timezone
+ */
+export const journalEntries = pgTable(
+  "journal_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entryDate: varchar("entry_date", { length: 10 }).notNull(),
+    title: varchar("title", { length: 255 }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("journal_entries_user_date_unique_idx").on(
+      table.userId,
+      table.entryDate
+    ),
+    index("journal_entries_user_id_idx").on(table.userId),
+  ]
+);
+
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type NewJournalEntry = typeof journalEntries.$inferInsert;
 

@@ -43,6 +43,13 @@
       "when": 1791264885835,
       "tag": "0005_outstanding_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791279993227,
+      "tag": "0006_jittery_vanisher",
+      "breakpoints": true
     }
   ]
 }
