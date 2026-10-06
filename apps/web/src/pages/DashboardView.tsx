@@ -14,6 +14,7 @@ import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { GoalsWidget } from "./dashboard/GoalsWidget";
 import { OverdueTriage } from "./dashboard/OverdueTriage";
 import { ProjectsWidget } from "./dashboard/ProjectsWidget";
+import { TodayHabitsWidget } from "./dashboard/TodayHabitsWidget";
 import { TodayTasks } from "./dashboard/TodayTasks";
 import { UpcomingWidget } from "./dashboard/UpcomingWidget";
 import "./DashboardView.css";
@@ -210,6 +211,8 @@ export function DashboardView() {
             onQuickAdd={handleQuickAdd}
             onOpenModal={() => setIsModalOpen(true)}
           />
+
+          <TodayHabitsWidget />
         </div>
 
         {/* Right Column: Contextual Horizon (Goals, Projects, Upcoming) */}

@@ -802,6 +802,116 @@
   cursor: pointer;
 }
 
+/* Today's Habits Panel */
+.dash-habits-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-habit-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-xs);
+}
+
+.dash-habit-item:last-child {
+  border-bottom: none;
+}
+
+.dash-habit-item:hover {
+  background-color: var(--bg-elevated);
+}
+
+.dash-habit-check {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-active);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  transition: all 0.18s ease;
+  padding: 0;
+  position: relative;
+}
+
+/* Minimum 40px touch hit area */
+.dash-habit-check::before {
+  content: "";
+  position: absolute;
+  top: -11px;
+  bottom: -11px;
+  left: -11px;
+  right: -11px;
+}
+
+.dash-habit-check:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.dash-habit-check.completed {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.dash-habit-check:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dash-habit-check:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dash-habit-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+
+.dash-habit-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.18s ease, text-decoration 0.18s ease;
+}
+
+.dash-habit-title.completed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.dash-habit-pill {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.dash-action-error {
+  margin-bottom: var(--space-2);
+}
+
 /* Responsive Rules */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -832,13 +942,15 @@
 }
 
 @media (max-width: 640px) {
-  .task-card-item {
+  .task-card-item,
+  .dash-habit-item {
     align-items: flex-start;
     padding: 8px 6px;
     gap: 8px;
   }
 
-  .task-check-circle {
+  .task-check-circle,
+  .dash-habit-check {
     margin-top: 2px;
   }
 
@@ -923,6 +1035,9 @@
   .task-card-item,
   .task-check-circle,
   .task-label,
+  .dash-habit-item,
+  .dash-habit-check,
+  .dash-habit-title,
   .dash-project-item,
   .dash-project-fill,
   .dash-skeleton-row,
