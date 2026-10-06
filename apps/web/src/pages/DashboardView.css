@@ -92,7 +92,7 @@
   opacity: 0.9;
 }
 
-/* Compact Daily Momentum Strip (3-metric layout replacing 4 oversized cards) */
+/* Compact Daily Momentum Strip */
 .daily-momentum-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -102,12 +102,12 @@
 .momentum-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  transition: all 0.12s ease;
+  gap: 12px;
+  transition: all 0.15s ease;
 }
 
 .momentum-card:hover {
@@ -116,9 +116,9 @@
 }
 
 .momentum-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,18 +146,19 @@
 }
 
 .card-attention {
-  border-color: rgba(239, 68, 68, 0.35);
-  background-color: rgba(239, 68, 68, 0.025);
+  border-color: rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.02);
 }
 
 .momentum-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 1px;
 }
 
 .momentum-label {
-  font-size: 0.6875rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -165,14 +166,14 @@
 }
 
 .momentum-value {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .momentum-total {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -208,8 +209,8 @@
 .dashboard-panel {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -282,12 +283,12 @@
 
 /* Overdue Triage Panel (Rendered only when overdue count > 0) */
 .overdue-triage-panel {
-  border-color: rgba(239, 68, 68, 0.35);
+  border-color: rgba(239, 68, 68, 0.3);
   background-color: rgba(239, 68, 68, 0.02);
 }
 
 .overdue-title-bar {
-  border-bottom-color: rgba(239, 68, 68, 0.2);
+  border-bottom-color: rgba(239, 68, 68, 0.18);
 }
 
 .overdue-header-wrap {
@@ -300,7 +301,7 @@
   width: 24px;
   height: 24px;
   border-radius: var(--radius-xs);
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(239, 68, 68, 0.12);
   color: var(--color-danger);
   display: flex;
   align-items: center;
@@ -415,9 +416,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 6px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--border-subtle);
-  transition: background-color 0.1s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   border-radius: var(--radius-xs);
 }
 
@@ -434,9 +435,9 @@
 }
 
 .task-check-circle {
-  width: 17px;
-  height: 17px;
-  min-width: 17px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
   border-radius: var(--radius-full);
   border: 1.5px solid var(--border-active);
   background: transparent;
@@ -445,7 +446,7 @@
   justify-content: center;
   cursor: pointer;
   color: #ffffff;
-  transition: all 0.12s ease;
+  transition: all 0.18s ease;
 }
 
 .task-check-circle:hover {
@@ -457,14 +458,25 @@
   border-color: var(--color-success);
 }
 
+.task-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+
 .task-label {
   flex: 1;
   min-width: 0;
   font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.18s ease, text-decoration 0.18s ease;
 }
 
 .task-label.completed {
@@ -483,27 +495,34 @@
 .badge-priority {
   font-size: 0.625rem;
   font-weight: 550;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: var(--radius-xs);
   flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.badge-critical {
+  background-color: rgba(239, 68, 68, 0.16);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .badge-high {
-  background-color: rgba(239, 68, 68, 0.12);
+  background-color: rgba(239, 68, 68, 0.1);
   color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .badge-medium {
-  background-color: rgba(245, 158, 11, 0.12);
+  background-color: rgba(245, 158, 11, 0.1);
   color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .badge-low {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: var(--color-success);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .badge-overdue {
@@ -512,11 +531,11 @@
   gap: 3px;
   font-size: 0.625rem;
   font-weight: 600;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: var(--radius-xs);
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(239, 68, 68, 0.12);
   color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
 .tag-project {
@@ -646,6 +665,11 @@
 }
 
 .dash-empty-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dash-empty-hint {
   font-size: 0.75rem;
   color: var(--text-muted);
 }
@@ -782,17 +806,57 @@
 @media (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-4);
   }
 }
 
 @media (max-width: 768px) {
   .daily-momentum-strip {
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
   .momentum-card {
-    padding: var(--space-2) var(--space-3);
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .momentum-icon-wrap {
+    width: 24px;
+    height: 24px;
+  }
+
+  .momentum-value {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .task-card-item {
+    align-items: flex-start;
+    padding: 8px 6px;
+    gap: 8px;
+  }
+
+  .task-check-circle {
+    margin-top: 2px;
+  }
+
+  .task-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .task-label {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+
+  .task-meta-pills {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 }
 
@@ -800,7 +864,15 @@
   .dashboard-hero {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 6px;
+  }
+
+  .hero-greeting-title {
+    font-size: 1.125rem;
+  }
+
+  .hero-greeting-sub {
+    font-size: 0.75rem;
   }
 
   .date-pill {
@@ -808,15 +880,55 @@
     padding: 3px 8px;
   }
 
-  .panel-heading {
-    font-size: 0.8125rem;
+  .daily-momentum-strip {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
 
-  .task-meta-pills {
+  .momentum-card {
+    padding: 6px 8px;
     gap: 4px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .momentum-icon-wrap {
+    display: none;
+  }
+
+  .momentum-label {
+    font-size: 0.58rem;
+  }
+
+  .momentum-value {
+    font-size: 0.875rem;
+  }
+
+  .momentum-sub {
+    display: none;
+  }
+
+  .panel-heading {
+    font-size: 0.8125rem;
   }
 
   .tag-project {
     display: none;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-view,
+  .momentum-card,
+  .task-card-item,
+  .task-check-circle,
+  .task-label,
+  .dash-project-item,
+  .dash-project-fill,
+  .dash-skeleton-row,
+  .dash-skeleton-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

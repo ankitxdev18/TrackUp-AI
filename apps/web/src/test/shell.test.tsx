@@ -143,10 +143,9 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getAllByRole("link", { name: /Tasks/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Goals/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
 
-      // Persistent 5-destination mobile bottom nav trigger
-      expect(screen.getByRole("button", { name: /More navigation/i })).toBeInTheDocument();
+      // Persistent More navigation trigger in sidebar and mobile nav
+      expect(screen.getAllByRole("button", { name: /More navigation/i }).length).toBeGreaterThan(0);
 
       await waitFor(() => {
         expect(screen.getByText("Design new landing page")).toBeInTheDocument();
@@ -157,11 +156,12 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       window.history.pushState({}, "", "/dashboard");
       render(<App />);
 
-      const moreBtn = screen.getByRole("button", { name: /More navigation/i });
+      const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
       fireEvent.click(moreBtn);
 
-      // More drawer should be open
+      // More drawer should be open with non-duplicated Settings destination
       expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Settings/i })).toBeInTheDocument();
       expect(screen.getAllByRole("button", { name: /Log Out/i }).length).toBeGreaterThan(0);
 
       // Close drawer

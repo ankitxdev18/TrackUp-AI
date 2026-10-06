@@ -17,33 +17,31 @@ export function DailyMomentum({
 }: DailyMomentumProps) {
   return (
     <div className="daily-momentum-strip" role="region" aria-label="Daily momentum summary">
-      {/* 1. Completed / Progress */}
+      {/* 1. Completed / Today's Progress */}
       <div className="momentum-card">
         <div className="momentum-icon-wrap icon-completed" aria-hidden="true">
-          <CheckCircle2 size={15} />
+          <CheckCircle2 size={14} />
         </div>
         <div className="momentum-info">
-          <div className="momentum-label">Completed</div>
+          <span className="momentum-label">Today's Progress</span>
           <div className="momentum-value">
             {todayCompleted} of {todayTotal} completed
           </div>
-          <div className="momentum-sub">
-            {todayTotal === 0
-              ? "No tasks today"
-              : `${progressPercent}%`}
-          </div>
+          <span className="momentum-sub">
+            {todayTotal === 0 ? "No tasks today" : `${progressPercent}%`}
+          </span>
         </div>
       </div>
 
       {/* 2. Remaining */}
       <div className="momentum-card">
         <div className="momentum-icon-wrap icon-remaining" aria-hidden="true">
-          <Clock size={15} />
+          <Clock size={14} />
         </div>
         <div className="momentum-info">
-          <div className="momentum-label">Remaining</div>
+          <span className="momentum-label">Remaining</span>
           <div className="momentum-value">{todayRemaining}</div>
-          <div className="momentum-sub">To do today</div>
+          <span className="momentum-sub">To do today</span>
         </div>
       </div>
 
@@ -55,18 +53,19 @@ export function DailyMomentum({
           }`}
           aria-hidden="true"
         >
-          {overdueCount > 0 ? <AlertTriangle size={15} /> : <Sparkles size={15} />}
+          {overdueCount > 0 ? <AlertTriangle size={14} /> : <Sparkles size={14} />}
         </div>
         <div className="momentum-info">
-          <div className="momentum-label">Attention</div>
+          <span className="momentum-label">Attention</span>
           <div className={`momentum-value ${overdueCount > 0 ? "text-danger" : ""}`}>
-            {overdueCount}
+            {overdueCount > 0 ? `${overdueCount} overdue` : "0"}
           </div>
-          <div className={`momentum-sub ${overdueCount > 0 ? "text-danger" : ""}`}>
+          <span className={`momentum-sub ${overdueCount > 0 ? "text-danger" : ""}`}>
             {overdueCount > 0 ? "Needs action" : "Zero overdue"}
-          </div>
+          </span>
         </div>
       </div>
     </div>
   );
 }
+

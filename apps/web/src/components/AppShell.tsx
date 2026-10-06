@@ -51,9 +51,6 @@ export function AppShell({ children }: AppShellProps) {
     { label: "Projects", href: "/projects", icon: FolderKanban },
   ];
 
-  const navSecondary = [
-    { label: "Settings", href: "/settings", icon: Settings },
-  ];
 
   // Derive current section name for top bar
   const getCurrentSectionTitle = () => {
@@ -123,22 +120,17 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           <div className="nav-group">
-            <span className="nav-group-title">System</span>
-            {navSecondary.map((item) => {
-              const Icon = item.icon;
-              const isActive = path === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`nav-item ${isActive ? "active" : ""}`}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <Icon size={16} className="nav-icon" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+            <span className="nav-group-title">Secondary</span>
+            <button
+              type="button"
+              className={`nav-item btn-sidebar-more ${isMoreOpen || path === "/settings" ? "active" : ""}`}
+              onClick={() => setIsMoreOpen(true)}
+              aria-label="More navigation"
+              aria-expanded={isMoreOpen}
+            >
+              <MoreHorizontal size={16} className="nav-icon" aria-hidden="true" />
+              <span>More</span>
+            </button>
           </div>
         </nav>
 

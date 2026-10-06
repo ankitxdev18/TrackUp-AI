@@ -9,7 +9,7 @@
 
 /* Sidebar (Desktop) */
 .shell-sidebar {
-  width: 230px;
+  width: 240px;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);
   display: flex;
@@ -22,7 +22,7 @@
 }
 
 .sidebar-header {
-  height: 48px;
+  height: 46px;
   padding: 0 var(--space-4);
   display: flex;
   align-items: center;
@@ -113,15 +113,24 @@
 }
 
 .nav-item.active {
-  background-color: rgba(99, 102, 241, 0.14);
+  background-color: rgba(99, 102, 241, 0.12);
   color: var(--text-primary);
   font-weight: 550;
-  border-left: 2.5px solid var(--primary);
-  padding-left: calc(var(--space-2) - 2.5px);
+  border-left: 2px solid var(--primary);
+  padding-left: calc(var(--space-2) - 2px);
 }
 
 .nav-item.active .nav-icon {
   color: var(--primary);
+}
+
+.btn-sidebar-more {
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
 }
 
 .sidebar-footer {
@@ -458,7 +467,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 56px;
+    height: 54px;
     background-color: var(--bg-sidebar);
     border-top: 1px solid var(--border-subtle);
     z-index: 50;
@@ -470,7 +479,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     color: var(--text-muted);
     font-size: 0.625rem;
     font-weight: 500;
@@ -494,6 +503,18 @@
     border: none;
     cursor: pointer;
     padding: 0;
+    font-family: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell-sidebar,
+  .nav-item,
+  .more-drawer-backdrop,
+  .more-drawer-sheet,
+  .mobile-nav-item {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

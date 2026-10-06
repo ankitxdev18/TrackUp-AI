@@ -77,13 +77,14 @@ export function TodayTasks({
           </div>
           <p className="dash-empty-title">Your day is clear.</p>
           <p className="dash-empty-sub">You're clear for today.</p>
+          <p className="dash-empty-hint">Add something you want to accomplish.</p>
           <button
             type="button"
             className="btn-dash-create"
             onClick={onOpenModal}
           >
             <Plus size={14} />
-            <span>Add a task</span>
+            <span>Add task</span>
           </button>
         </div>
       ) : (
