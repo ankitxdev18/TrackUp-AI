@@ -118,18 +118,25 @@ export function isValidCalendarDate(dateStr: string): boolean {
 }
 
 /**
- * Checks if a valid calendar date is in the future relative to server local and UTC date
+ * Checks if a valid calendar date is in the future relative to user-local calendar dates
+ * Uses the maximum possible current date anywhere on Earth (accounting for UTC+14)
+ * and server local date to avoid rejecting valid user-local 'today' dates.
  */
 export function isFutureDate(dateStr: string): boolean {
   const now = new Date();
   const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const utcToday = now.toISOString().slice(0, 10);
-  const maxToday = localToday > utcToday ? localToday : utcToday;
-  return dateStr > maxToday;
+  // Earliest possible future date anywhere on Earth (UTC+14 is maximum ahead timezone)
+  const maxEarthToday = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const maxAllowedToday = localToday > maxEarthToday ? localToday : maxEarthToday;
+  return dateStr > maxAllowedToday;
 }
 
 /**
  * Habit Completion Creation Validation Schema (H01-C)
+ *
+ * Rules:
+ * - date: required user-local calendar date in YYYY-MM-DD format
+ * - strict(): rejects client-provided userId, habitId, completedAt, createdAt, or extra fields
  */
 export const createCompletionSchema = z
   .object({
@@ -138,6 +145,7 @@ export const createCompletionSchema = z
         message: "Date is required and must be a string",
       })
       .trim()
+      .min(1, "Date is required")
       .refine(isValidCalendarDate, {
         message: "Date must be a valid calendar date in YYYY-MM-DD format",
       })

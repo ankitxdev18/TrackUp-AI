@@ -805,7 +805,29 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       habitBId = resB.json().habit.id;
     });
 
-    it("39. creates completion for own habit on today's date", async () => {
+    it("39. rejects completion request when date is missing or omitted with HTTP 400", async () => {
+      // Empty body payload
+      const resEmpty = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+        payload: {},
+      });
+      expect(resEmpty.statusCode).toBe(400);
+      expect(resEmpty.json().code).toBe("VALIDATION_ERROR");
+      expect(resEmpty.json().details.some((d: any) => d.field === "date")).toBe(true);
+
+      // No payload provided
+      const resNoPayload = await app.inject({
+        method: "POST",
+        url: `/api/habits/${habitAId}/completions`,
+        headers: { Cookie: userACookie },
+      });
+      expect(resNoPayload.statusCode).toBe(400);
+      expect(resNoPayload.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("40. creates completion for own habit on today's date with explicit date", async () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitAId}/completions`,
@@ -1164,12 +1186,13 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       const tenDaysAgoEntry = body.history.find((h: any) => h.date === tenDaysAgoStr);
       expect(tenDaysAgoEntry).toBeUndefined();
 
-      // Completions array contains only completions within the 7-day window
-      expect(body.completions.length).toBe(2);
-      const completionDates = body.completions.map((c: any) => c.completedDate);
-      expect(completionDates).toContain(todayStr);
-      expect(completionDates).toContain(twoDaysAgoStr);
-      expect(completionDates).not.toContain(tenDaysAgoStr);
+      // Verify startDate and endDate
+      expect(body.startDate).toBeDefined();
+      expect(body.endDate).toBeDefined();
+      expect(body.startDate <= body.endDate).toBe(true);
+
+      // Verify completions array is NOT returned (simplified response contract)
+      expect(body.completions).toBeUndefined();
     });
 
     it("54. supports custom bounded history window up to allowed limit (e.g. ?days=14)", async () => {
@@ -1183,6 +1206,7 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       const body = res.json();
       expect(body.days).toBe(14);
       expect(body.history.length).toBe(14);
+      expect(body.completions).toBeUndefined();
 
       // 10 days ago is within the 14-day window
       const tenDaysAgoEntry = body.history.find((h: any) => h.date === tenDaysAgoStr);
@@ -1210,10 +1234,12 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
 
       expect(res.statusCode).toBe(200);
       const body = res.json();
-      for (const comp of body.completions) {
-        expect(comp.userId).toBe(userAId);
-        expect(comp.habitId).toBe(habitAId);
-      }
+      expect(body.completions).toBeUndefined();
+
+      // Habit A history reflects only User A's completions on Habit A
+      const todayEntry = body.history.find((h: any) => h.date === todayStr);
+      expect(todayEntry).toBeDefined();
+      expect(todayEntry.completed).toBe(true);
     });
 
     it("57. returns 404 for non-existent habit history", async () => {

@@ -320,7 +320,7 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         });
       }
 
-      const parseResult = createCompletionSchema.safeParse(request.body);
+      const parseResult = createCompletionSchema.safeParse(request.body ?? {});
       if (!parseResult.success) {
         const details = parseResult.error.issues.map((issue) => ({
           field: issue.path.join("."),
@@ -531,8 +531,9 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
       return reply.status(200).send({
         habitId,
         days,
+        startDate: oldestDate,
+        endDate: dates[0],
         history,
-        completions,
       });
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
