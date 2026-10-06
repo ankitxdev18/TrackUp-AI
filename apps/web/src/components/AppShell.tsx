@@ -6,6 +6,7 @@ import {
   LogOut,
   MoreHorizontal,
   Settings,
+  Sparkles,
   Target,
   User as UserIcon,
   X,
@@ -47,6 +48,7 @@ export function AppShell({ children }: AppShellProps) {
   const navPrimary = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
+    { label: "Habits", href: "/habits", icon: Sparkles },
     { label: "Goals", href: "/goals", icon: Target },
     { label: "Projects", href: "/projects", icon: FolderKanban },
   ];
@@ -55,6 +57,7 @@ export function AppShell({ children }: AppShellProps) {
   // Derive current section name for top bar
   const getCurrentSectionTitle = () => {
     if (path.startsWith("/tasks")) return "Tasks";
+    if (path.startsWith("/habits")) return "Habits";
     if (path.startsWith("/projects")) return "Projects";
     if (path.startsWith("/goals")) return "Goals";
     if (path.startsWith("/settings")) return "Settings";
@@ -258,6 +261,13 @@ export function AppShell({ children }: AppShellProps) {
             </div>
 
             <div className="more-drawer-nav">
+              <Link
+                to="/habits"
+                className={`drawer-nav-item ${path === "/habits" ? "active" : ""}`}
+              >
+                <Sparkles size={16} />
+                <span>Habits</span>
+              </Link>
               <Link
                 to="/settings"
                 className={`drawer-nav-item ${path === "/settings" ? "active" : ""}`}

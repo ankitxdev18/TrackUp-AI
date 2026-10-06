@@ -205,9 +205,18 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
+  describe("Active Habits Route (Milestone H01-D)", () => {
+    it("renders active Habits page at /habits", async () => {
+      window.history.pushState({}, "", "/habits");
+      render(<App />);
+
+      expect(screen.getByRole("heading", { name: "Habits" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Create new habit" })).toBeInTheDocument();
+    });
+  });
+
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
-      { path: "/habits", title: "Atomic Habits", milestone: "Phase 3 Milestone" },
       { path: "/calendar", title: "Calendar & Agenda", milestone: "Phase 3 Milestone" },
       { path: "/notes", title: "Notes & Focus Journal", milestone: "Phase 4 Milestone" },
       { path: "/expenses", title: "Expenses & Budgeting", milestone: "Phase 4 Milestone" },

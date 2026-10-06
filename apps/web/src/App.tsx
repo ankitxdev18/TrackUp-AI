@@ -5,7 +5,6 @@ import {
   HeartPulse,
   Receipt,
   Settings,
-  Sparkles,
 } from "lucide-react";
 
 import { AppShell } from "./components/AppShell";
@@ -14,6 +13,7 @@ import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
 import { GoalDetailPage } from "./pages/GoalDetailPage";
 import { GoalsPage } from "./pages/GoalsPage";
+import { HabitsPage } from "./pages/HabitsPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
@@ -82,12 +82,7 @@ function AppRoutes() {
     case "/habits":
       return (
         <AppShell>
-          <FeaturePlaceholder
-            title="Atomic Habits"
-            description="Build frictionless routines, monitor consistency streaks, and stack daily habits to sustain compounded growth."
-            icon={Sparkles}
-            plannedMilestone="Phase 3 Milestone"
-          />
+          <HabitsPage />
         </AppShell>
       );
 

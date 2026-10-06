@@ -1,0 +1,601 @@
+/* HabitsPage.css — TrackUp Habits Vertical Slice (H01-D) */
+
+.habits-page {
+  padding: var(--space-6) var(--space-8);
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-height: 100%;
+}
+
+/* Header */
+.habits-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.habits-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.habits-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.habits-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.habits-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.btn-new-habit {
+  background-color: var(--primary);
+  border: 1px solid transparent;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.btn-new-habit:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-new-habit:active {
+  transform: translateY(1px);
+}
+
+/* Action Error Banner */
+.habits-action-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.btn-dismiss-error {
+  background: transparent;
+  border: none;
+  color: var(--color-danger);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* Loading & Error States */
+.habits-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-12) 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.habits-error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-4);
+  background-color: var(--bg-surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.habits-error-container .error-icon {
+  color: var(--color-danger);
+}
+
+.habits-error-container h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.habits-error-container p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.btn-retry {
+  background-color: var(--surface-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  transition: background-color 0.15s ease;
+}
+
+.btn-retry:hover {
+  background-color: var(--border-light);
+}
+
+/* Today's Focus Summary Card */
+.habits-summary-card {
+  background-color: var(--bg-surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.summary-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.summary-count strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.summary-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--bg-surface-high);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--color-success);
+  border-radius: var(--radius-full);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tabs */
+.habits-nav-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 2px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.tab-badge {
+  background-color: var(--bg-surface-highest);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+.tab-btn.active .tab-badge {
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+}
+
+/* Empty State */
+.habits-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  background-color: var(--bg-surface-card);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  gap: var(--space-3);
+}
+
+.empty-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+}
+
+.habits-empty-state h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.habits-empty-state p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+/* Habit Grid / Cards */
+.habits-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.habit-card {
+  background-color: var(--bg-surface-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.habit-card:hover {
+  border-color: var(--border-light);
+}
+
+.habit-card.is-completed {
+  border-color: var(--color-success-border);
+  background-color: rgba(53, 201, 130, 0.02);
+}
+
+.habit-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* Completion Check Toggle */
+.btn-check-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: var(--radius-full);
+  margin-top: 1px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-check-toggle:hover:not(:disabled) {
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.btn-check-toggle:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.check-icon-uncompleted {
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.btn-check-toggle:hover .check-icon-uncompleted {
+  color: var(--primary);
+}
+
+.check-icon-completed {
+  color: var(--color-success);
+}
+
+.toggle-spinner {
+  color: var(--primary);
+}
+
+.archived-status-indicator {
+  color: var(--text-muted);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Habit Info */
+.habit-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.habit-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.habit-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.habit-name.completed-name {
+  color: var(--text-secondary);
+}
+
+.cadence-tag {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background-color: var(--bg-surface-high);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.habit-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Action Menu */
+.habit-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn-card-menu {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.btn-card-menu:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-hover);
+}
+
+.habit-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  z-index: 100;
+  animation: fadeIn 0.1s ease-out;
+}
+
+.dropdown-item {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+  background-color: var(--surface-hover);
+}
+
+.dropdown-item.delete-item {
+  color: var(--color-danger);
+}
+
+.dropdown-item.delete-item:hover {
+  background-color: var(--color-danger-bg);
+}
+
+/* Compact 7-Day History Visualization */
+.habit-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.history-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-dots-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-day-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 5px;
+  border-radius: var(--radius-xs);
+  min-width: 24px;
+  transition: background-color 0.15s ease;
+}
+
+.history-day-chip.is-today {
+  background-color: var(--bg-surface-highest);
+  box-shadow: 0 0 0 1px var(--primary-border);
+}
+
+.day-letter {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.history-day-chip.is-today .day-letter {
+  color: var(--primary);
+}
+
+.day-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.day-dot.dot-done {
+  background-color: var(--color-success);
+}
+
+.day-dot.dot-empty {
+  background-color: var(--bg-surface-highest);
+  border: 1px solid var(--border-subtle);
+}
+
+.history-day-chip:hover .day-dot {
+  transform: scale(1.2);
+}
+
+.history-placeholder {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .habits-page {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .habits-header-main {
+    align-items: stretch;
+  }
+
+  .btn-new-habit {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .habit-card {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .history-day-chip {
+    min-width: 20px;
+    padding: 2px 4px;
+  }
+}
