@@ -3,6 +3,7 @@ import fastifyCookie from "@fastify/cookie";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { goalRoutes } from "./routes/goal.routes.js";
+import { habitRoutes } from "./routes/habit.routes.js";
 import { projectRoutes } from "./routes/project.routes.js";
 import { taskRoutes } from "./routes/task.routes.js";
 
@@ -59,6 +60,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   server.register(authRoutes, { prefix: "/api/auth" });
   server.register(goalRoutes, { prefix: "/api/goals" });
+  server.register(habitRoutes, { prefix: "/api/habits" });
   server.register(projectRoutes, { prefix: "/api/projects" });
   server.register(taskRoutes, { prefix: "/api/tasks" });
 
