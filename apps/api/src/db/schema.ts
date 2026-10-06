@@ -210,3 +210,88 @@ export const goals = pgTable(
 export type Goal = typeof goals.$inferSelect;
 export type NewGoal = typeof goals.$inferInsert;
 
+/**
+ * TrackUp Habit Entity Schema (Habits Milestone 1 / H01-A)
+ *
+ * Implements the enduring habit definition:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - title: Required habit name (1-255 chars)
+ * - description: Optional habit notes/description (<= 1000 chars)
+ * - frequency: 'DAILY' (default: 'DAILY')
+ * - status: 'ACTIVE' | 'ARCHIVED' (default: 'ACTIVE')
+ * - createdAt: Timestamp of creation
+ * - updatedAt: Timestamp of last modification
+ */
+export const habits = pgTable(
+  "habits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: varchar("description", { length: 1000 }),
+    frequency: varchar("frequency", { length: 20 }).default("DAILY").notNull(),
+    status: varchar("status", { length: 20 }).default("ACTIVE").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("habits_user_id_idx").on(table.userId),
+    index("habits_user_status_idx").on(table.userId, table.status),
+  ]
+);
+
+export type Habit = typeof habits.$inferSelect;
+export type NewHabit = typeof habits.$inferInsert;
+
+/**
+ * TrackUp Habit Completion Entity Schema (Habits Milestone 1 / H01-A)
+ *
+ * Implements discrete calendar-day completion events:
+ * - id: UUIDv4 primary key
+ * - habitId: Foreign key reference to habits.id with cascade on delete
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - completedDate: ISO calendar date string 'YYYY-MM-DD'
+ * - completedAt: Timestamp of completion with timezone
+ * - createdAt: Timestamp of record creation
+ */
+export const habitCompletions = pgTable(
+  "habit_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    completedDate: varchar("completed_date", { length: 10 }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("habit_completions_habit_date_unique_idx").on(
+      table.habitId,
+      table.completedDate
+    ),
+    index("habit_completions_user_date_idx").on(
+      table.userId,
+      table.completedDate
+    ),
+    index("habit_completions_habit_id_idx").on(table.habitId),
+  ]
+);
+
+export type HabitCompletion = typeof habitCompletions.$inferSelect;
+export type NewHabitCompletion = typeof habitCompletions.$inferInsert;
+
