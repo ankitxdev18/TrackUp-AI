@@ -61,6 +61,7 @@ export function AppShell({ children }: AppShellProps) {
     if (path.startsWith("/projects")) return "Projects";
     if (path.startsWith("/goals")) return "Goals";
     if (path.startsWith("/settings")) return "Settings";
+    if (path.startsWith("/journal")) return "Journal";
     return "Dashboard";
   };
 
