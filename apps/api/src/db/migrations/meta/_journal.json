@@ -50,6 +50,13 @@
       "when": 1791279993227,
       "tag": "0006_jittery_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791385797501,
+      "tag": "0007_nice_blob",
+      "breakpoints": true
     }
   ]
 }

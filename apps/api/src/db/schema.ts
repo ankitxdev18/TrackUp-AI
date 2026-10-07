@@ -337,3 +337,42 @@ export const journalEntries = pgTable(
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type NewJournalEntry = typeof journalEntries.$inferInsert;
 
+/**
+ * TrackUp Idea Entity Schema (Ideas Milestone 1 & 2 / I01 & I02)
+ *
+ * Implements uncommitted capture of thoughts, concepts, hypotheses, and sparks:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - title: Required idea headline (1-255 chars)
+ * - description: Optional narrative/brainstorming notes (plain text)
+ * - status: 'ACTIVE' | 'ARCHIVED' (default: 'ACTIVE')
+ * - createdAt: Timestamp of creation with timezone (server-generated)
+ * - updatedAt: Timestamp of last modification with timezone (server-generated)
+ */
+export const ideas = pgTable(
+  "ideas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    status: varchar("status", { length: 20 }).default("ACTIVE").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("ideas_user_status_idx").on(table.userId, table.status),
+    index("ideas_user_created_idx").on(table.userId, table.createdAt.desc()),
+  ]
+);
+
+export type Idea = typeof ideas.$inferSelect;
+export type NewIdea = typeof ideas.$inferInsert;
+
+
