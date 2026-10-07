@@ -856,9 +856,9 @@ End of entry.
   });
 
   // ==========================================
-  // 8. PRIVACY & ERROR HYGIENE
+  // 8. PRIVACY, UNICODE & CONTENT HARDENING
   // ==========================================
-  describe("Privacy & Error Hygiene", () => {
+  describe("Privacy, Unicode & Content Hardening", () => {
     it("45. error payloads do not expose raw SQL, stack traces, or echoed journal content", async () => {
       const sensitiveContent = "TOP_SECRET_REFLECTION_TEXT_12345";
       const res = await app.inject({
@@ -877,6 +877,98 @@ End of entry.
       expect(rawText).not.toContain("SELECT");
       expect(rawText).not.toContain("INSERT INTO");
       expect(rawText).not.toContain("stack");
+    });
+
+    it("46. preserves full Unicode richness including Hindi, CJK, emojis, accents, code blocks, and internal newlines", async () => {
+      const pastDate = getFormattedDate(-15);
+      const richTitle = "आज का चिंतन 🌟 Café & Code (今日の日記)";
+      const richContent = [
+        "## Daily Reflection / आज का विचार",
+        "1. Started with coffee (café français).",
+        "2. Wrote deep code:\n```typescript\nconst journal = new Journal({ offlineFirst: true });\n```",
+        "3. Mindful meditation: शांत मन, स्थिर विचार 🧘‍♂️✨",
+        "4. CJK characters test: 継続は力なり (Perseverance is strength).",
+        "",
+        "End of day thoughts preserved across multiple line breaks.",
+      ].join("\n");
+
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/journal",
+        headers: { cookie: userACookie },
+        payload: {
+          entryDate: pastDate,
+          title: richTitle,
+          content: richContent,
+        },
+      });
+
+      expect(createRes.statusCode).toBe(201);
+      const created = createRes.json().entry;
+      expect(created.title).toBe(richTitle);
+      expect(created.content).toBe(richContent);
+
+      // Verify retrieval by ID retains exact content bit-for-bit
+      const getRes = await app.inject({
+        method: "GET",
+        url: `/api/journal/${created.id}`,
+        headers: { cookie: userACookie },
+      });
+
+      expect(getRes.statusCode).toBe(200);
+      const fetched = getRes.json().entry;
+      expect(fetched.title).toBe(richTitle);
+      expect(fetched.content).toBe(richContent);
+
+      // Cleanup
+      await app.inject({
+        method: "DELETE",
+        url: `/api/journal/${created.id}`,
+        headers: { cookie: userACookie },
+      });
+    });
+
+    it("47. handles PostgreSQL unique violation safely without leaking db constraint details", async () => {
+      const clashDate = getFormattedDate(-20);
+      // Create first entry
+      const firstRes = await app.inject({
+        method: "POST",
+        url: "/api/journal",
+        headers: { cookie: userACookie },
+        payload: {
+          entryDate: clashDate,
+          content: "Initial reflection for date collision test",
+        },
+      });
+      expect(firstRes.statusCode).toBe(201);
+      const firstEntryId = firstRes.json().entry.id;
+
+      // Duplicate creation attempt
+      const dupRes = await app.inject({
+        method: "POST",
+        url: "/api/journal",
+        headers: { cookie: userACookie },
+        payload: {
+          entryDate: clashDate,
+          content: "Second conflicting reflection",
+        },
+      });
+
+      expect(dupRes.statusCode).toBe(409);
+      const dupBody = dupRes.json();
+      expect(dupBody.code).toBe("DUPLICATE_ENTRY_DATE");
+      expect(dupBody.error).toBe("Journal entry already exists for this date");
+      // Zero DB internals leaked
+      expect(JSON.stringify(dupBody)).not.toContain("journal_entries_user_date_unique_idx");
+      expect(JSON.stringify(dupBody)).not.toContain("23505");
+      expect(JSON.stringify(dupBody)).not.toContain("drizzle");
+
+      // Cleanup
+      await app.inject({
+        method: "DELETE",
+        url: `/api/journal/${firstEntryId}`,
+        headers: { cookie: userACookie },
+      });
     });
   });
 });

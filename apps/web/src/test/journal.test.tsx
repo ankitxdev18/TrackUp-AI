@@ -906,4 +906,146 @@ describe("Milestone H02-D: Journal Frontend Vertical Slice", () => {
       });
     });
   });
+
+  // --------------------------------------------------
+  // 9. SECURITY, UNICODE & STATE SAFETY HARDENING
+  // --------------------------------------------------
+  describe("Security, Unicode & State Safety Hardening", () => {
+    it("renders malicious XSS HTML/script payloads strictly as safe plain text", async () => {
+      const xssEntry: JournalEntry = {
+        id: "journal-xss-1",
+        userId: "user-1",
+        entryDate: localToday,
+        title: "<script>alert('xss-title')</script>",
+        content: "<script>alert('xss-body')</script>\n<img src=x onerror=alert(1)>",
+        createdAt: "2026-10-07T10:00:00.000Z",
+        updatedAt: "2026-10-07T10:00:00.000Z",
+      };
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/journal")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ entries: [xssEntry] }),
+          } as Response;
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+      });
+
+      const bodyContainer = document.querySelector(".reader-body");
+      expect(bodyContainer).toBeInTheDocument();
+
+      // Ensure no script or img elements were injected into the DOM
+      expect(bodyContainer?.querySelector("script")).toBeNull();
+      expect(bodyContainer?.querySelector("img")).toBeNull();
+
+      // Ensure the text itself is rendered literally
+      expect(bodyContainer?.textContent).toContain("<script>alert('xss-body')</script>");
+      expect(bodyContainer?.textContent).toContain("<img src=x onerror=alert(1)>");
+    });
+
+    it("preserves Unicode, Hindi, emojis, and code formatting faithfully in editor and reader", async () => {
+      const unicodeEntry: JournalEntry = {
+        id: "journal-unicode-1",
+        userId: "user-1",
+        entryDate: localToday,
+        title: "आज का चिंतन 🌟 Deep Work (今日の日記)",
+        content: "शांत मन, स्थिर विचार 🧘‍♂️\n\n```ts\nconst focus = true;\n```",
+        createdAt: "2026-10-07T10:00:00.000Z",
+        updatedAt: "2026-10-07T10:00:00.000Z",
+      };
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/journal")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ entries: [unicodeEntry] }),
+          } as Response;
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText("आज का चिंतन 🌟 Deep Work (今日の日記)").length).toBeGreaterThan(0);
+      });
+
+      const readerContent = document.querySelector(".reader-content-text");
+      expect(readerContent).toBeInTheDocument();
+      expect(readerContent?.textContent).toContain("शांत मन, स्थिर विचार 🧘‍♂️");
+      expect(readerContent?.textContent).toContain("const focus = true;");
+    });
+
+    it("prevents double-submission when saving is already pending", async () => {
+      let resolvePost!: (val: any) => void;
+      const deferredPromise = new Promise((resolve) => {
+        resolvePost = resolve;
+      });
+
+      let postCalls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/journal") && method === "POST") {
+          postCalls++;
+          await deferredPromise;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({ entry: mockTodayEntry }),
+          } as Response;
+        }
+
+        if (url.includes("/api/journal")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ entries: [] }),
+          } as Response;
+        }
+
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "New Entry" })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "New Entry" }));
+
+      const contentInput = screen.getByLabelText("Content");
+      fireEvent.change(contentInput, { target: { value: "Test content for concurrency check" } });
+
+      const saveBtn = screen.getByRole("button", { name: "Create entry" });
+
+      // First click
+      fireEvent.click(saveBtn);
+      expect(postCalls).toBe(1);
+
+      // Second click while pending
+      fireEvent.click(saveBtn);
+      expect(postCalls).toBe(1); // strictly 1 call, second click blocked
+
+      // Complete request
+      resolvePost(null);
+
+      await waitFor(() => {
+        expect(screen.getByText("Saving...")).toBeInTheDocument();
+      });
+    });
+  });
 });
