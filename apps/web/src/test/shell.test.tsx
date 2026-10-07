@@ -143,13 +143,73 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getAllByRole("link", { name: /Tasks/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Goals/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Habits/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Journal/i }).length).toBeGreaterThan(0);
 
       // Persistent More navigation trigger in sidebar and mobile nav
       expect(screen.getAllByRole("button", { name: /More navigation/i }).length).toBeGreaterThan(0);
 
+      // Verify persistent mobile bottom navigation has exactly 5 items
+      const mobileNav = document.querySelector(".mobile-nav");
+      expect(mobileNav).toBeInTheDocument();
+      const mobileItems = mobileNav?.children;
+      expect(mobileItems?.length).toBe(5);
+
       await waitFor(() => {
         expect(screen.getByText("Design new landing page")).toBeInTheDocument();
       });
+    });
+
+    it("renders Journal in desktop sidebar with active state and working navigation", async () => {
+      window.history.pushState({}, "", "/journal");
+      render(<App />);
+
+      // Top application header breadcrumb shows Journal
+      expect(screen.getByText("Journal", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Desktop sidebar Journal item is active
+      const sidebarJournalLink = document.querySelector(".shell-sidebar .nav-item[href='/journal']");
+      expect(sidebarJournalLink).toBeInTheDocument();
+      expect(sidebarJournalLink).toHaveClass("active");
+      expect(sidebarJournalLink).toHaveAttribute("aria-current", "page");
+
+      // Navigate back to dashboard by clicking dashboard link
+      const dashboardLink = document.querySelector(".shell-sidebar .nav-item[href='/dashboard']");
+      expect(dashboardLink).toBeInTheDocument();
+      fireEvent.click(dashboardLink!);
+      expect(window.location.pathname).toBe("/dashboard");
+
+      // Now click Journal link in sidebar and verify navigation
+      const journalLink = document.querySelector(".shell-sidebar .nav-item[href='/journal']");
+      fireEvent.click(journalLink!);
+      expect(window.location.pathname).toBe("/journal");
+    });
+
+    it("provides Journal inside mobile More menu, navigates to /journal, and closes More menu", async () => {
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Open mobile More drawer
+      const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
+      fireEvent.click(moreBtn);
+
+      // More drawer should be open and contain Journal link
+      expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      const drawerJournalLink = document.querySelector(".more-drawer-nav .drawer-nav-item[href='/journal']");
+      expect(drawerJournalLink).toBeInTheDocument();
+      expect(drawerJournalLink).toHaveTextContent("Journal");
+
+      // Clicking Journal link navigates to /journal and closes drawer
+      fireEvent.click(drawerJournalLink!);
+      expect(window.location.pathname).toBe("/journal");
+      expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
+
+      // Test Escape key closes More drawer
+      const moreBtn2 = screen.getAllByRole("button", { name: /More navigation/i })[0];
+      fireEvent.click(moreBtn2);
+      expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
     });
 
     it("opens and closes mobile More drawer properly", async () => {

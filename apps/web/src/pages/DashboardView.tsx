@@ -15,6 +15,7 @@ import { GoalsWidget } from "./dashboard/GoalsWidget";
 import { OverdueTriage } from "./dashboard/OverdueTriage";
 import { ProjectsWidget } from "./dashboard/ProjectsWidget";
 import { TodayHabitsWidget } from "./dashboard/TodayHabitsWidget";
+import { TodayJournalWidget } from "./dashboard/TodayJournalWidget";
 import { TodayTasks } from "./dashboard/TodayTasks";
 import { UpcomingWidget } from "./dashboard/UpcomingWidget";
 import "./DashboardView.css";
@@ -215,8 +216,10 @@ export function DashboardView() {
           <TodayHabitsWidget />
         </div>
 
-        {/* Right Column: Contextual Horizon (Goals, Projects, Upcoming) */}
+        {/* Right Column: Contextual Horizon (Goals, Projects, Upcoming, Journal) */}
         <div className="dashboard-horizon-col">
+          <TodayJournalWidget />
+
           <GoalsWidget
             goals={goals}
             loading={goalsLoading}

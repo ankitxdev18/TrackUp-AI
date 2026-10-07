@@ -912,6 +912,112 @@
   margin-bottom: var(--space-2);
 }
 
+/* Today's Journal Widget */
+.dash-journal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-3);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dash-journal-card:hover {
+  border-color: var(--border-active);
+  background-color: var(--bg-surface-elevated, var(--bg-surface));
+}
+
+.dash-journal-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dash-journal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dash-journal-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.dash-journal-status-pill {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-success, #10b981);
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.dash-journal-preview {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.dash-journal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.dash-journal-action-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  transition: opacity 0.12s ease;
+}
+
+.dash-journal-action-link:hover {
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.dash-journal-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.dash-journal-empty-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dash-journal-empty-content .dash-empty-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* Responsive Rules */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -1040,6 +1146,7 @@
   .dash-habit-title,
   .dash-project-item,
   .dash-project-fill,
+  .dash-journal-card,
   .dash-skeleton-row,
   .dash-skeleton-card {
     animation: none !important;

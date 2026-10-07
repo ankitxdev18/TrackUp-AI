@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  BookOpen,
   CheckSquare,
   FolderKanban,
   LayoutDashboard,
@@ -48,9 +49,10 @@ export function AppShell({ children }: AppShellProps) {
   const navPrimary = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
-    { label: "Habits", href: "/habits", icon: Sparkles },
-    { label: "Goals", href: "/goals", icon: Target },
     { label: "Projects", href: "/projects", icon: FolderKanban },
+    { label: "Goals", href: "/goals", icon: Target },
+    { label: "Habits", href: "/habits", icon: Sparkles },
+    { label: "Journal", href: "/journal", icon: BookOpen },
   ];
 
 
@@ -263,8 +265,17 @@ export function AppShell({ children }: AppShellProps) {
 
             <div className="more-drawer-nav">
               <Link
+                to="/journal"
+                className={`drawer-nav-item ${path === "/journal" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <BookOpen size={16} />
+                <span>Journal</span>
+              </Link>
+              <Link
                 to="/habits"
                 className={`drawer-nav-item ${path === "/habits" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
               >
                 <Sparkles size={16} />
                 <span>Habits</span>
@@ -272,6 +283,7 @@ export function AppShell({ children }: AppShellProps) {
               <Link
                 to="/settings"
                 className={`drawer-nav-item ${path === "/settings" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
               >
                 <Settings size={16} />
                 <span>Settings</span>
@@ -279,6 +291,7 @@ export function AppShell({ children }: AppShellProps) {
               <Link
                 to="/"
                 className="drawer-nav-item"
+                onClick={() => setIsMoreOpen(false)}
               >
                 <UserIcon size={16} />
                 <span>TrackUp Home</span>
