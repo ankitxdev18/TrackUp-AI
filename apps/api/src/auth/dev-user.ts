@@ -66,6 +66,7 @@ export interface UserIdentity {
   id: string;
   email: string;
   name: string;
+  timezone: string;
 }
 
 export class IdentityError extends Error {
@@ -90,6 +91,7 @@ export async function resolveUserIdentity(
       id: request.user.id,
       email: request.user.email,
       name: request.user.name,
+      timezone: request.user.timezone || "UTC",
     };
   }
 
@@ -102,6 +104,7 @@ export async function resolveUserIdentity(
         id: sessionWithUser.user.id,
         email: sessionWithUser.user.email,
         name: sessionWithUser.user.name,
+        timezone: sessionWithUser.user.timezone || "UTC",
       };
     }
   }
@@ -124,6 +127,7 @@ export async function resolveUserIdentity(
           id: users.id,
           email: users.email,
           name: users.name,
+          timezone: users.timezone,
         })
         .from(users)
         .where(eq(users.id, explicitDevUserId))

@@ -1,10 +1,26 @@
 import { z } from "zod";
+import { isValidCalendarDateString } from "./habit.date.js";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const HABIT_STATUS_VALUES = ["ACTIVE", "ARCHIVED"] as const;
 export const HABIT_FREQUENCY_VALUES = ["DAILY"] as const;
+
+/**
+ * Re-exported calendar validation helpers for cross-domain schema compatibility
+ */
+export function isValidCalendarDate(dateStr: string): boolean {
+  return isValidCalendarDateString(dateStr);
+}
+
+export function isFutureDate(dateStr: string): boolean {
+  const now = new Date();
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const maxEarthToday = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const maxAllowedToday = localToday > maxEarthToday ? localToday : maxEarthToday;
+  return dateStr > maxAllowedToday;
+}
 
 export const habitStatusEnum = z.enum(HABIT_STATUS_VALUES, {
   message: "Status must be one of: ACTIVE, ARCHIVED",
@@ -23,15 +39,18 @@ export const habitIdParamSchema = z.object({
     }),
 });
 
+export const habitStatusQuerySchema = z.object({
+  status: habitStatusEnum.optional().default("ACTIVE"),
+});
+
 /**
- * Habit Creation Validation Schema (H01-B)
+ * Habit Creation Validation Schema (H03)
  *
  * Rules:
  * - title: required string, trimmed, 1-255 characters
  * - description: optional string, trimmed, <= 1000 characters, nullable
- * - frequency: MVP supports DAILY only (defaults to DAILY)
- * - status: creation must strictly be ACTIVE (defaults to ACTIVE)
- * - strict(): rejects client-provided id, userId, createdAt, updatedAt, or extra fields
+ * - frequency: MVP supports DAILY only
+ * - strict(): rejects client-provided id, userId, status, createdAt, updatedAt, streaks, or extra fields
  */
 export const createHabitSchema = z
   .object({
@@ -48,21 +67,22 @@ export const createHabitSchema = z
       .max(1000, "Description must not exceed 1000 characters")
       .nullable()
       .optional(),
-    frequency: habitFrequencyEnum.optional().default("DAILY"),
-    status: z.literal("ACTIVE").optional().default("ACTIVE"),
+    frequency: z.literal("DAILY", {
+      message: "Frequency must be DAILY",
+    }).optional().default("DAILY"),
   })
   .strict();
 
 export type CreateHabitInput = z.infer<typeof createHabitSchema>;
 
 /**
- * Habit Update Validation Schema (H01-B)
+ * Habit Update Validation Schema (H03)
  *
  * Rules:
  * - title: optional string, trimmed, 1-255 characters
  * - description: optional string, trimmed, <= 1000 characters, nullable
  * - status: optional enum ACTIVE | ARCHIVED
- * - strict(): rejects userId, id, timestamps, frequency, and unexpected fields
+ * - strict(): rejects userId, id, timestamps, frequency, streaks, and unexpected fields
  * - refine(): at least one field must be provided
  */
 export const updateHabitSchema = z
@@ -94,48 +114,11 @@ export const updateHabitSchema = z
 
 export type UpdateHabitInput = z.infer<typeof updateHabitSchema>;
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
- * Validates that an ISO date string 'YYYY-MM-DD' corresponds to a valid calendar date
- */
-export function isValidCalendarDate(dateStr: string): boolean {
-  if (!DATE_REGEX.test(dateStr)) return false;
-  const [yearStr, monthStr, dayStr] = dateStr.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
-}
-
-/**
- * Checks if a valid calendar date is in the future relative to user-local calendar dates
- * Uses the maximum possible current date anywhere on Earth (accounting for UTC+14)
- * and server local date to avoid rejecting valid user-local 'today' dates.
- */
-export function isFutureDate(dateStr: string): boolean {
-  const now = new Date();
-  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  // Earliest possible future date anywhere on Earth (UTC+14 is maximum ahead timezone)
-  const maxEarthToday = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const maxAllowedToday = localToday > maxEarthToday ? localToday : maxEarthToday;
-  return dateStr > maxAllowedToday;
-}
-
-/**
- * Habit Completion Creation Validation Schema (H01-C)
+ * Habit Completion Creation Validation Schema (H03)
  *
  * Rules:
- * - date: required user-local calendar date in YYYY-MM-DD format
+ * - date: required calendar date string in YYYY-MM-DD format
  * - strict(): rejects client-provided userId, habitId, completedAt, createdAt, or extra fields
  */
 export const createCompletionSchema = z
@@ -146,11 +129,8 @@ export const createCompletionSchema = z
       })
       .trim()
       .min(1, "Date is required")
-      .refine(isValidCalendarDate, {
+      .refine(isValidCalendarDateString, {
         message: "Date must be a valid calendar date in YYYY-MM-DD format",
-      })
-      .refine((val) => !isFutureDate(val), {
-        message: "Completion date cannot be in the future",
       }),
   })
   .strict();
@@ -158,7 +138,7 @@ export const createCompletionSchema = z
 export type CreateCompletionInput = z.infer<typeof createCompletionSchema>;
 
 /**
- * Habit Completion Route Parameters Schema (H01-C)
+ * Habit Completion Route Parameters Schema (H03)
  */
 export const habitCompletionDateParamSchema = z.object({
   id: z
@@ -170,14 +150,23 @@ export const habitCompletionDateParamSchema = z.object({
   date: z
     .string()
     .trim()
-    .refine(isValidCalendarDate, {
+    .refine(isValidCalendarDateString, {
       message: "Date must be a valid calendar date in YYYY-MM-DD format",
     }),
 });
 
 /**
- * Habit History Query Parameters Schema (H01-C)
+ * Habit History Query Parameters Schema (H03)
+ *
+ * Limits: min 7, max 30, default 30
  */
 export const habitHistoryQuerySchema = z.object({
-  days: z.coerce.number().int().min(1).max(30).optional().default(7),
+  days: z.coerce
+    .number({
+      message: "days parameter must be a number",
+    })
+    .int("days parameter must be an integer")
+    .min(7, "History window must be at least 7 days")
+    .max(30, "History window cannot exceed 30 days")
+    .default(30),
 });

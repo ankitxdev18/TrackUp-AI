@@ -1,57 +1,108 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../auth/authenticate.js";
 import { IdentityError, resolveUserIdentity } from "../auth/dev-user.js";
 import { db } from "../db/index.js";
 import { habitCompletions, habits } from "../db/schema.js";
+import {
+  addCalendarDays,
+  assertValidIanaTimeZone,
+  formatCalendarDateInTimeZone,
+  getUserLocalToday,
+} from "../habits/habit.date.js";
+import { calculateStreaks } from "../habits/habit.streak.js";
 import {
   createCompletionSchema,
   createHabitSchema,
   habitCompletionDateParamSchema,
   habitHistoryQuerySchema,
   habitIdParamSchema,
-  HABIT_STATUS_VALUES,
+  habitStatusQuerySchema,
   updateHabitSchema,
 } from "../habits/habit.schema.js";
 
 export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
-  // Enforce authentication on all habit endpoints
+  // Enforce session authentication across all habit endpoints
   server.addHook("preHandler", requireAuth);
 
-  // GET /api/habits — List current user's habits with optional status filter
+  // ========================================================
+  // GET /api/habits — List current user's habits with streak metrics
+  // ========================================================
   server.get("/", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
-      const query = request.query as { status?: string };
+      assertValidIanaTimeZone(user.timezone);
+      const userLocalToday = getUserLocalToday(user.timezone);
 
-      let whereCondition = eq(habits.userId, user.id);
-
-      if (query.status) {
-        const upperStatus = query.status.toUpperCase();
-        if (HABIT_STATUS_VALUES.includes(upperStatus as any)) {
-          whereCondition = and(
-            eq(habits.userId, user.id),
-            eq(habits.status, upperStatus)
-          )!;
-        } else {
-          return reply.status(400).send({
-            error: `Invalid status filter. Must be one of: ${HABIT_STATUS_VALUES.join(", ")}`,
-            code: "INVALID_STATUS",
-          });
-        }
+      const queryResult = habitStatusQuerySchema.safeParse(request.query ?? {});
+      if (!queryResult.success) {
+        return reply.status(400).send({
+          error: "Invalid status filter. Must be one of: ACTIVE, ARCHIVED",
+          code: "INVALID_STATUS",
+        });
       }
 
+      const { status } = queryResult.data;
+
+      // Query user's habits filtered by status
       const userHabits = await db
         .select()
         .from(habits)
-        .where(whereCondition)
-        .orderBy(
-          sql`case when ${habits.status} = 'ACTIVE' then 0 else 1 end`,
-          desc(habits.createdAt)
-        );
+        .where(and(eq(habits.userId, user.id), eq(habits.status, status)))
+        .orderBy(desc(habits.createdAt), habits.id);
+
+      if (userHabits.length === 0) {
+        return reply.status(200).send({
+          habits: [],
+        });
+      }
+
+      const habitIds = userHabits.map((h) => h.id);
+
+      // Single efficient query to fetch completions for all returned habits
+      const allCompletions = await db
+        .select({
+          habitId: habitCompletions.habitId,
+          completedDate: habitCompletions.completedDate,
+        })
+        .from(habitCompletions)
+        .where(inArray(habitCompletions.habitId, habitIds))
+        .orderBy(habitCompletions.completedDate);
+
+      // Group completions by habitId
+      const completionsByHabit = new Map<string, string[]>();
+      for (const c of allCompletions) {
+        let list = completionsByHabit.get(c.habitId);
+        if (!list) {
+          list = [];
+          completionsByHabit.set(c.habitId, list);
+        }
+        list.push(c.completedDate);
+      }
+
+      // Format response with derived streaks and todayCompleted
+      const formattedHabits = userHabits.map((habit) => {
+        const dates = completionsByHabit.get(habit.id) || [];
+        const streaks = calculateStreaks(dates, userLocalToday);
+        const todayCompleted = dates.includes(userLocalToday);
+
+        return {
+          id: habit.id,
+          userId: habit.userId,
+          title: habit.title,
+          description: habit.description,
+          frequency: habit.frequency,
+          status: habit.status,
+          currentStreak: streaks.currentStreak,
+          longestStreak: streaks.longestStreak,
+          todayCompleted,
+          createdAt: habit.createdAt.toISOString(),
+          updatedAt: habit.updatedAt.toISOString(),
+        };
+      });
 
       return reply.status(200).send({
-        habits: userHabits,
+        habits: formattedHabits,
       });
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
@@ -69,7 +120,84 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
     }
   });
 
-  // POST /api/habits — Create a new habit strictly owned by current user
+  // ========================================================
+  // GET /api/habits/:id — Get single habit by ID
+  // ========================================================
+  server.get("/:id", async (request, reply) => {
+    try {
+      const user = await resolveUserIdentity(request);
+      assertValidIanaTimeZone(user.timezone);
+      const userLocalToday = getUserLocalToday(user.timezone);
+
+      const paramResult = habitIdParamSchema.safeParse(request.params);
+      if (!paramResult.success) {
+        return reply.status(400).send({
+          error: "Invalid habit ID format",
+          code: "INVALID_ID",
+        });
+      }
+
+      const habitId = paramResult.data.id;
+
+      // Ownership-scoped query: 404 for cross-user or missing
+      const [habit] = await db
+        .select()
+        .from(habits)
+        .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
+        .limit(1);
+
+      if (!habit) {
+        return reply.status(404).send({
+          error: "Habit not found",
+          code: "NOT_FOUND",
+        });
+      }
+
+      // Query complete completion history for this habit
+      const completions = await db
+        .select({ completedDate: habitCompletions.completedDate })
+        .from(habitCompletions)
+        .where(eq(habitCompletions.habitId, habitId))
+        .orderBy(habitCompletions.completedDate);
+
+      const dates = completions.map((c) => c.completedDate);
+      const streaks = calculateStreaks(dates, userLocalToday);
+      const todayCompleted = dates.includes(userLocalToday);
+
+      return reply.status(200).send({
+        habit: {
+          id: habit.id,
+          userId: habit.userId,
+          title: habit.title,
+          description: habit.description,
+          frequency: habit.frequency,
+          status: habit.status,
+          currentStreak: streaks.currentStreak,
+          longestStreak: streaks.longestStreak,
+          todayCompleted,
+          createdAt: habit.createdAt.toISOString(),
+          updatedAt: habit.updatedAt.toISOString(),
+        },
+      });
+    } catch (err: unknown) {
+      if (err instanceof IdentityError) {
+        return reply.status(err.statusCode).send({
+          error: err.message,
+          code: err.code,
+        });
+      }
+
+      server.log.error(err, "Failed to retrieve habit");
+      return reply.status(500).send({
+        error: "An unexpected error occurred while retrieving the habit",
+        code: "INTERNAL_SERVER_ERROR",
+      });
+    }
+  });
+
+  // ========================================================
+  // POST /api/habits — Create a new habit
+  // ========================================================
   server.post("/", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
@@ -102,7 +230,19 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         .returning();
 
       return reply.status(201).send({
-        habit: newHabit,
+        habit: {
+          id: newHabit.id,
+          userId: newHabit.userId,
+          title: newHabit.title,
+          description: newHabit.description,
+          frequency: newHabit.frequency,
+          status: newHabit.status,
+          currentStreak: 0,
+          longestStreak: 0,
+          todayCompleted: false,
+          createdAt: newHabit.createdAt.toISOString(),
+          updatedAt: newHabit.updatedAt.toISOString(),
+        },
       });
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
@@ -120,10 +260,14 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
     }
   });
 
-  // GET /api/habits/:id — Retrieve single habit details (strictly ownership-scoped)
-  server.get("/:id", async (request, reply) => {
+  // ========================================================
+  // PATCH /api/habits/:id — Update habit metadata or status
+  // ========================================================
+  server.patch("/:id", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
+      assertValidIanaTimeZone(user.timezone);
+      const userLocalToday = getUserLocalToday(user.timezone);
 
       const paramResult = habitIdParamSchema.safeParse(request.params);
       if (!paramResult.success) {
@@ -135,52 +279,19 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
 
       const habitId = paramResult.data.id;
 
-      const [habit] = await db
+      // Ownership check: must exist and belong to authenticated user
+      const [existingHabit] = await db
         .select()
         .from(habits)
         .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
         .limit(1);
 
-      if (!habit) {
+      if (!existingHabit) {
         return reply.status(404).send({
           error: "Habit not found",
           code: "NOT_FOUND",
         });
       }
-
-      return reply.status(200).send({
-        habit,
-      });
-    } catch (err: unknown) {
-      if (err instanceof IdentityError) {
-        return reply.status(err.statusCode).send({
-          error: err.message,
-          code: err.code,
-        });
-      }
-
-      server.log.error(err, "Failed to get habit");
-      return reply.status(500).send({
-        error: "An unexpected error occurred while retrieving the habit",
-        code: "INTERNAL_SERVER_ERROR",
-      });
-    }
-  });
-
-  // PATCH /api/habits/:id — Update an existing habit
-  server.patch("/:id", async (request, reply) => {
-    try {
-      const user = await resolveUserIdentity(request);
-
-      const paramResult = habitIdParamSchema.safeParse(request.params);
-      if (!paramResult.success) {
-        return reply.status(400).send({
-          error: "Invalid habit ID format",
-          code: "INVALID_ID",
-        });
-      }
-
-      const habitId = paramResult.data.id;
 
       const parseResult = updateHabitSchema.safeParse(request.body);
       if (!parseResult.success) {
@@ -196,36 +307,56 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         });
       }
 
-      // Check existence and ownership before updating (return 404 on missing or IDOR)
-      const [existing] = await db
-        .select({ id: habits.id })
-        .from(habits)
-        .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
-        .limit(1);
-
-      if (!existing) {
-        return reply.status(404).send({
-          error: "Habit not found",
-          code: "NOT_FOUND",
-        });
-      }
-
-      const updateData: Partial<typeof habits.$inferInsert> = {
+      const updates: {
+        title?: string;
+        description?: string | null;
+        status?: "ACTIVE" | "ARCHIVED";
+        updatedAt: Date;
+      } = {
         updatedAt: new Date(),
       };
 
-      if (parseResult.data.title !== undefined) updateData.title = parseResult.data.title;
-      if (parseResult.data.description !== undefined) updateData.description = parseResult.data.description;
-      if (parseResult.data.status !== undefined) updateData.status = parseResult.data.status;
+      if (parseResult.data.title !== undefined) {
+        updates.title = parseResult.data.title;
+      }
+      if (parseResult.data.description !== undefined) {
+        updates.description = parseResult.data.description;
+      }
+      if (parseResult.data.status !== undefined) {
+        updates.status = parseResult.data.status;
+      }
 
-      const [updatedHabit] = await db
+      const [updated] = await db
         .update(habits)
-        .set(updateData)
+        .set(updates)
         .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
         .returning();
 
+      // Recalculate streaks and todayCompleted
+      const completions = await db
+        .select({ completedDate: habitCompletions.completedDate })
+        .from(habitCompletions)
+        .where(eq(habitCompletions.habitId, habitId))
+        .orderBy(habitCompletions.completedDate);
+
+      const dates = completions.map((c) => c.completedDate);
+      const streaks = calculateStreaks(dates, userLocalToday);
+      const todayCompleted = dates.includes(userLocalToday);
+
       return reply.status(200).send({
-        habit: updatedHabit,
+        habit: {
+          id: updated.id,
+          userId: updated.userId,
+          title: updated.title,
+          description: updated.description,
+          frequency: updated.frequency,
+          status: updated.status,
+          currentStreak: streaks.currentStreak,
+          longestStreak: streaks.longestStreak,
+          todayCompleted,
+          createdAt: updated.createdAt.toISOString(),
+          updatedAt: updated.updatedAt.toISOString(),
+        },
       });
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
@@ -243,7 +374,9 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
     }
   });
 
-  // DELETE /api/habits/:id — Hard-delete a habit (cascades completions at DB level)
+  // ========================================================
+  // DELETE /api/habits/:id — Permanently delete habit (cascade)
+  // ========================================================
   server.delete("/:id", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
@@ -271,10 +404,7 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         });
       }
 
-      return reply.status(200).send({
-        success: true,
-        id: habitId,
-      });
+      return reply.status(204).send();
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
         return reply.status(err.statusCode).send({
@@ -291,10 +421,14 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
     }
   });
 
-  // POST /api/habits/:id/completions — Mark habit complete for a calendar date (idempotent)
+  // ========================================================
+  // POST /api/habits/:id/completions — Idempotently record completion
+  // ========================================================
   server.post("/:id/completions", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
+      assertValidIanaTimeZone(user.timezone);
+      const userLocalToday = getUserLocalToday(user.timezone);
 
       const paramResult = habitIdParamSchema.safeParse(request.params);
       if (!paramResult.success) {
@@ -308,7 +442,7 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
 
       // Ownership check: habit must exist and belong to authenticated user
       const [habit] = await db
-        .select({ id: habits.id })
+        .select()
         .from(habits)
         .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
         .limit(1);
@@ -317,6 +451,14 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         return reply.status(404).send({
           error: "Habit not found",
           code: "NOT_FOUND",
+        });
+      }
+
+      // Business rule: Archived habits cannot be completed
+      if (habit.status !== "ACTIVE") {
+        return reply.status(400).send({
+          error: "Cannot complete an archived habit",
+          code: "HABIT_ARCHIVED",
         });
       }
 
@@ -336,39 +478,98 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
 
       const { date } = parseResult.data;
 
-      // Idempotent insertion using ON CONFLICT DO NOTHING against unique(habitId, completedDate)
-      const [inserted] = await db
-        .insert(habitCompletions)
-        .values({
-          habitId,
-          completedDate: date,
-        })
-        .onConflictDoNothing({
-          target: [habitCompletions.habitId, habitCompletions.completedDate],
-        })
-        .returning();
-
-      if (inserted) {
-        return reply.status(201).send({
-          completion: inserted,
+      // Business rule: Cannot complete future calendar dates relative to userLocalToday
+      if (date > userLocalToday) {
+        return reply.status(400).send({
+          error: "Completion date cannot be in the future",
+          code: "CANNOT_COMPLETE_FUTURE_DATE",
         });
       }
 
-      // Already completed for this date: return existing completion (idempotent HTTP 200)
-      const [existing] = await db
-        .select()
-        .from(habitCompletions)
-        .where(
-          and(
-            eq(habitCompletions.habitId, habitId),
-            eq(habitCompletions.completedDate, date)
-          )
-        )
-        .limit(1);
+      // Business rule: Cannot complete before habitEligibilityStartDate (local creation date)
+      const habitEligibilityStartDate = formatCalendarDateInTimeZone(
+        habit.createdAt,
+        user.timezone
+      );
 
-      return reply.status(200).send({
-        completion: existing,
-      });
+      if (date < habitEligibilityStartDate) {
+        return reply.status(400).send({
+          error: "Completion date cannot precede habit creation date",
+          code: "CANNOT_COMPLETE_BEFORE_HABIT_CREATION",
+        });
+      }
+
+      // Concurrency and idempotency handling
+      try {
+        const [inserted] = await db
+          .insert(habitCompletions)
+          .values({
+            habitId,
+            completedDate: date,
+          })
+          .onConflictDoNothing({
+            target: [habitCompletions.habitId, habitCompletions.completedDate],
+          })
+          .returning();
+
+        if (inserted) {
+          return reply.status(201).send({
+            completion: {
+              id: inserted.id,
+              habitId: inserted.habitId,
+              completedDate: inserted.completedDate,
+              completedAt: inserted.completedAt.toISOString(),
+            },
+          });
+        }
+
+        // Already exists: return existing record with 200 OK
+        const [existing] = await db
+          .select()
+          .from(habitCompletions)
+          .where(
+            and(
+              eq(habitCompletions.habitId, habitId),
+              eq(habitCompletions.completedDate, date)
+            )
+          )
+          .limit(1);
+
+        return reply.status(200).send({
+          completion: {
+            id: existing.id,
+            habitId: existing.habitId,
+            completedDate: existing.completedDate,
+            completedAt: existing.completedAt.toISOString(),
+          },
+        });
+      } catch (dbErr: any) {
+        // Safe handling of concurrent race condition (23505 unique_violation)
+        if (dbErr?.code === "23505" || dbErr?.cause?.code === "23505") {
+          const [existing] = await db
+            .select()
+            .from(habitCompletions)
+            .where(
+              and(
+                eq(habitCompletions.habitId, habitId),
+                eq(habitCompletions.completedDate, date)
+              )
+            )
+            .limit(1);
+
+          if (existing) {
+            return reply.status(200).send({
+              completion: {
+                id: existing.id,
+                habitId: existing.habitId,
+                completedDate: existing.completedDate,
+                completedAt: existing.completedAt.toISOString(),
+              },
+            });
+          }
+        }
+        throw dbErr;
+      }
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
         return reply.status(err.statusCode).send({
@@ -385,7 +586,9 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
     }
   });
 
-  // DELETE /api/habits/:id/completions/:date — Undo/delete completion for a calendar date
+  // ========================================================
+  // DELETE /api/habits/:id/completions/:date — Idempotently undo completion
+  // ========================================================
   server.delete("/:id/completions/:date", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
@@ -415,29 +618,17 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         });
       }
 
-      // Delete the completion record for this habit, user, and date
-      const [deleted] = await db
+      // Idempotently delete completion record
+      await db
         .delete(habitCompletions)
         .where(
           and(
             eq(habitCompletions.habitId, habitId),
             eq(habitCompletions.completedDate, date)
           )
-        )
-        .returning({ id: habitCompletions.id });
+        );
 
-      if (!deleted) {
-        return reply.status(404).send({
-          error: "Completion not found",
-          code: "NOT_FOUND",
-        });
-      }
-
-      return reply.status(200).send({
-        success: true,
-        habitId,
-        completedDate: date,
-      });
+      return reply.status(204).send();
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
         return reply.status(err.statusCode).send({
@@ -448,16 +639,20 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
 
       server.log.error(err, "Failed to delete habit completion");
       return reply.status(500).send({
-        error: "An unexpected error occurred while undoing habit completion",
+        error: "An unexpected error occurred while deleting the completion",
         code: "INTERNAL_SERVER_ERROR",
       });
     }
   });
 
-  // GET /api/habits/:id/history — Retrieve completion history for habit (bounded trailing window)
+  // ========================================================
+  // GET /api/habits/:id/history — Bounded history with full lifetime streaks
+  // ========================================================
   server.get("/:id/history", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
+      assertValidIanaTimeZone(user.timezone);
+      const userLocalToday = getUserLocalToday(user.timezone);
 
       const paramResult = habitIdParamSchema.safeParse(request.params);
       if (!paramResult.success) {
@@ -471,7 +666,7 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
 
       // Ownership check: habit must exist and belong to authenticated user
       const [habit] = await db
-        .select({ id: habits.id })
+        .select()
         .from(habits)
         .where(and(eq(habits.id, habitId), eq(habits.userId, user.id)))
         .limit(1);
@@ -483,53 +678,70 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         });
       }
 
-      const queryResult = habitHistoryQuerySchema.safeParse(request.query);
-      const days = queryResult.success ? queryResult.data.days : 7;
+      const queryResult = habitHistoryQuerySchema.safeParse(request.query ?? {});
+      if (!queryResult.success) {
+        const details = queryResult.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        }));
 
-      // Generate the bounded trailing dates array (descending from today)
-      const now = new Date();
-      const dates: string[] = [];
-      for (let i = 0; i < days; i++) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        dates.push(`${year}-${month}-${day}`);
+        return reply.status(400).send({
+          error: "Invalid history query parameters",
+          code: "VALIDATION_ERROR",
+          details,
+        });
       }
 
-      const oldestDate = dates[dates.length - 1];
+      const { days } = queryResult.data;
 
-      // Query completions for this habit within the window
-      const completions = await db
-        .select()
+      // Fetch complete completion history for accurate lifetime streak calculations
+      const allCompletions = await db
+        .select({
+          completedDate: habitCompletions.completedDate,
+          completedAt: habitCompletions.completedAt,
+        })
         .from(habitCompletions)
-        .where(
-          and(
-            eq(habitCompletions.habitId, habitId),
-            gte(habitCompletions.completedDate, oldestDate)
-          )
-        )
-        .orderBy(desc(habitCompletions.completedDate));
+        .where(eq(habitCompletions.habitId, habitId))
+        .orderBy(habitCompletions.completedDate);
 
-      const completionMap = new Map(
-        completions.map((c) => [c.completedDate, c])
+      const allDates = allCompletions.map((c) => c.completedDate);
+      const streaks = calculateStreaks(allDates, userLocalToday);
+
+      const habitEligibilityStartDate = formatCalendarDateInTimeZone(
+        habit.createdAt,
+        user.timezone
       );
 
-      const history = dates.map((dateStr) => {
-        const comp = completionMap.get(dateStr);
-        return {
-          date: dateStr,
-          completed: !!comp,
-          completedAt: comp ? comp.completedAt : null,
-        };
-      });
+      const completionMap = new Map(
+        allCompletions.map((c) => [c.completedDate, c.completedAt])
+      );
+
+      // Generate bounded history window of requested length ending on userLocalToday (descending order)
+      const history = [];
+      const startDate = addCalendarDays(userLocalToday, -(days - 1));
+
+      for (let i = 0; i < days; i++) {
+        const curDate = addCalendarDays(userLocalToday, -i);
+        const completedAt = completionMap.get(curDate);
+        const isCompleted = !!completedAt;
+        const isEligible = curDate >= habitEligibilityStartDate;
+
+        history.push({
+          date: curDate,
+          completed: isCompleted,
+          eligible: isEligible,
+          completedAt: completedAt ? completedAt.toISOString() : null,
+        });
+      }
 
       return reply.status(200).send({
-        habitId,
+        habitId: habit.id,
         days,
-        startDate: oldestDate,
-        endDate: dates[0],
+        startDate,
+        endDate: userLocalToday,
+        currentStreak: streaks.currentStreak,
+        longestStreak: streaks.longestStreak,
+        eligibilityStartDate: habitEligibilityStartDate,
         history,
       });
     } catch (err: unknown) {
