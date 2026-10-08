@@ -358,7 +358,6 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
 
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
-      { path: "/calendar", title: "Calendar & Agenda", milestone: "Phase 3 Milestone" },
       { path: "/notes", title: "Notes & Focus Journal", milestone: "Phase 4 Milestone" },
       { path: "/expenses", title: "Expenses & Budgeting", milestone: "Phase 4 Milestone" },
       { path: "/health", title: "Health & Recovery", milestone: "Phase 5 Milestone" },

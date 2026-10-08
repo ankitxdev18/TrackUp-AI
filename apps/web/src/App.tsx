@@ -1,6 +1,5 @@
 import {
   BookOpen,
-  Calendar,
   Compass,
   HeartPulse,
   Receipt,
@@ -9,6 +8,7 @@ import {
 
 import { AppShell } from "./components/AppShell";
 import { AuthPage } from "./pages/AuthPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
 import { GoalDetailPage } from "./pages/GoalDetailPage";
@@ -105,12 +105,7 @@ function AppRoutes() {
     case "/calendar":
       return (
         <AppShell>
-          <FeaturePlaceholder
-            title="Calendar & Agenda"
-            description="Unified schedule view integrating time-blocked focus sessions, upcoming deadlines, and daily agenda timelines."
-            icon={Calendar}
-            plannedMilestone="Phase 3 Milestone"
-          />
+          <CalendarPage />
         </AppShell>
       );
 
