@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   pgTable,
@@ -20,6 +21,7 @@ import {
  * - email: Normalized, case-insensitively unique account lookup key (length <= 255)
  * - password_hash: Argon2id hash storage (populated in future authentication slices)
  * - name: Display name of the user
+ * - timezone: Authoritative IANA user timezone (defaults to 'UTC', length <= 100)
  * - is_active: Suspension/lifecycle flag (default true)
  * - created_at: Creation timestamp with timezone
  * - updated_at: Last modification timestamp with timezone
@@ -31,6 +33,7 @@ export const users = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     name: varchar("name", { length: 255 }).notNull(),
+    timezone: varchar("timezone", { length: 100 }).default("UTC").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .defaultNow()
@@ -244,6 +247,8 @@ export const habits = pgTable(
       .notNull(),
   },
   (table) => [
+    check("habits_frequency_check", sql`${table.frequency} = 'DAILY'`),
+    check("habits_status_check", sql`${table.status} IN ('ACTIVE', 'ARCHIVED')`),
     index("habits_user_id_idx").on(table.userId),
     index("habits_user_status_idx").on(table.userId, table.status),
   ]
@@ -253,15 +258,16 @@ export type Habit = typeof habits.$inferSelect;
 export type NewHabit = typeof habits.$inferInsert;
 
 /**
- * TrackUp Habit Completion Entity Schema (Habits Milestone 1 / H01-A)
+ * TrackUp Habit Completion Entity Schema (Habits Milestone H02)
  *
  * Implements discrete calendar-day completion events:
  * - id: UUIDv4 primary key
  * - habitId: Foreign key reference to habits.id with cascade on delete
- * - userId: Foreign key reference to users.id with cascade on delete
- * - completedDate: ISO calendar date string 'YYYY-MM-DD'
+ * - completedDate: PostgreSQL calendar date
  * - completedAt: Timestamp of completion with timezone
  * - createdAt: Timestamp of record creation
+ *
+ * Tenant ownership is derived strictly through habits.userId (no denormalized user_id column).
  */
 export const habitCompletions = pgTable(
   "habit_completions",
@@ -270,10 +276,7 @@ export const habitCompletions = pgTable(
     habitId: uuid("habit_id")
       .notNull()
       .references(() => habits.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    completedDate: varchar("completed_date", { length: 10 }).notNull(),
+    completedDate: date("completed_date").notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" })
       .defaultNow()
       .notNull(),
@@ -286,11 +289,6 @@ export const habitCompletions = pgTable(
       table.habitId,
       table.completedDate
     ),
-    index("habit_completions_user_date_idx").on(
-      table.userId,
-      table.completedDate
-    ),
-    index("habit_completions_habit_id_idx").on(table.habitId),
   ]
 );
 

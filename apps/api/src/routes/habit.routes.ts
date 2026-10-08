@@ -341,7 +341,6 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         .insert(habitCompletions)
         .values({
           habitId,
-          userId: user.id,
           completedDate: date,
         })
         .onConflictDoNothing({
@@ -422,7 +421,6 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         .where(
           and(
             eq(habitCompletions.habitId, habitId),
-            eq(habitCompletions.userId, user.id),
             eq(habitCompletions.completedDate, date)
           )
         )
@@ -509,7 +507,6 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
         .where(
           and(
             eq(habitCompletions.habitId, habitId),
-            eq(habitCompletions.userId, user.id),
             gte(habitCompletions.completedDate, oldestDate)
           )
         )

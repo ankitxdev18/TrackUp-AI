@@ -712,7 +712,6 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       // Insert completion fixture directly into database
       await db.insert(habitCompletions).values({
         habitId: cascadeHabitId,
-        userId: userAId,
         completedDate: "2026-10-06",
       });
 
@@ -840,7 +839,7 @@ describe("Milestone H01-B: Habit CRUD API, Validation & Authorization Suite", ()
       expect(body.completion).toBeDefined();
       expect(body.completion.completedDate).toBe(todayStr);
       expect(body.completion.habitId).toBe(habitAId);
-      expect(body.completion.userId).toBe(userAId);
+      expect(body.completion.userId).toBeUndefined();
     });
 
     it("40. creates completion for own habit on a valid past date", async () => {
