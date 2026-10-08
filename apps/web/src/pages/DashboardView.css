@@ -912,6 +912,128 @@
   margin-bottom: var(--space-2);
 }
 
+/* Today's Schedule Widget */
+.dash-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-schedule-item {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 10px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  min-height: 44px;
+}
+
+.dash-schedule-item:hover {
+  background-color: var(--bg-surface-elevated, var(--bg-surface));
+  border-color: var(--border-active);
+}
+
+.dash-schedule-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dash-schedule-bar {
+  width: 3px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.dash-schedule-bar.color-indigo { background-color: var(--calendar-indigo, #6366f1); }
+.dash-schedule-bar.color-emerald { background-color: var(--calendar-emerald, #10b981); }
+.dash-schedule-bar.color-amber { background-color: var(--calendar-amber, #f59e0b); }
+.dash-schedule-bar.color-rose { background-color: var(--calendar-rose, #f43f5e); }
+.dash-schedule-bar.color-cyan { background-color: var(--calendar-cyan, #06b6d4); }
+.dash-schedule-bar.color-slate { background-color: var(--calendar-slate, #64748b); }
+
+.dash-schedule-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-schedule-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dash-schedule-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.dash-schedule-time-badge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dash-schedule-time-badge.all-day {
+  color: var(--primary);
+  background-color: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.dash-schedule-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.dash-schedule-location {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.dash-schedule-overflow {
+  padding-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dash-schedule-overflow-link {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+
+.dash-schedule-overflow-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 /* Today's Journal Widget */
 .dash-journal-card {
   display: flex;
@@ -1147,6 +1269,7 @@
   .dash-project-item,
   .dash-project-fill,
   .dash-journal-card,
+  .dash-schedule-item,
   .dash-skeleton-row,
   .dash-skeleton-card {
     animation: none !important;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   BookOpen,
+  Calendar as CalendarIcon,
   CheckSquare,
   FolderKanban,
   LayoutDashboard,
@@ -49,6 +50,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const navPrimary = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Calendar", href: "/calendar", icon: CalendarIcon },
     { label: "Tasks", href: "/tasks", icon: CheckSquare },
     { label: "Projects", href: "/projects", icon: FolderKanban },
     { label: "Goals", href: "/goals", icon: Target },
@@ -60,6 +62,7 @@ export function AppShell({ children }: AppShellProps) {
 
   // Derive current section name for top bar
   const getCurrentSectionTitle = () => {
+    if (path.startsWith("/calendar")) return "Calendar";
     if (path.startsWith("/tasks")) return "Tasks";
     if (path.startsWith("/habits")) return "Habits";
     if (path.startsWith("/projects")) return "Projects";
@@ -267,6 +270,14 @@ export function AppShell({ children }: AppShellProps) {
             </div>
 
             <div className="more-drawer-nav">
+              <Link
+                to="/calendar"
+                className={`drawer-nav-item ${path === "/calendar" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <CalendarIcon size={16} />
+                <span>Calendar</span>
+              </Link>
               <Link
                 to="/journal"
                 className={`drawer-nav-item ${path === "/journal" ? "active" : ""}`}

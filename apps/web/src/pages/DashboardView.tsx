@@ -16,6 +16,7 @@ import { OverdueTriage } from "./dashboard/OverdueTriage";
 import { ProjectsWidget } from "./dashboard/ProjectsWidget";
 import { TodayHabitsWidget } from "./dashboard/TodayHabitsWidget";
 import { TodayJournalWidget } from "./dashboard/TodayJournalWidget";
+import { TodayScheduleWidget } from "./dashboard/TodayScheduleWidget";
 import { TodayTasks } from "./dashboard/TodayTasks";
 import { UpcomingWidget } from "./dashboard/UpcomingWidget";
 import "./DashboardView.css";
@@ -212,6 +213,8 @@ export function DashboardView() {
             onQuickAdd={handleQuickAdd}
             onOpenModal={() => setIsModalOpen(true)}
           />
+
+          <TodayScheduleWidget />
 
           <TodayHabitsWidget />
         </div>

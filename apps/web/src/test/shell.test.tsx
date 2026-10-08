@@ -23,6 +23,12 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
           json: async () => ({ ideas: [] }),
         } as Response;
       }
+      if (url.includes("/api/calendar/events")) {
+        return {
+          ok: true,
+          json: async () => ({ events: [] }),
+        } as Response;
+      }
       return {
         ok: true,
         json: async () => ({
@@ -146,12 +152,28 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
 
       // Primary navigation links in desktop sidebar
       expect(screen.getAllByRole("link", { name: /Dashboard/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Calendar/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Tasks/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Goals/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Habits/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Journal/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Ideas/i }).length).toBeGreaterThan(0);
+
+      // Verify exact desktop sidebar primary navigation order
+      const sidebarLinks = Array.from(document.querySelectorAll(".shell-sidebar .nav-group:first-child .nav-item")).map(
+        (el) => el.getAttribute("href")
+      );
+      expect(sidebarLinks).toEqual([
+        "/dashboard",
+        "/calendar",
+        "/tasks",
+        "/projects",
+        "/goals",
+        "/habits",
+        "/journal",
+        "/ideas",
+      ]);
 
       // Persistent More navigation trigger in sidebar and mobile nav
       expect(screen.getAllByRole("button", { name: /More navigation/i }).length).toBeGreaterThan(0);
@@ -165,6 +187,51 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       await waitFor(() => {
         expect(screen.getByText("Design new landing page")).toBeInTheDocument();
       });
+    });
+
+    it("renders Calendar in desktop sidebar with active state and working navigation", async () => {
+      window.history.pushState({}, "", "/calendar");
+      render(<App />);
+
+      // Top application header breadcrumb shows Calendar
+      expect(screen.getByText("Calendar", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Desktop sidebar Calendar item is active
+      const sidebarCalendarLink = document.querySelector(".shell-sidebar .nav-item[href='/calendar']");
+      expect(sidebarCalendarLink).toBeInTheDocument();
+      expect(sidebarCalendarLink).toHaveClass("active");
+      expect(sidebarCalendarLink).toHaveAttribute("aria-current", "page");
+
+      // Navigate back to dashboard by clicking dashboard link
+      const dashboardLink = document.querySelector(".shell-sidebar .nav-item[href='/dashboard']");
+      expect(dashboardLink).toBeInTheDocument();
+      fireEvent.click(dashboardLink!);
+      expect(window.location.pathname).toBe("/dashboard");
+
+      // Now click Calendar link in sidebar and verify navigation
+      const calendarLink = document.querySelector(".shell-sidebar .nav-item[href='/calendar']");
+      fireEvent.click(calendarLink!);
+      expect(window.location.pathname).toBe("/calendar");
+    });
+
+    it("provides Calendar inside mobile More menu, navigates to /calendar, and closes More menu", async () => {
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Open mobile More drawer
+      const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
+      fireEvent.click(moreBtn);
+
+      // More drawer should be open and contain Calendar link
+      expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      const drawerCalendarLink = document.querySelector(".more-drawer-nav .drawer-nav-item[href='/calendar']");
+      expect(drawerCalendarLink).toBeInTheDocument();
+      expect(drawerCalendarLink).toHaveTextContent("Calendar");
+
+      // Clicking Calendar link navigates to /calendar and closes drawer
+      fireEvent.click(drawerCalendarLink!);
+      expect(window.location.pathname).toBe("/calendar");
+      expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
     });
 
     it("renders Journal in desktop sidebar with active state and working navigation", async () => {
