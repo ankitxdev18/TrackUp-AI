@@ -17,6 +17,12 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
           json: async () => ({ projects: [] }),
         } as Response;
       }
+      if (url.includes("/api/ideas")) {
+        return {
+          ok: true,
+          json: async () => ({ ideas: [] }),
+        } as Response;
+      }
       return {
         ok: true,
         json: async () => ({
@@ -145,6 +151,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getAllByRole("link", { name: /Projects/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Habits/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Journal/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Ideas/i }).length).toBeGreaterThan(0);
 
       // Persistent More navigation trigger in sidebar and mobile nav
       expect(screen.getAllByRole("button", { name: /More navigation/i }).length).toBeGreaterThan(0);
@@ -210,6 +217,80 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
       fireEvent.keyDown(window, { key: "Escape" });
       expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
+    });
+
+    it("renders Ideas in desktop sidebar with active state and bidirectional navigation", async () => {
+      window.history.pushState({}, "", "/ideas");
+      render(<App />);
+
+      // Top application header breadcrumb shows Ideas
+      expect(screen.getByText("Ideas", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Desktop sidebar Ideas item is active
+      const sidebarIdeasLink = document.querySelector(".shell-sidebar .nav-item[href='/ideas']");
+      expect(sidebarIdeasLink).toBeInTheDocument();
+      expect(sidebarIdeasLink).toHaveClass("active");
+      expect(sidebarIdeasLink).toHaveAttribute("aria-current", "page");
+
+      // Navigate back to tasks by clicking tasks link
+      const tasksLink = document.querySelector(".shell-sidebar .nav-item[href='/tasks']");
+      expect(tasksLink).toBeInTheDocument();
+      fireEvent.click(tasksLink!);
+      expect(window.location.pathname).toBe("/tasks");
+
+      // Now click Ideas link in sidebar and verify navigation back to /ideas
+      const ideasLink = document.querySelector(".shell-sidebar .nav-item[href='/ideas']");
+      fireEvent.click(ideasLink!);
+      expect(window.location.pathname).toBe("/ideas");
+    });
+
+    it("provides Ideas inside mobile More menu, navigates to /ideas, and closes More menu", async () => {
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Open mobile More drawer
+      const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
+      fireEvent.click(moreBtn);
+
+      // More drawer should be open and contain Ideas link
+      expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+      const drawerIdeasLink = document.querySelector(".more-drawer-nav .drawer-nav-item[href='/ideas']");
+      expect(drawerIdeasLink).toBeInTheDocument();
+      expect(drawerIdeasLink).toHaveTextContent("Ideas");
+
+      // Clicking Ideas link navigates to /ideas and closes drawer
+      fireEvent.click(drawerIdeasLink!);
+      expect(window.location.pathname).toBe("/ideas");
+      expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
+    });
+
+    it("supports cross-domain navigation between all core TrackUp areas and Ideas", async () => {
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Dashboard -> Ideas
+      const ideasLink = document.querySelector(".shell-sidebar .nav-item[href='/ideas']");
+      fireEvent.click(ideasLink!);
+      expect(window.location.pathname).toBe("/ideas");
+      expect(screen.getByText("Ideas", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Ideas -> Habits
+      const habitsLink = document.querySelector(".shell-sidebar .nav-item[href='/habits']");
+      fireEvent.click(habitsLink!);
+      expect(window.location.pathname).toBe("/habits");
+      expect(screen.getByText("Habits", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Habits -> Journal
+      const journalLink = document.querySelector(".shell-sidebar .nav-item[href='/journal']");
+      fireEvent.click(journalLink!);
+      expect(window.location.pathname).toBe("/journal");
+      expect(screen.getByText("Journal", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+
+      // Journal -> Ideas
+      const ideasLinkBack = document.querySelector(".shell-sidebar .nav-item[href='/ideas']");
+      fireEvent.click(ideasLinkBack!);
+      expect(window.location.pathname).toBe("/ideas");
+      expect(screen.getByText("Ideas", { selector: ".breadcrumb-current" })).toBeInTheDocument();
     });
 
     it("opens and closes mobile More drawer properly", async () => {
