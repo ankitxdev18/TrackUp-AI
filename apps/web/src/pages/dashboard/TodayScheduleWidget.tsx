@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AlertCircle, Calendar as CalendarIcon, Clock, MapPin } from "lucide-react";
 import { listCalendarEvents, type CalendarEvent } from "../../api/calendar";
 import {
@@ -19,8 +19,10 @@ export function TodayScheduleWidget() {
 
   // Strictly user's local calendar date YYYY-MM-DD
   const todayStr = useMemo(() => getTodayDateString(userTz), [userTz]);
+  const activeRequestId = useRef(0);
 
   const loadScheduleData = useCallback(async () => {
+    const reqId = ++activeRequestId.current;
     try {
       setLoading(true);
       setError(null);
@@ -30,12 +32,18 @@ export function TodayScheduleWidget() {
 
       // Request strictly today's temporal range
       const data = await listCalendarEvents(dayBounds.startIso, dayBounds.endIso, userTz);
-      setEvents(data);
+      if (reqId === activeRequestId.current) {
+        setEvents(data);
+      }
     } catch {
       // Safe, isolated failure without bubbling up or crashing Dashboard
-      setError("Unable to load schedule");
+      if (reqId === activeRequestId.current) {
+        setError("Unable to load schedule");
+      }
     } finally {
-      setLoading(false);
+      if (reqId === activeRequestId.current) {
+        setLoading(false);
+      }
     }
   }, [todayStr, userTz]);
 
