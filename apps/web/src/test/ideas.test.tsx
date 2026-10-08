@@ -1251,4 +1251,162 @@ describe("Milestone I04: Ideas Frontend Vertical Slice", () => {
       expect(mobileNav?.children.length).toBe(5);
     });
   });
+
+  // --------------------------------------------------
+  // HARDENING & CONCURRENCY
+  // --------------------------------------------------
+  describe("HARDENING & CONCURRENCY", () => {
+    it("47. double-clicking archive action does not produce duplicate PATCH requests", async () => {
+      let patchCount = 0;
+      let resolvePatch: (value: Response) => void;
+      const patchPromise = new Promise<Response>((resolve) => {
+        resolvePatch = resolve;
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        if (url.includes("/api/ideas")) {
+          if (method === "GET") {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ ideas: mockActiveIdeas }),
+            } as Response;
+          }
+          if (method === "PATCH") {
+            patchCount++;
+            return patchPromise;
+          }
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Ambient noise generator for focus sessions")).toBeInTheDocument();
+      });
+
+      const archiveBtn = screen.getByRole("button", {
+        name: "Archive Ambient noise generator for focus sessions",
+      });
+
+      // Rapid double click
+      fireEvent.click(archiveBtn);
+      fireEvent.click(archiveBtn);
+
+      expect(patchCount).toBe(1);
+
+      resolvePatch!({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          idea: { ...mockActiveIdeas[1], status: "ARCHIVED" },
+        }),
+      } as Response);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Ambient noise generator for focus sessions")
+        ).toBeNull();
+      });
+    });
+
+    it("48. double-clicking confirm delete does not trigger duplicate DELETE requests", async () => {
+      let deleteCount = 0;
+      let resolveDelete: (value: Response) => void;
+      const deletePromise = new Promise<Response>((resolve) => {
+        resolveDelete = resolve;
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        if (url.includes("/api/ideas")) {
+          if (method === "GET") {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ ideas: mockActiveIdeas }),
+            } as Response;
+          }
+          if (method === "DELETE") {
+            deleteCount++;
+            return deletePromise;
+          }
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Ambient noise generator for focus sessions")).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Delete Ambient noise generator for focus sessions",
+        })
+      );
+
+      const confirmDeleteBtn = screen.getByRole("button", { name: "Delete Idea" });
+
+      // Rapid double click
+      fireEvent.click(confirmDeleteBtn);
+      fireEvent.click(confirmDeleteBtn);
+
+      expect(deleteCount).toBe(1);
+
+      resolveDelete!({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      } as Response);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).toBeNull();
+      });
+    });
+
+    it("49. rapid tab switching settles cleanly on currently selected tab without race conditions", async () => {
+      setupDefaultFetchMock();
+      render(<App />);
+
+      const activeTab = screen.getByRole("tab", { name: /Active/i });
+      const archivedTab = screen.getByRole("tab", { name: /Archived/i });
+
+      // Click rapidly back and forth
+      fireEvent.click(archivedTab);
+      fireEvent.click(activeTab);
+      fireEvent.click(archivedTab);
+
+      await waitFor(() => {
+        expect(archivedTab).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByText("Self-hosted bookmark syncing plugin")).toBeInTheDocument();
+      });
+    });
+
+    it("50. unauthenticated session error (HTTP 401) surfaces friendly error without crashing page", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/ideas")) {
+          return {
+            ok: false,
+            status: 401,
+            json: async () => ({ error: "Authentication required", code: "UNAUTHENTICATED" }),
+          } as Response;
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Unable to load your ideas")).toBeInTheDocument();
+        expect(screen.getByText("Authentication required")).toBeInTheDocument();
+      });
+    });
+  });
 });

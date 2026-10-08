@@ -32,6 +32,11 @@ export const IdeasPage: React.FC = () => {
 
   const captureInputRef = useRef<HTMLInputElement>(null);
 
+  const activeTabRef = useRef<IdeaStatus>(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
   const loadIdeasForTab = useCallback(async (tab: IdeaStatus) => {
     try {
       setLoading(true);
@@ -42,10 +47,14 @@ export const IdeasPage: React.FC = () => {
       } else {
         setArchivedIdeas(data);
       }
+      if (activeTabRef.current === tab) {
+        setLoading(false);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unable to load your ideas.");
-    } finally {
-      setLoading(false);
+      if (activeTabRef.current === tab) {
+        setError(err instanceof Error ? err.message : "Unable to load your ideas.");
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -65,6 +74,7 @@ export const IdeasPage: React.FC = () => {
   };
 
   const handleArchive = async (idea: Idea) => {
+    if (pendingIdeaId) return;
     try {
       setPendingIdeaId(idea.id);
       setActionError(null);
@@ -82,6 +92,7 @@ export const IdeasPage: React.FC = () => {
   };
 
   const handleRestore = async (idea: Idea) => {
+    if (pendingIdeaId) return;
     try {
       setPendingIdeaId(idea.id);
       setActionError(null);
@@ -118,7 +129,7 @@ export const IdeasPage: React.FC = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingIdea) return;
+    if (!deletingIdea || isDeleting) return;
 
     try {
       setIsDeleting(true);
