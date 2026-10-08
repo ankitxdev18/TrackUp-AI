@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
+import { calendarRoutes } from "./routes/calendar.routes.js";
 import { goalRoutes } from "./routes/goal.routes.js";
 import { habitRoutes } from "./routes/habit.routes.js";
 import { ideasRoutes } from "./routes/ideas.routes.js";
@@ -61,6 +62,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   server.register(authRoutes, { prefix: "/api/auth" });
+  server.register(calendarRoutes, { prefix: "/api/calendar/events" });
   server.register(goalRoutes, { prefix: "/api/goals" });
   server.register(habitRoutes, { prefix: "/api/habits" });
   server.register(ideasRoutes, { prefix: "/api/ideas" });
