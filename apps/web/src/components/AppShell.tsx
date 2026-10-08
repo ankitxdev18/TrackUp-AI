@@ -4,6 +4,7 @@ import {
   CheckSquare,
   FolderKanban,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   MoreHorizontal,
   Settings,
@@ -53,6 +54,7 @@ export function AppShell({ children }: AppShellProps) {
     { label: "Goals", href: "/goals", icon: Target },
     { label: "Habits", href: "/habits", icon: Sparkles },
     { label: "Journal", href: "/journal", icon: BookOpen },
+    { label: "Ideas", href: "/ideas", icon: Lightbulb },
   ];
 
 
@@ -64,6 +66,7 @@ export function AppShell({ children }: AppShellProps) {
     if (path.startsWith("/goals")) return "Goals";
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/journal")) return "Journal";
+    if (path.startsWith("/ideas")) return "Ideas";
     return "Dashboard";
   };
 
@@ -279,6 +282,14 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Sparkles size={16} />
                 <span>Habits</span>
+              </Link>
+              <Link
+                to="/ideas"
+                className={`drawer-nav-item ${path === "/ideas" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <Lightbulb size={16} />
+                <span>Ideas</span>
               </Link>
               <Link
                 to="/settings"

@@ -14,6 +14,7 @@ import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
 import { GoalDetailPage } from "./pages/GoalDetailPage";
 import { GoalsPage } from "./pages/GoalsPage";
 import { HabitsPage } from "./pages/HabitsPage";
+import { IdeasPage } from "./pages/IdeasPage";
 import { JournalPage } from "./pages/journal/JournalPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
@@ -91,6 +92,13 @@ function AppRoutes() {
       return (
         <AppShell>
           <JournalPage />
+        </AppShell>
+      );
+
+    case "/ideas":
+      return (
+        <AppShell>
+          <IdeasPage />
         </AppShell>
       );
 
