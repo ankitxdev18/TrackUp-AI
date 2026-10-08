@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   pgTable,
@@ -375,4 +376,70 @@ export const ideas = pgTable(
 export type Idea = typeof ideas.$inferSelect;
 export type NewIdea = typeof ideas.$inferInsert;
 
+/**
+ * TrackUp Calendar Event Entity Schema (Calendar Milestone 2 / C02)
+ *
+ * Implements scheduled allocation of attention representing the temporal "when" layer:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - title: Required event summary/headline (1-255 chars)
+ * - description: Optional narrative description/notes (plain text)
+ * - location: Optional physical/virtual meeting location (<= 500 chars)
+ * - color: Color category token (default 'indigo')
+ * - isAllDay: Flag distinguishing timed vs all-day events (default false)
+ * - startTime: Absolute timestamp instant with timezone for timed events (nullable)
+ * - endTime: Absolute timestamp instant with timezone for timed events (nullable)
+ * - timeZone: Optional IANA timezone identifier for timed events (<= 100 chars)
+ * - startDate: User-local calendar start date 'YYYY-MM-DD' for all-day events (nullable)
+ * - endDate: User-local calendar end date 'YYYY-MM-DD' for all-day events (nullable)
+ * - createdAt: Timestamp of record creation with timezone (server-generated)
+ * - updatedAt: Timestamp of last modification with timezone (server-generated)
+ */
+export const calendarEvents = pgTable(
+  "calendar_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    location: varchar("location", { length: 500 }),
+    color: varchar("color", { length: 20 }).default("indigo").notNull(),
+    isAllDay: boolean("is_all_day").default(false).notNull(),
+    startTime: timestamp("start_time", { withTimezone: true, mode: "date" }),
+    endTime: timestamp("end_time", { withTimezone: true, mode: "date" }),
+    timeZone: varchar("time_zone", { length: 100 }),
+    startDate: varchar("start_date", { length: 10 }),
+    endDate: varchar("end_date", { length: 10 }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "calendar_events_timed_invariant_check",
+      sql`(${table.isAllDay} = true) OR (${table.startTime} IS NOT NULL AND ${table.endTime} IS NOT NULL AND ${table.startTime} < ${table.endTime} AND ${table.startDate} IS NULL AND ${table.endDate} IS NULL)`
+    ),
+    check(
+      "calendar_events_allday_invariant_check",
+      sql`(${table.isAllDay} = false) OR (${table.startDate} IS NOT NULL AND ${table.endDate} IS NOT NULL AND ${table.startDate} <= ${table.endDate} AND ${table.startTime} IS NULL AND ${table.endTime} IS NULL)`
+    ),
+    index("calendar_events_user_timed_idx").on(
+      table.userId,
+      table.startTime,
+      table.endTime
+    ),
+    index("calendar_events_user_allday_idx").on(
+      table.userId,
+      table.startDate,
+      table.endDate
+    ),
+  ]
+);
 
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type NewCalendarEvent = typeof calendarEvents.$inferInsert;
