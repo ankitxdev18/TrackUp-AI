@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import { env } from "./config/env.js";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { calendarRoutes } from "./routes/calendar.routes.js";
@@ -21,7 +22,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   server.register(fastifyCookie, {
-    secret: process.env.COOKIE_SECRET || "trackup-session-cookie-secret-dev",
+    secret: env.COOKIE_SECRET,
     parseOptions: {},
   });
 

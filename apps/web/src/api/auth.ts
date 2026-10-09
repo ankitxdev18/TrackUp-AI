@@ -18,6 +18,7 @@ export interface RegisterPayload {
 export async function loginApi(credentials: LoginCredentials): Promise<AuthUser> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -36,6 +37,7 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthUser>
 export async function getMeApi(): Promise<AuthUser | null> {
   try {
     const res = await fetch("/api/auth/me", {
+      credentials: "include",
       headers: {
         Accept: "application/json",
       },
@@ -56,6 +58,7 @@ export async function logoutApi(): Promise<void> {
   try {
     await fetch("/api/auth/logout", {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -70,6 +73,7 @@ export async function logoutApi(): Promise<void> {
 export async function registerApi(payload: RegisterPayload): Promise<AuthUser> {
   const res = await fetch("/api/auth/register", {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",

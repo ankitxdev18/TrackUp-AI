@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
+import { getMeApi, loginApi, logoutApi, registerApi } from "../api/auth";
 
 describe("M2.5 Frontend Authentication & Session Suite", () => {
   beforeEach(() => {
@@ -222,4 +223,67 @@ describe("M2.5 Frontend Authentication & Session Suite", () => {
       });
     });
   });
+
+  describe("Authentication API Client Credentials (P1-01)", () => {
+    it("loginApi sends credentials: 'include'", async () => {
+      let capturedOptions: RequestInit | undefined;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+        capturedOptions = options;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ user: { id: "1", email: "test@example.com", name: "Test" } }),
+        } as Response;
+      });
+
+      await loginApi({ email: "test@example.com", password: "Password123!" });
+      expect(capturedOptions?.credentials).toBe("include");
+    });
+
+    it("getMeApi sends credentials: 'include'", async () => {
+      let capturedOptions: RequestInit | undefined;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+        capturedOptions = options;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ user: { id: "1", email: "test@example.com", name: "Test" } }),
+        } as Response;
+      });
+
+      await getMeApi();
+      expect(capturedOptions?.credentials).toBe("include");
+    });
+
+    it("logoutApi sends credentials: 'include'", async () => {
+      let capturedOptions: RequestInit | undefined;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+        capturedOptions = options;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ message: "Logged out" }),
+        } as Response;
+      });
+
+      await logoutApi();
+      expect(capturedOptions?.credentials).toBe("include");
+    });
+
+    it("registerApi sends credentials: 'include'", async () => {
+      let capturedOptions: RequestInit | undefined;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+        capturedOptions = options;
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ user: { id: "1", email: "test@example.com", name: "Test" } }),
+        } as Response;
+      });
+
+      await registerApi({ name: "Test", email: "test@example.com", password: "Password123!" });
+      expect(capturedOptions?.credentials).toBe("include");
+    });
+  });
 });
+
