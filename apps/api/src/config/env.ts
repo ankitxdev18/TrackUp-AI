@@ -5,6 +5,54 @@ import { z } from "zod";
 dotenv.config();
 
 export const DEV_DEFAULT_COOKIE_SECRET = "trackup-session-cookie-secret-dev";
+export const DEV_DEFAULT_CORS_ORIGIN = "http://localhost:5173,http://127.0.0.1:5173";
+
+/**
+ * Validates and normalizes comma-separated CORS origins.
+ * Rejects wildcards ('*') and ensures each origin is a valid http:// or https:// URL.
+ * Strips trailing slashes to guarantee exact origin matching.
+ */
+export function parseCorsOrigins(raw: string): string[] {
+  const origins = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  if (origins.length === 0) {
+    throw new Error("CORS_ORIGIN must contain at least one valid origin URL");
+  }
+
+  for (const origin of origins) {
+    if (origin === "*") {
+      throw new Error(
+        "CORS_ORIGIN must not be a wildcard '*' when credentials are supported"
+      );
+    }
+    try {
+      const url = new URL(origin);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        throw new Error(
+          `Invalid protocol in CORS origin '${origin}'. Origins must use http:// or https://`
+        );
+      }
+      if (url.pathname !== "" && url.pathname !== "/") {
+        throw new Error(
+          `CORS origin '${origin}' must not contain a path component (got '${url.pathname}')`
+        );
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("CORS origin")) {
+        throw err;
+      }
+      throw new Error(
+        `Invalid CORS origin '${origin}': must be a valid http:// or https:// URL`
+      );
+    }
+  }
+
+  // Normalize: extract standard origin (stripping trailing slash or path)
+  return origins.map((origin) => new URL(origin).origin);
+}
 
 export const envSchema = z
   .object({
@@ -38,6 +86,18 @@ export const envSchema = z
      * - Defaults to a safe explicit development string if omitted.
      */
     COOKIE_SECRET: z.string().optional(),
+    /**
+     * CORS_ORIGIN:
+     * Comma-separated list of trusted frontend origins.
+     * In production (NODE_ENV === 'production'):
+     * - Strictly required; no development fallback is permitted.
+     * - Wildcard '*' is strictly forbidden.
+     * - Each entry must be a valid http:// or https:// origin URL.
+     * In development/test:
+     * - Defaults to 'http://localhost:5173,http://127.0.0.1:5173' if omitted.
+     * - If specified, wildcards are rejected and origins are validated.
+     */
+    CORS_ORIGIN: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === "production") {
@@ -57,15 +117,53 @@ export const envSchema = z
             "COOKIE_SECRET must be at least 32 characters in length in production",
         });
       }
+
+      const cors = data.CORS_ORIGIN?.trim();
+      if (!cors) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CORS_ORIGIN"],
+          message:
+            "CORS_ORIGIN is required in production and must specify trusted frontend origin(s)",
+        });
+      } else {
+        try {
+          parseCorsOrigins(cors);
+        } catch (err: unknown) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["CORS_ORIGIN"],
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } else if (data.CORS_ORIGIN && data.CORS_ORIGIN.trim().length > 0) {
+      try {
+        parseCorsOrigins(data.CORS_ORIGIN.trim());
+      } catch (err: unknown) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CORS_ORIGIN"],
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   })
   .transform((data) => {
+    const rawCors =
+      data.CORS_ORIGIN && data.CORS_ORIGIN.trim().length > 0
+        ? data.CORS_ORIGIN.trim()
+        : DEV_DEFAULT_CORS_ORIGIN;
+    const corsOrigins = parseCorsOrigins(rawCors);
+
     return {
       ...data,
       COOKIE_SECRET:
         data.COOKIE_SECRET && data.COOKIE_SECRET.trim().length > 0
           ? data.COOKIE_SECRET
           : DEV_DEFAULT_COOKIE_SECRET,
+      CORS_ORIGIN: rawCors,
+      corsOrigins,
     };
   });
 

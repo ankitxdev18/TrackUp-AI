@@ -132,6 +132,7 @@ describe("Environment Configuration (Zod)", () => {
         ...baseValidEnv,
         NODE_ENV: "production",
         COOKIE_SECRET: validProdSecret,
+        CORS_ORIGIN: "https://trackup.app",
       });
       expect(config.COOKIE_SECRET).toBe(validProdSecret);
     });
@@ -150,6 +151,114 @@ describe("Environment Configuration (Zod)", () => {
         expect(message).not.toContain(sensitiveShortSecret);
         expect(message).toContain("COOKIE_SECRET must be at least 32 characters");
       }
+    });
+  });
+
+  describe("CORS_ORIGIN Validation", () => {
+    const validProdSecret = "a-very-secure-random-production-secret-value-32chars!";
+
+    it("defaults to localhost origins in development when omitted", () => {
+      const config = validateEnv({
+        ...baseValidEnv,
+        NODE_ENV: "development",
+      });
+      expect(config.CORS_ORIGIN).toBe("http://localhost:5173,http://127.0.0.1:5173");
+      expect(config.corsOrigins).toEqual([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+      ]);
+    });
+
+    it("parses and normalizes custom valid CORS_ORIGIN", () => {
+      const config = validateEnv({
+        ...baseValidEnv,
+        CORS_ORIGIN: "https://trackup.app, https://app.trackup.com/",
+      });
+      expect(config.corsOrigins).toEqual([
+        "https://trackup.app",
+        "https://app.trackup.com",
+      ]);
+    });
+
+    it("strictly requires CORS_ORIGIN in production", () => {
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          NODE_ENV: "production",
+          COOKIE_SECRET: validProdSecret,
+        })
+      ).toThrowError(/CORS_ORIGIN is required in production/);
+
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          NODE_ENV: "production",
+          COOKIE_SECRET: validProdSecret,
+          CORS_ORIGIN: "",
+        })
+      ).toThrowError(/CORS_ORIGIN is required in production/);
+    });
+
+    it("accepts valid CORS_ORIGIN in production", () => {
+      const config = validateEnv({
+        ...baseValidEnv,
+        NODE_ENV: "production",
+        COOKIE_SECRET: validProdSecret,
+        CORS_ORIGIN: "https://trackup.app",
+      });
+      expect(config.corsOrigins).toEqual(["https://trackup.app"]);
+    });
+
+    it("rejects wildcard '*' origin in development and production", () => {
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          CORS_ORIGIN: "*",
+        })
+      ).toThrowError(/wildcard/);
+
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          CORS_ORIGIN: "http://localhost:5173, *",
+        })
+      ).toThrowError(/wildcard/);
+
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          NODE_ENV: "production",
+          COOKIE_SECRET: validProdSecret,
+          CORS_ORIGIN: "*",
+        })
+      ).toThrowError(/wildcard/);
+    });
+
+    it("rejects malformed origin URLs", () => {
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          CORS_ORIGIN: "not-a-valid-url",
+        })
+      ).toThrowError(/valid http:\/\/ or https:\/\/ URL/);
+    });
+
+    it("rejects non-http/https protocols", () => {
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          CORS_ORIGIN: "ftp://localhost:5173",
+        })
+      ).toThrowError(/Origins must use http:\/\/ or https:\/\//);
+    });
+
+    it("rejects origins containing URL paths", () => {
+      expect(() =>
+        validateEnv({
+          ...baseValidEnv,
+          CORS_ORIGIN: "https://trackup.app/api",
+        })
+      ).toThrowError(/must not contain a path component/);
     });
   });
 });

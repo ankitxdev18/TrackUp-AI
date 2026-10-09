@@ -143,7 +143,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Build an autonomous life tracker",
           description: "Concept exploring personal telemetry without overhead.",
@@ -170,7 +170,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resOmitted = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Quick brainstorm without description",
         },
@@ -184,7 +184,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resNull = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Brainstorm with explicit null description",
           description: null,
@@ -198,7 +198,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resWhitespace = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Brainstorm with whitespace description",
           description: "   \n\t   ",
@@ -214,7 +214,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Default status verification spark",
         },
@@ -228,7 +228,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Ownership assignment verification",
         },
@@ -242,7 +242,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Malicious injection attempt",
           userId: userBId,
@@ -257,7 +257,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Attempt to directly archive on creation",
           status: "ARCHIVED",
@@ -272,7 +272,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           description: "Missing title completely",
         },
@@ -286,7 +286,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resEmpty = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "",
         },
@@ -297,7 +297,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resWhitespace = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "   \t\n   ",
         },
@@ -311,7 +311,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: longTitle,
         },
@@ -326,7 +326,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Normal Title",
           description: longDescription,
@@ -341,7 +341,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resNumberTitle = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: 12345 },
       });
       expect(resNumberTitle.statusCode).toBe(400);
@@ -349,7 +349,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resObjectDesc = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Valid Title", description: { text: "invalid" } },
       });
       expect(resObjectDesc.statusCode).toBe(400);
@@ -357,7 +357,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resForbiddenFields = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Valid Title",
           projectId: "some-project-id",
@@ -431,7 +431,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -445,7 +445,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas?status=ACTIVE",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -458,7 +458,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas?status=ARCHIVED",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -472,7 +472,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas?status=COMPLETED",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -484,7 +484,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas?status=ACTIVE",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -501,7 +501,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas?status=ARCHIVED",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -514,7 +514,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resA = await app.inject({
         method: "GET",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       const bodyA = resA.json();
       expect(bodyA.ideas.every((i: any) => i.userId === userAId)).toBe(true);
@@ -522,7 +522,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resB = await app.inject({
         method: "GET",
         url: "/api/ideas",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
       });
       const bodyB = resB.json();
       expect(bodyB.ideas.every((i: any) => i.userId === userBId)).toBe(true);
@@ -562,7 +562,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${aliceIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -577,7 +577,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${validUuidMissing}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -589,7 +589,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/ideas/not-a-valid-uuid",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -601,7 +601,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${bobIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -639,7 +639,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Updated Idea Title",
         },
@@ -655,7 +655,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res1 = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           description: "Completely revised concept description.",
         },
@@ -670,7 +670,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res2 = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           description: "   ",
         },
@@ -684,7 +684,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           status: "ARCHIVED",
         },
@@ -698,7 +698,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           status: "ACTIVE",
         },
@@ -712,7 +712,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Multi-field Updated Title",
           description: "Multi-field updated description notes.",
@@ -731,7 +731,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           status: "COMPLETED",
         },
@@ -745,7 +745,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resEmpty = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "",
         },
@@ -755,7 +755,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const resWhitespace = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "   \n  ",
         },
@@ -767,7 +767,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "L".repeat(256),
         },
@@ -780,7 +780,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           description: "D".repeat(5001),
         },
@@ -793,7 +793,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Attempt Ownership Reassignment",
           userId: userBId,
@@ -808,7 +808,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           id: validUuidMissing,
         },
@@ -822,7 +822,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           createdAt: "2020-01-01T00:00:00.000Z",
         },
@@ -846,7 +846,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${bobIdea.id}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Alice Defacement",
         },
@@ -867,7 +867,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Refreshing updatedAt",
         },
@@ -884,7 +884,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${testIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -926,7 +926,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/ideas/${ideaToDeleteId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -939,7 +939,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${ideaToDeleteId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -950,7 +950,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/ideas/${validUuidMissing}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -961,7 +961,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/ideas/${bobDeleteTestIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -1000,7 +1000,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/ideas/${bobSacredIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -1011,7 +1011,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/ideas/${bobSacredIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Hacked by User A",
           description: "Overwritten content",
@@ -1027,7 +1027,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/ideas/${bobSacredIdeaId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -1039,7 +1039,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const postRes = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Attempting to create idea under Bob's account",
           userId: userBId,
@@ -1069,7 +1069,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: unicodeTitle },
       });
 
@@ -1083,7 +1083,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: hindiTitle, description: hindiDesc },
       });
 
@@ -1098,7 +1098,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: emojiTitle, description: emojiDesc },
       });
 
@@ -1113,7 +1113,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: cjkTitle, description: cjkDesc },
       });
 
@@ -1128,7 +1128,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Multiline concept testing",
           description: multilineDesc,
@@ -1145,7 +1145,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Markdown fidelity spark",
           description: markdownDesc,
@@ -1165,7 +1165,7 @@ describe("Milestone I03: Ideas API, Ownership/IDOR Protection & Lifecycle Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/ideas",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "",
           description: "Secret thought",

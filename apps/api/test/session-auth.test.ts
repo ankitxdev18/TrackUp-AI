@@ -318,7 +318,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const logoutRes = await app.inject({
         method: "POST",
         url: "/api/auth/logout",
-        headers: { cookie: String(cookie) },
+        headers: { cookie: String(cookie), origin: "http://localhost:5173" },
       });
       expect(logoutRes.statusCode).toBe(200);
 
@@ -470,11 +470,14 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       });
       const cookieB = String(loginB.headers["set-cookie"]);
 
+      const headersA = { cookie: cookieA, origin: "http://localhost:5173" };
+      const headersB = { cookie: cookieB, origin: "http://localhost:5173" };
+
       // 3. User A creates Task A and Project A
       const createProjectARes = await app.inject({
         method: "POST",
         url: "/api/projects",
-        headers: { cookie: cookieA },
+        headers: headersA,
         payload: { name: "Project Alpha" },
       });
       expect(createProjectARes.statusCode).toBe(201);
@@ -483,7 +486,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const createTaskARes = await app.inject({
         method: "POST",
         url: "/api/tasks",
-        headers: { cookie: cookieA },
+        headers: headersA,
         payload: { title: "Task Alpha", projectId: projectA.id },
       });
       expect(createTaskARes.statusCode).toBe(201);
@@ -493,7 +496,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const createProjectBRes = await app.inject({
         method: "POST",
         url: "/api/projects",
-        headers: { cookie: cookieB },
+        headers: headersB,
         payload: { name: "Project Beta" },
       });
       expect(createProjectBRes.statusCode).toBe(201);
@@ -502,7 +505,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const createTaskBRes = await app.inject({
         method: "POST",
         url: "/api/tasks",
-        headers: { cookie: cookieB },
+        headers: headersB,
         payload: { title: "Task Beta", projectId: projectB.id },
       });
       expect(createTaskBRes.statusCode).toBe(201);
@@ -512,7 +515,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const listProjectsA = await app.inject({
         method: "GET",
         url: "/api/projects",
-        headers: { cookie: cookieA },
+        headers: headersA,
       });
       const projectIdsA = listProjectsA.json().projects.map((p: any) => p.id);
       expect(projectIdsA).toContain(projectA.id);
@@ -521,7 +524,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const listTasksA = await app.inject({
         method: "GET",
         url: "/api/tasks",
-        headers: { cookie: cookieA },
+        headers: headersA,
       });
       const taskIdsA = listTasksA.json().tasks.map((t: any) => t.id);
       expect(taskIdsA).toContain(taskA.id);
@@ -531,14 +534,14 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const getTaskAAsB = await app.inject({
         method: "GET",
         url: `/api/tasks/${taskA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(getTaskAAsB.statusCode).toBe(404);
 
       const getProjectAAsB = await app.inject({
         method: "GET",
         url: `/api/projects/${projectA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(getProjectAAsB.statusCode).toBe(404);
 
@@ -546,7 +549,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const patchTaskAAsB = await app.inject({
         method: "PATCH",
         url: `/api/tasks/${taskA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
         payload: { title: "Hacked Title" },
       });
       expect(patchTaskAAsB.statusCode).toBe(404);
@@ -554,7 +557,7 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const patchProjectAAsB = await app.inject({
         method: "PATCH",
         url: `/api/projects/${projectA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
         payload: { name: "Hacked Project" },
       });
       expect(patchProjectAAsB.statusCode).toBe(404);
@@ -563,14 +566,14 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const deleteTaskAAsB = await app.inject({
         method: "DELETE",
         url: `/api/tasks/${taskA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(deleteTaskAAsB.statusCode).toBe(404);
 
       const deleteProjectAAsB = await app.inject({
         method: "DELETE",
         url: `/api/projects/${projectA.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(deleteProjectAAsB.statusCode).toBe(404);
 
@@ -578,28 +581,28 @@ describe("M2.5 Production Authentication & Session Slice", () => {
       const cleanTaskA = await app.inject({
         method: "DELETE",
         url: `/api/tasks/${taskA.id}`,
-        headers: { cookie: cookieA },
+        headers: headersA,
       });
       expect(cleanTaskA.statusCode).toBe(200);
 
       const cleanProjectA = await app.inject({
         method: "DELETE",
         url: `/api/projects/${projectA.id}`,
-        headers: { cookie: cookieA },
+        headers: headersA,
       });
       expect(cleanProjectA.statusCode).toBe(200);
 
       const cleanTaskB = await app.inject({
         method: "DELETE",
         url: `/api/tasks/${taskB.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(cleanTaskB.statusCode).toBe(200);
 
       const cleanProjectB = await app.inject({
         method: "DELETE",
         url: `/api/projects/${projectB.id}`,
-        headers: { cookie: cookieB },
+        headers: headersB,
       });
       expect(cleanProjectB.statusCode).toBe(200);
     });

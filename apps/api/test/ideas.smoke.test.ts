@@ -83,12 +83,14 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const setCookieB = loginBRes.headers["set-cookie"];
     const rawCookieB = Array.isArray(setCookieB) ? setCookieB[0] : setCookieB;
     userBCookie = (rawCookieB as string).split(";")[0];
+    const userAHeaders = { cookie: userACookie, origin: "http://localhost:5173" };
+    const userBHeaders = { cookie: userBCookie, origin: "http://localhost:5173" };
 
     // Step 2: create Idea as User A
     const createRes = await app.inject({
       method: "POST",
       url: "/api/ideas",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Voice-driven thought capture app",
         description: "Explore offline-first speech-to-text with auto-summaries.",
@@ -106,7 +108,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const bobCreateRes = await app.inject({
       method: "POST",
       url: "/api/ideas",
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
       payload: {
         title: "Bob Secret Mars Base Concept",
         description: "Restricted concept.",
@@ -119,7 +121,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const listRes = await app.inject({
       method: "GET",
       url: "/api/ideas",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(listRes.statusCode).toBe(200);
     const listBody = listRes.json();
@@ -131,7 +133,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const getRes = await app.inject({
       method: "GET",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(getRes.statusCode).toBe(200);
     expect(getRes.json().idea.id).toBe(testIdeaId);
@@ -141,7 +143,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const editTitleRes = await app.inject({
       method: "PATCH",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Whisper-powered thought capture app",
       },
@@ -155,7 +157,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const editDescRes = await app.inject({
       method: "PATCH",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         description: "Local Whisper model running in WASM on device.",
       },
@@ -169,7 +171,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const archiveRes = await app.inject({
       method: "PATCH",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         status: "ARCHIVED",
       },
@@ -181,7 +183,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const listActiveRes = await app.inject({
       method: "GET",
       url: "/api/ideas?status=ACTIVE",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(listActiveRes.statusCode).toBe(200);
     expect(
@@ -192,7 +194,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const listArchivedRes = await app.inject({
       method: "GET",
       url: "/api/ideas?status=ARCHIVED",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(listArchivedRes.statusCode).toBe(200);
     expect(
@@ -203,7 +205,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const restoreRes = await app.inject({
       method: "PATCH",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         status: "ACTIVE",
       },
@@ -215,7 +217,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const verifyActiveRes = await app.inject({
       method: "GET",
       url: "/api/ideas?status=ACTIVE",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(
       verifyActiveRes.json().ideas.some((i: any) => i.id === testIdeaId)
@@ -225,7 +227,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const deleteRes = await app.inject({
       method: "DELETE",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().success).toBe(true);
@@ -234,7 +236,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const verifyDeletedRes = await app.inject({
       method: "GET",
       url: `/api/ideas/${testIdeaId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(verifyDeletedRes.statusCode).toBe(404);
     expect(verifyDeletedRes.json().code).toBe("NOT_FOUND");
@@ -243,7 +245,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const logoutRes = await app.inject({
       method: "POST",
       url: "/api/auth/logout",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(logoutRes.statusCode).toBe(200);
 
@@ -263,18 +265,19 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
       payload: { email: userAEmail, password },
     });
     const newCookieA = (reloginARes.headers["set-cookie"] as string).split(";")[0];
+    const newHeadersA = { cookie: newCookieA, origin: "http://localhost:5173" };
 
     const crossGetRes = await app.inject({
       method: "GET",
       url: `/api/ideas/${bobIdeaId}`,
-      headers: { cookie: newCookieA },
+      headers: newHeadersA,
     });
     expect(crossGetRes.statusCode).toBe(404);
 
     const crossPatchRes = await app.inject({
       method: "PATCH",
       url: `/api/ideas/${bobIdeaId}`,
-      headers: { cookie: newCookieA },
+      headers: newHeadersA,
       payload: { title: "Attempted cross-user mutation" },
     });
     expect(crossPatchRes.statusCode).toBe(404);
@@ -282,7 +285,7 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     const crossDeleteRes = await app.inject({
       method: "DELETE",
       url: `/api/ideas/${bobIdeaId}`,
-      headers: { cookie: newCookieA },
+      headers: newHeadersA,
     });
     expect(crossDeleteRes.statusCode).toBe(404);
 

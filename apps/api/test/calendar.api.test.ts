@@ -140,7 +140,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Team Standup",
           startTime: "2026-10-15T09:00:00.000Z",
@@ -162,7 +162,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Annual Leave",
           isAllDay: true,
@@ -183,7 +183,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Default Color Check",
           startTime: "2026-10-15T10:00:00.000Z",
@@ -199,7 +199,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: unicodeTitle,
           startTime: "2026-10-15T11:00:00.000Z",
@@ -215,7 +215,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Review",
           description: unicodeDesc,
@@ -232,7 +232,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Meeting",
           location: unicodeLoc,
@@ -249,7 +249,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Multiline Event",
           description: multiline,
@@ -265,7 +265,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Timezone Event",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -281,7 +281,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Bad TZ Event",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -297,7 +297,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "    ",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -311,7 +311,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "A".repeat(256),
           startTime: "2026-10-15T15:00:00.000Z",
@@ -325,7 +325,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Long Desc",
           description: "D".repeat(5001),
@@ -340,7 +340,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Long Loc",
           location: "L".repeat(501),
@@ -355,7 +355,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Bad Color",
           color: "#ff0000",
@@ -370,7 +370,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Unknown Field",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -385,7 +385,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Spoof User",
           userId: userBId,
@@ -400,7 +400,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           id: validUuidMissing,
           title: "Client ID",
@@ -415,7 +415,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Client CreatedAt",
           createdAt: new Date().toISOString(),
@@ -430,7 +430,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Client UpdatedAt",
           updatedAt: new Date().toISOString(),
@@ -450,7 +450,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Missing Start",
           endTime: "2026-10-15T16:00:00.000Z",
@@ -463,7 +463,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Missing End",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -476,7 +476,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Zero Duration",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -490,7 +490,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Negative Duration",
           startTime: "2026-10-15T16:00:00.000Z",
@@ -504,7 +504,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Timed With startDate",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -519,7 +519,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Timed With endDate",
           startTime: "2026-10-15T15:00:00.000Z",
@@ -539,7 +539,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Missing startDate",
           isAllDay: true,
@@ -553,7 +553,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Missing endDate",
           isAllDay: true,
@@ -567,7 +567,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Inverted Dates",
           isAllDay: true,
@@ -582,7 +582,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay With startTime",
           isAllDay: true,
@@ -598,7 +598,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay With endTime",
           isAllDay: true,
@@ -614,7 +614,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Bad Format Date",
           isAllDay: true,
@@ -629,7 +629,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Feb 30",
           isAllDay: true,
@@ -644,7 +644,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Leap Day 2028",
           isAllDay: true,
@@ -660,7 +660,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Non-Leap Feb 29",
           isAllDay: true,
@@ -675,7 +675,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Single Day Event",
           isAllDay: true,
@@ -692,7 +692,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Conference Multi-Day",
           isAllDay: true,
@@ -717,7 +717,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resA = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "User A Detail Target",
           startTime: "2026-10-16T09:00:00.000Z",
@@ -729,7 +729,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resB = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           title: "User B Secret Event",
           startTime: "2026-10-16T10:00:00.000Z",
@@ -743,7 +743,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       expect(res.json().event.id).toBe(userAEventId);
@@ -754,7 +754,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${validUuidMissing}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -764,7 +764,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events/not-a-uuid",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("INVALID_ID");
@@ -774,7 +774,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${userBEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -792,7 +792,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Initial Patch Target",
           description: "Initial description",
@@ -808,7 +808,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resAllday = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Patch Target",
           isAllDay: true,
@@ -823,7 +823,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Updated Title" },
       });
       expect(res.statusCode).toBe(200);
@@ -834,7 +834,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { description: "Updated new description" },
       });
       expect(res.statusCode).toBe(200);
@@ -845,7 +845,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { description: null },
       });
       expect(res.statusCode).toBe(200);
@@ -856,7 +856,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { location: "Zoom Meeting URL: https://zoom.us/j/123" },
       });
       expect(res.statusCode).toBe(200);
@@ -867,7 +867,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { location: null },
       });
       expect(res.statusCode).toBe(200);
@@ -878,7 +878,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { color: "rose" },
       });
       expect(res.statusCode).toBe(200);
@@ -889,7 +889,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { timeZone: "America/New_York" },
       });
       expect(res.statusCode).toBe(200);
@@ -900,7 +900,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { timeZone: null },
       });
       expect(res.statusCode).toBe(200);
@@ -911,7 +911,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           startTime: "2026-10-17T11:00:00.000Z",
           endTime: "2026-10-17T12:30:00.000Z",
@@ -930,7 +930,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${alldayId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           startDate: "2026-10-25",
           endDate: "2026-10-27",
@@ -953,7 +953,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Type Conversion Target",
           startTime: "2026-10-20T09:00:00.000Z",
@@ -967,7 +967,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -989,7 +989,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -1003,7 +1003,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: false,
           startTime: "2026-10-20T14:00:00.000Z",
@@ -1025,7 +1025,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startTime: null,
@@ -1041,7 +1041,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -1055,7 +1055,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: false,
           startDate: null,
@@ -1071,7 +1071,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -1087,7 +1087,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           startTime: "2026-10-20T11:00:00.000Z", // Existing endTime is 10:00!
         },
@@ -1101,7 +1101,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           endTime: "2026-10-20T08:00:00.000Z", // Existing startTime is 09:00!
         },
@@ -1115,7 +1115,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -1129,7 +1129,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           endDate: "2026-10-18",
         },
@@ -1142,7 +1142,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           startDate: "2026-10-20",
         },
@@ -1156,7 +1156,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           isAllDay: true,
           startDate: "2026-10-20",
@@ -1169,7 +1169,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${convertTargetId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           startTime: "2026-10-20T09:00:00.000Z",
         },
@@ -1192,7 +1192,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resA = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "User A Security Patch",
           startTime: "2026-10-21T09:00:00.000Z",
@@ -1207,7 +1207,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resB = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           title: "User B Private Event",
           startTime: "2026-10-21T10:00:00.000Z",
@@ -1221,7 +1221,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userBEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Hijacked Title" },
       });
       expect(res.statusCode).toBe(404);
@@ -1232,7 +1232,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { userId: userBId },
       });
       expect(res.statusCode).toBe(400);
@@ -1242,7 +1242,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { id: validUuidMissing },
       });
       expect(res.statusCode).toBe(400);
@@ -1252,7 +1252,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { createdAt: new Date().toISOString() },
       });
       expect(res.statusCode).toBe(400);
@@ -1262,7 +1262,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Title After Timestamp Verification" },
       });
       expect(res.statusCode).toBe(200);
@@ -1276,7 +1276,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { location: "New Location Room 505" },
       });
       expect(res.statusCode).toBe(200);
@@ -1297,7 +1297,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resA = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Delete Target A",
           startTime: "2026-10-22T09:00:00.000Z",
@@ -1309,7 +1309,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resB = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           title: "Delete Target B",
           startTime: "2026-10-22T10:00:00.000Z",
@@ -1323,7 +1323,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       expect(res.json().success).toBe(true);
@@ -1333,13 +1333,13 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${userAEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
     });
@@ -1348,7 +1348,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${userBEventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -1358,7 +1358,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "DELETE",
         url: "/api/calendar/events/bad-uuid",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("INVALID_ID");
@@ -1373,7 +1373,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?end=2026-11-01T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("VALIDATION_ERROR");
@@ -1383,7 +1383,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("VALIDATION_ERROR");
@@ -1393,7 +1393,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=invalid-date&end=2026-11-01T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
     });
@@ -1402,7 +1402,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00.000Z&end=invalid-date",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
     });
@@ -1412,7 +1412,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${same}&end=${same}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
     });
@@ -1421,7 +1421,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-11-01T00:00:00.000Z&end=2026-10-01T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
     });
@@ -1450,7 +1450,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res1 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Fully Inside",
           startTime: "2026-10-25T10:15:00.000Z",
@@ -1463,7 +1463,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res2 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Fully Containing",
           startTime: "2026-10-25T09:30:00.000Z",
@@ -1476,7 +1476,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res3 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Overlaps Start",
           startTime: "2026-10-25T09:30:00.000Z",
@@ -1489,7 +1489,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res4 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Overlaps End",
           startTime: "2026-10-25T10:30:00.000Z",
@@ -1502,7 +1502,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res5 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Starts At Query End",
           startTime: "2026-10-25T11:00:00.000Z",
@@ -1515,7 +1515,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res6 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Ends At Query Start",
           startTime: "2026-10-25T09:00:00.000Z",
@@ -1528,7 +1528,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res7 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Completely Before",
           startTime: "2026-10-25T08:00:00.000Z",
@@ -1541,7 +1541,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res8 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Completely After",
           startTime: "2026-10-25T12:00:00.000Z",
@@ -1555,7 +1555,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1566,7 +1566,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1577,7 +1577,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1588,7 +1588,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1599,7 +1599,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1610,7 +1610,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1621,7 +1621,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1632,7 +1632,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1665,7 +1665,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res1 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Inside",
           isAllDay: true,
@@ -1679,7 +1679,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res2 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Containing",
           isAllDay: true,
@@ -1693,7 +1693,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res3 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Overlap Start",
           isAllDay: true,
@@ -1707,7 +1707,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res4 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Overlap End",
           isAllDay: true,
@@ -1721,7 +1721,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res5 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Exact Match",
           isAllDay: true,
@@ -1735,7 +1735,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res6a = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Outside Before",
           isAllDay: true,
@@ -1749,7 +1749,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res6b = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Outside After",
           isAllDay: true,
@@ -1763,7 +1763,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res7 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Multi-Day",
           isAllDay: true,
@@ -1777,7 +1777,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res8 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Same Day",
           isAllDay: true,
@@ -1791,7 +1791,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res9a = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Boundary Start",
           isAllDay: true,
@@ -1805,7 +1805,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res9b = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "AllDay Boundary End",
           isAllDay: true,
@@ -1820,7 +1820,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1831,7 +1831,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1842,7 +1842,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1853,7 +1853,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1864,7 +1864,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1875,7 +1875,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1887,7 +1887,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1898,7 +1898,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1909,7 +1909,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events?start=${qStart}&end=${qEnd}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -1925,7 +1925,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resOct7 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Visible Oct 7 All-Day",
           isAllDay: true,
@@ -1940,7 +1940,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resOct8 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Excluded Oct 8 All-Day",
           isAllDay: true,
@@ -1955,7 +1955,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const resOct5to8 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Overlapping Oct 5-8 All-Day",
           isAllDay: true,
@@ -1970,7 +1970,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const queryRes = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00.000Z&end=2026-10-08T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(queryRes.statusCode).toBe(200);
       const returnedIds = queryRes.json().events.map((e: any) => e.id);
@@ -1992,7 +1992,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-09-30T18:30:00.000Z&end=2026-10-07T18:30:00.000Z&timeZone=Asia/Kolkata",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const returnedTitles = res.json().events.map((e: any) => e.title);
@@ -2005,7 +2005,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00%2B05:30&end=2026-10-08T00:00:00%2B05:30",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const returnedTitles = res.json().events.map((e: any) => e.title);
@@ -2017,7 +2017,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00.000Z&end=2026-10-08T00:00:00.000Z&timeZone=Mars/Curiosity",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("VALIDATION_ERROR");
@@ -2027,7 +2027,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-10-01T00:00:00.000Z&end=2026-10-08T00:00:00.000Z&unknownField=bad",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("VALIDATION_ERROR");
@@ -2048,7 +2048,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res1 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "All Day On 20th",
           isAllDay: true,
@@ -2061,7 +2061,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res2 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Morning Timed",
           startTime: "2026-11-20T09:00:00.000Z",
@@ -2073,7 +2073,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res3 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Afternoon Timed",
           startTime: "2026-11-20T14:00:00.000Z",
@@ -2086,7 +2086,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res4 = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           title: "User B Same Date Event",
           startTime: "2026-11-20T09:30:00.000Z",
@@ -2100,7 +2100,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-11-20T00:00:00.000Z&end=2026-11-20T23:59:59.999Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const events = res.json().events;
@@ -2115,7 +2115,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-11-20T00:00:00.000Z&end=2026-11-20T23:59:59.999Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const events = res.json().events;
@@ -2133,7 +2133,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-11-20T00:00:00.000Z&end=2026-11-20T23:59:59.999Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -2144,7 +2144,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2029-01-01T00:00:00.000Z&end=2029-01-02T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       expect(res.json().events).toEqual([]);
@@ -2161,7 +2161,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           title: "User B Classified Attention Block",
           description: "Top secret strategy notes",
@@ -2177,7 +2177,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${secretUserBId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -2187,7 +2187,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "PATCH",
         url: `/api/calendar/events/${secretUserBId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Malicious Edit Attempt" },
       });
       expect(res.statusCode).toBe(404);
@@ -2198,7 +2198,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${secretUserBId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -2207,7 +2207,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const checkRes = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${secretUserBId}`,
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
       });
       expect(checkRes.statusCode).toBe(200);
     });
@@ -2216,7 +2216,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "GET",
         url: "/api/calendar/events?start=2026-12-01T00:00:00.000Z&end=2026-12-02T00:00:00.000Z",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(200);
       const ids = res.json().events.map((e: any) => e.id);
@@ -2233,7 +2233,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: unicodeTitle,
           isAllDay: true,
@@ -2247,7 +2247,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const fetchRes = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(fetchRes.json().event.title).toBe(unicodeTitle);
     });
@@ -2257,7 +2257,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Architecture Session",
           description: multiline,
@@ -2271,7 +2271,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const fetchRes = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(fetchRes.json().event.description).toBe(multiline);
     });
@@ -2281,7 +2281,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Virtual Standup",
           location: urlLocation,
@@ -2315,7 +2315,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Rapid Patch Target",
           startTime: "2026-12-20T10:00:00.000Z",
@@ -2328,19 +2328,19 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
         app.inject({
           method: "PATCH",
           url: `/api/calendar/events/${eventId}`,
-          headers: { cookie: userACookie },
+          headers: { cookie: userACookie, origin: "http://localhost:5173" },
           payload: { title: "Rapid Title 1" },
         }),
         app.inject({
           method: "PATCH",
           url: `/api/calendar/events/${eventId}`,
-          headers: { cookie: userACookie },
+          headers: { cookie: userACookie, origin: "http://localhost:5173" },
           payload: { title: "Rapid Title 2" },
         }),
         app.inject({
           method: "PATCH",
           url: `/api/calendar/events/${eventId}`,
-          headers: { cookie: userACookie },
+          headers: { cookie: userACookie, origin: "http://localhost:5173" },
           payload: { description: "Rapid Description" },
         }),
       ];
@@ -2354,7 +2354,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const finalRes = await app.inject({
         method: "GET",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(finalRes.statusCode).toBe(200);
       expect(finalRes.json().event.id).toBe(eventId);
@@ -2364,7 +2364,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const res = await app.inject({
         method: "POST",
         url: "/api/calendar/events",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Rapid Delete Target",
           startTime: "2026-12-20T12:00:00.000Z",
@@ -2376,7 +2376,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const delete1 = await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(delete1.statusCode).toBe(200);
 
@@ -2384,7 +2384,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
       const delete2 = await app.inject({
         method: "DELETE",
         url: `/api/calendar/events/${eventId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(delete2.statusCode).toBe(404);
     });
@@ -2394,7 +2394,7 @@ describe("Milestone C03: Calendar API, Temporal Range Query Engine & Test Suite"
         app.inject({
           method: "POST",
           url: "/api/calendar/events",
-          headers: { cookie: userACookie },
+          headers: { cookie: userACookie, origin: "http://localhost:5173" },
           payload: {
             title: `Rapid Created Event ${i}`,
             startTime: `2026-12-21T0${i + 1}:00:00.000Z`,

@@ -165,7 +165,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: todayDate,
           title: "Architecture Planning Day",
@@ -193,7 +193,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -207,7 +207,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: `/api/journal/by-date/${todayDate}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -221,7 +221,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: yesterdayDate,
           content: "Spontaneous thoughts without a title.",
@@ -238,7 +238,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -257,7 +257,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "PATCH",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Updated Milestone Title",
         },
@@ -274,7 +274,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "PATCH",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           content: "Refined narrative with deeper takeaways and retrospective.",
         },
@@ -289,7 +289,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "PATCH",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Comprehensive Update",
           content: "Completely revised entry body.",
@@ -306,7 +306,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "PATCH",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: null,
         },
@@ -321,7 +321,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "DELETE",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -336,7 +336,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const getRes = await app.inject({
         method: "GET",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(getRes.statusCode).toBe(404);
 
@@ -344,7 +344,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const secondDelRes = await app.inject({
         method: "DELETE",
         url: `/api/journal/${createdEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(secondDelRes.statusCode).toBe(404);
     });
@@ -359,7 +359,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: `/api/journal/by-date/${unwrittenDate}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -371,7 +371,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: "/api/journal/by-date/invalid-date-format",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -383,7 +383,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: "/api/journal/by-date/2025-02-29", // 2025 is not a leap year
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -395,7 +395,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "GET",
         url: `/api/journal/by-date/${futureDate}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -412,7 +412,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-01",
         },
@@ -427,7 +427,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-01",
           content: "",
@@ -443,7 +443,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-01",
           content: "     \n\t   ",
@@ -460,7 +460,7 @@ describe("Milestone H02-C: Journal CRUD API, Validation & Authorization Suite", 
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-01",
           content: oversizedContent,
@@ -490,7 +490,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: dateToTest,
           content: formattedMarkdown,
@@ -508,7 +508,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-03",
           title: longTitle,
@@ -525,7 +525,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-04",
           title: "    ",
@@ -543,7 +543,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-05",
           content: "Valid content",
@@ -560,7 +560,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-06",
           content: "Valid content",
@@ -579,7 +579,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-07",
           content: "Valid content",
@@ -596,7 +596,7 @@ End of entry.
       const res = await app.inject({
         method: "PATCH",
         url: "/api/journal/11111111-1111-4111-8111-111111111111",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {},
       });
 
@@ -609,7 +609,7 @@ End of entry.
       const res = await app.inject({
         method: "PATCH",
         url: "/api/journal/11111111-1111-4111-8111-111111111111",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-08-08",
         },
@@ -624,7 +624,7 @@ End of entry.
       const res = await app.inject({
         method: "GET",
         url: "/api/journal/not-a-uuid",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -644,7 +644,7 @@ End of entry.
       const firstRes = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: uniqueDate,
           content: "Initial entry for July 1st.",
@@ -656,7 +656,7 @@ End of entry.
       const secondRes = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: uniqueDate,
           content: "Second entry attempt for July 1st.",
@@ -676,7 +676,7 @@ End of entry.
       const resA = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: sharedDate,
           content: "User A reflections on July 2nd.",
@@ -688,7 +688,7 @@ End of entry.
       const resB = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: sharedDate,
           content: "User B reflections on July 2nd.",
@@ -707,7 +707,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2024-02-29",
           content: "Leap day journal entry.",
@@ -722,7 +722,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2025-02-29",
           content: "Invalid leap day entry.",
@@ -738,7 +738,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "2026-04-31",
           content: "Invalid April 31st entry.",
@@ -754,7 +754,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: futureDate,
           content: "Future prophecy entry.",
@@ -778,7 +778,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: userADate,
           title: "Alice Private Thoughts",
@@ -818,7 +818,7 @@ End of entry.
       const res = await app.inject({
         method: "PATCH",
         url: `/api/journal/${userAEntryId}`,
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
         payload: {
           content: "Malicious overwrite attempt by Bob.",
         },
@@ -833,7 +833,7 @@ End of entry.
       const res = await app.inject({
         method: "DELETE",
         url: `/api/journal/${userAEntryId}`,
-        headers: { cookie: userBCookie },
+        headers: { cookie: userBCookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(404);
@@ -864,7 +864,7 @@ End of entry.
       const res = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: "invalid-date-format",
           content: sensitiveContent,
@@ -895,7 +895,7 @@ End of entry.
       const createRes = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: pastDate,
           title: richTitle,
@@ -912,7 +912,7 @@ End of entry.
       const getRes = await app.inject({
         method: "GET",
         url: `/api/journal/${created.id}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(getRes.statusCode).toBe(200);
@@ -924,7 +924,7 @@ End of entry.
       await app.inject({
         method: "DELETE",
         url: `/api/journal/${created.id}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
     });
 
@@ -934,7 +934,7 @@ End of entry.
       const firstRes = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: clashDate,
           content: "Initial reflection for date collision test",
@@ -947,7 +947,7 @@ End of entry.
       const dupRes = await app.inject({
         method: "POST",
         url: "/api/journal",
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           entryDate: clashDate,
           content: "Second conflicting reflection",
@@ -967,7 +967,7 @@ End of entry.
       await app.inject({
         method: "DELETE",
         url: `/api/journal/${firstEntryId}`,
-        headers: { cookie: userACookie },
+        headers: { cookie: userACookie, origin: "http://localhost:5173" },
       });
     });
   });

@@ -72,12 +72,13 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const setCookieA = loginARes.headers["set-cookie"];
     const rawCookieA = Array.isArray(setCookieA) ? setCookieA[0] : setCookieA;
     userACookie = (rawCookieA as string).split(";")[0];
+    const userAHeaders = { cookie: userACookie, origin: "http://localhost:5173" };
 
     // 3. Create today's journal entry
     const createTodayRes = await app.inject({
       method: "POST",
       url: "/api/journal",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         entryDate: todayStr,
         title: "Today's Reflections",
@@ -93,7 +94,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const getByIdRes = await app.inject({
       method: "GET",
       url: `/api/journal/${todayEntryId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(getByIdRes.statusCode).toBe(200);
     expect(getByIdRes.json().entry.id).toBe(todayEntryId);
@@ -102,7 +103,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const getByDateRes = await app.inject({
       method: "GET",
       url: `/api/journal/by-date/${todayStr}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(getByDateRes.statusCode).toBe(200);
     expect(getByDateRes.json().entry.id).toBe(todayEntryId);
@@ -111,7 +112,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const listRes = await app.inject({
       method: "GET",
       url: "/api/journal",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(listRes.statusCode).toBe(200);
     expect(listRes.json().entries.length).toBeGreaterThanOrEqual(1);
@@ -124,7 +125,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const patchRes = await app.inject({
       method: "PATCH",
       url: `/api/journal/${todayEntryId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Refined Today's Reflections",
         content: "Updated narrative with deeper context.",
@@ -143,7 +144,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const createYesterdayRes = await app.inject({
       method: "POST",
       url: "/api/journal",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         entryDate: yesterdayStr,
         title: "Yesterday's Retrospective",
@@ -157,7 +158,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const futureRes = await app.inject({
       method: "POST",
       url: "/api/journal",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         entryDate: futureStr,
         content: "Should be rejected.",
@@ -169,7 +170,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const duplicateRes = await app.inject({
       method: "POST",
       url: "/api/journal",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         entryDate: todayStr,
         content: "Duplicate attempt.",
@@ -182,7 +183,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const deleteRes = await app.inject({
       method: "DELETE",
       url: `/api/journal/${yesterdayEntryId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().success).toBe(true);
@@ -191,7 +192,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const getDeletedRes = await app.inject({
       method: "GET",
       url: `/api/journal/${yesterdayEntryId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(getDeletedRes.statusCode).toBe(404);
 
@@ -218,12 +219,13 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const setCookieB = loginBRes.headers["set-cookie"];
     const rawCookieB = Array.isArray(setCookieB) ? setCookieB[0] : setCookieB;
     userBCookie = (rawCookieB as string).split(";")[0];
+    const userBHeaders = { cookie: userBCookie, origin: "http://localhost:5173" };
 
     // 16. User B attempts to read User A's entry
     const bReadARes = await app.inject({
       method: "GET",
       url: `/api/journal/${todayEntryId}`,
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
     });
     expect(bReadARes.statusCode).toBe(404);
 
@@ -231,7 +233,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const bReadDateRes = await app.inject({
       method: "GET",
       url: `/api/journal/by-date/${todayStr}`,
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
     });
     expect(bReadDateRes.statusCode).toBe(200);
     expect(bReadDateRes.json().entry).toBeNull();
@@ -240,7 +242,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const bPatchARes = await app.inject({
       method: "PATCH",
       url: `/api/journal/${todayEntryId}`,
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
       payload: {
         content: "Tamper attempt",
       },
@@ -251,7 +253,7 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
     const bDeleteARes = await app.inject({
       method: "DELETE",
       url: `/api/journal/${todayEntryId}`,
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
     });
     expect(bDeleteARes.statusCode).toBe(404);
   });

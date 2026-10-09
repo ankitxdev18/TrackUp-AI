@@ -80,7 +80,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: {
         title: "Become Internship Ready",
         description: "Practice DSA and build high quality portfolio projects",
@@ -107,7 +107,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: {
         title: "Old Archived Goal",
         status: "ARCHIVED",
@@ -119,7 +119,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const allRes = await app.inject({
       method: "GET",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(allRes.statusCode).toBe(200);
     const allBody = allRes.json();
@@ -129,7 +129,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const activeRes = await app.inject({
       method: "GET",
       url: "/api/goals?status=ACTIVE",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(activeRes.statusCode).toBe(200);
     const activeBody = activeRes.json();
@@ -139,7 +139,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const archivedRes = await app.inject({
       method: "GET",
       url: "/api/goals?status=ARCHIVED",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(archivedRes.statusCode).toBe(200);
     const archivedBody = archivedRes.json();
@@ -151,7 +151,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Specific Goal to Retrieve" },
     });
     const goalId = createRes.json().goal.id;
@@ -159,7 +159,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const getRes = await app.inject({
       method: "GET",
       url: `/api/goals/${goalId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(getRes.statusCode).toBe(200);
     const getBody = getRes.json();
@@ -172,7 +172,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Initial Goal Title", progress: 0 },
     });
     const goalId = createRes.json().goal.id;
@@ -180,7 +180,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const patchRes = await app.inject({
       method: "PATCH",
       url: `/api/goals/${goalId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: {
         title: "Updated Goal Title",
         description: "Updated description text",
@@ -204,7 +204,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal to Delete" },
     });
     const goalId = createRes.json().goal.id;
@@ -212,7 +212,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const deleteRes = await app.inject({
       method: "DELETE",
       url: `/api/goals/${goalId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().success).toBe(true);
@@ -221,7 +221,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const getAgain = await app.inject({
       method: "GET",
       url: `/api/goals/${goalId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(getAgain.statusCode).toBe(404);
   });
@@ -231,7 +231,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const emptyRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "   " },
     });
     expect(emptyRes.statusCode).toBe(400);
@@ -240,7 +240,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const longRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "A".repeat(501) },
     });
     expect(longRes.statusCode).toBe(400);
@@ -252,7 +252,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", status: "NOT_A_VALID_STATUS" },
     });
     expect(res.statusCode).toBe(400);
@@ -264,7 +264,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const negRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", progress: -5 },
     });
     expect(negRes.statusCode).toBe(400);
@@ -272,7 +272,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const overRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", progress: 101 },
     });
     expect(overRes.statusCode).toBe(400);
@@ -280,7 +280,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const floatRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", progress: 50.5 },
     });
     expect(floatRes.statusCode).toBe(400);
@@ -291,7 +291,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const badFormatRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", targetDate: "12-01-2026" },
     });
     expect(badFormatRes.statusCode).toBe(400);
@@ -299,7 +299,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const impossibleDateRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "Goal", targetDate: "2026-02-31" },
     });
     expect(impossibleDateRes.statusCode).toBe(400);
@@ -325,7 +325,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "User A Confidential Goal" },
     });
     const goalAId = createRes.json().goal.id;
@@ -333,7 +333,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const crossGet = await app.inject({
       method: "GET",
       url: `/api/goals/${goalAId}`,
-      headers: { Cookie: userBCookie },
+      headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
     });
     expect(crossGet.statusCode).toBe(404);
     expect(crossGet.json().code).toBe("NOT_FOUND");
@@ -344,7 +344,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "User A Goal to Tamper" },
     });
     const goalAId = createRes.json().goal.id;
@@ -352,7 +352,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const crossPatch = await app.inject({
       method: "PATCH",
       url: `/api/goals/${goalAId}`,
-      headers: { Cookie: userBCookie },
+      headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
       payload: { title: "Hacked by User B" },
     });
     expect(crossPatch.statusCode).toBe(404);
@@ -362,7 +362,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const verifyGet = await app.inject({
       method: "GET",
       url: `/api/goals/${goalAId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(verifyGet.json().goal.title).toBe("User A Goal to Tamper");
   });
@@ -372,7 +372,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const createRes = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "User A Goal Protected from Deletion" },
     });
     const goalAId = createRes.json().goal.id;
@@ -380,7 +380,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const crossDelete = await app.inject({
       method: "DELETE",
       url: `/api/goals/${goalAId}`,
-      headers: { Cookie: userBCookie },
+      headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
     });
     expect(crossDelete.statusCode).toBe(404);
     expect(crossDelete.json().code).toBe("NOT_FOUND");
@@ -389,7 +389,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const verifyGet = await app.inject({
       method: "GET",
       url: `/api/goals/${goalAId}`,
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(verifyGet.statusCode).toBe(200);
   });
@@ -399,7 +399,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/goals",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: {
         title: "Impersonation Attempt Goal",
         userId: userBId, // Maliciously attempting to assign goal to User B
@@ -415,7 +415,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const listB = await app.inject({
       method: "GET",
       url: "/api/goals",
-      headers: { Cookie: userBCookie },
+      headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
     });
     expect(listB.json().goals.some((g: any) => g.id === body.goal.id)).toBe(false);
   });
@@ -425,7 +425,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const getRes = await app.inject({
       method: "GET",
       url: "/api/goals/not-a-valid-uuid",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(getRes.statusCode).toBe(400);
     expect(getRes.json().code).toBe("INVALID_ID");
@@ -433,7 +433,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const patchRes = await app.inject({
       method: "PATCH",
       url: "/api/goals/12345",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       payload: { title: "New" },
     });
     expect(patchRes.statusCode).toBe(400);
@@ -442,7 +442,7 @@ describe("Milestone 4: Goals Vertical Slice — Backend API & Security", () => {
     const delRes = await app.inject({
       method: "DELETE",
       url: "/api/goals/bad-uuid-format",
-      headers: { Cookie: userACookie },
+      headers: { Cookie: userACookie, origin: "http://localhost:5173" },
     });
     expect(delRes.statusCode).toBe(400);
     expect(delRes.json().code).toBe("INVALID_ID");

@@ -65,12 +65,13 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const rawCookieA = Array.isArray(setCookieA) ? setCookieA[0] : setCookieA;
     userACookie = (rawCookieA as string).split(";")[0];
     expect(userACookie).toBeDefined();
+    const userAHeaders = { cookie: userACookie, origin: "http://localhost:5173" };
 
     // Step 3: Create timed event
     const createTimedRes = await app.inject({
       method: "POST",
       url: "/api/calendar/events",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Architecture Sync",
         description: "Reviewing database and temporal invariants",
@@ -90,7 +91,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const createAlldayRes = await app.inject({
       method: "POST",
       url: "/api/calendar/events",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Product Hackathon",
         description: "Life OS Calendar build sprint",
@@ -109,7 +110,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const rangeRes = await app.inject({
       method: "GET",
       url: "/api/calendar/events?start=2026-11-01T00:00:00.000Z&end=2026-11-02T23:59:59.999Z",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(rangeRes.statusCode).toBe(200);
 
@@ -123,7 +124,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const getSingleRes = await app.inject({
       method: "GET",
       url: `/api/calendar/events/${timedEventId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(getSingleRes.statusCode).toBe(200);
     expect(getSingleRes.json().event.id).toBe(timedEventId);
@@ -133,7 +134,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const updateRes = await app.inject({
       method: "PATCH",
       url: `/api/calendar/events/${timedEventId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
       payload: {
         title: "Refined Architecture Sync",
         color: "rose",
@@ -154,7 +155,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const deleteRes = await app.inject({
       method: "DELETE",
       url: `/api/calendar/events/${timedEventId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().success).toBe(true);
@@ -163,7 +164,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const verifyDeleteRes = await app.inject({
       method: "GET",
       url: `/api/calendar/events/${timedEventId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(verifyDeleteRes.statusCode).toBe(404);
 
@@ -190,12 +191,13 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const setCookieB = loginBRes.headers["set-cookie"];
     const rawCookieB = Array.isArray(setCookieB) ? setCookieB[0] : setCookieB;
     userBCookie = (rawCookieB as string).split(";")[0];
+    const userBHeaders = { cookie: userBCookie, origin: "http://localhost:5173" };
 
     // Step 13: Create User B event
     const createBRes = await app.inject({
       method: "POST",
       url: "/api/calendar/events",
-      headers: { cookie: userBCookie },
+      headers: userBHeaders,
       payload: {
         title: "Bob Private Planning",
         startTime: "2026-11-01T14:00:00.000Z",
@@ -209,7 +211,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const crossAccessRes = await app.inject({
       method: "GET",
       url: `/api/calendar/events/${userBEventId}`,
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(crossAccessRes.statusCode).toBe(404);
     expect(crossAccessRes.json().code).toBe("NOT_FOUND");
@@ -218,7 +220,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const rangeExcludeRes = await app.inject({
       method: "GET",
       url: "/api/calendar/events?start=2026-11-01T00:00:00.000Z&end=2026-11-02T23:59:59.999Z",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(rangeExcludeRes.statusCode).toBe(200);
     const userAEvents = rangeExcludeRes.json().events.map((e: any) => e.id);
@@ -228,7 +230,7 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
     const logoutRes = await app.inject({
       method: "POST",
       url: "/api/auth/logout",
-      headers: { cookie: userACookie },
+      headers: userAHeaders,
     });
     expect(logoutRes.statusCode).toBe(200);
 

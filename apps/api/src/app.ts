@@ -1,6 +1,8 @@
 import Fastify, { FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import fastifyCors from "@fastify/cors";
 import { env } from "./config/env.js";
+import { createCsrfProtection } from "./auth/csrf.js";
 import { checkDatabaseHealth } from "./db/index.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { calendarRoutes } from "./routes/calendar.routes.js";
@@ -14,6 +16,7 @@ import { taskRoutes } from "./routes/task.routes.js";
 export interface BuildAppOptions {
   checkDbHealth?: () => Promise<{ ok: boolean }>;
   logger?: boolean;
+  corsOrigins?: string[];
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -21,10 +24,33 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     logger: options.logger ?? true,
   });
 
+  const trustedOrigins = options.corsOrigins ?? env.corsOrigins;
+
+  // 1. CORS plugin — strict allowlist, credentials enabled, wildcard origins prohibited
+  server.register(fastifyCors, {
+    origin: trustedOrigins,
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
+      "x-dev-user-id",
+    ],
+    exposedHeaders: ["Set-Cookie"],
+    maxAge: 86400,
+  });
+
+  // 2. Cookie parser plugin
   server.register(fastifyCookie, {
     secret: env.COOKIE_SECRET,
     parseOptions: {},
   });
+
+  // 3. CSRF and Origin/Referer protection for state-changing requests
+  server.addHook("preHandler", createCsrfProtection({ trustedOrigins }));
 
   server.addContentTypeParser(
     ["application/json", "text/plain"],

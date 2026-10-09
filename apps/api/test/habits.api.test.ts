@@ -177,7 +177,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Morning Meditation",
           description: "10 minutes of mindfulness",
@@ -202,7 +202,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -215,7 +215,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -229,7 +229,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "PATCH",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Mindful Meditation & Breathing",
           description: "15 minutes deep breathing",
@@ -246,7 +246,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "PATCH",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { status: "ARCHIVED" },
       });
 
@@ -257,7 +257,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resListActive = await app.inject({
         method: "GET",
         url: "/api/habits?status=ACTIVE",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       const activeIds = resListActive.json().habits.map((h: any) => h.id);
       expect(activeIds).not.toContain(createdHabitId);
@@ -266,7 +266,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resListArchived = await app.inject({
         method: "GET",
         url: "/api/habits?status=ARCHIVED",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       const archivedIds = resListArchived.json().habits.map((h: any) => h.id);
       expect(archivedIds).toContain(createdHabitId);
@@ -276,7 +276,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "PATCH",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { status: "ACTIVE" },
       });
 
@@ -288,7 +288,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "DELETE",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(204);
@@ -297,7 +297,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resGet = await app.inject({
         method: "GET",
         url: `/api/habits/${createdHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(resGet.statusCode).toBe(404);
     });
@@ -311,7 +311,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "   " },
       });
       expect(res.statusCode).toBe(400);
@@ -322,7 +322,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "a".repeat(256) },
       });
       expect(res.statusCode).toBe(400);
@@ -333,7 +333,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Valid Title", description: "b".repeat(1001) },
       });
       expect(res.statusCode).toBe(400);
@@ -344,7 +344,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: {
           title: "Spoofed Habit",
           userId: "00000000-0000-0000-0000-000000000000",
@@ -358,7 +358,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: "/api/habits/invalid-uuid-format",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(400);
       expect(res.json().code).toBe("INVALID_ID");
@@ -375,7 +375,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "User A Confidential Habit" },
       });
       habitAId = res.json().habit.id;
@@ -385,7 +385,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${habitAId}`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -395,7 +395,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "PATCH",
         url: `/api/habits/${habitAId}`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
         payload: { title: "Hacked Title" },
       });
       expect(res.statusCode).toBe(404);
@@ -406,7 +406,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "DELETE",
         url: `/api/habits/${habitAId}`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -416,7 +416,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitAId}/completions`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
         payload: { date: "2026-10-08" },
       });
       expect(res.statusCode).toBe(404);
@@ -427,7 +427,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "DELETE",
         url: `/api/habits/${habitAId}/completions/2026-10-08`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -437,7 +437,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${habitAId}/history`,
-        headers: { Cookie: userBCookie },
+        headers: { Cookie: userBCookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
@@ -455,7 +455,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { title: "Daily Exercise" },
       });
       habitId = res.json().habit.id;
@@ -465,7 +465,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { date: userToday },
       });
 
@@ -481,7 +481,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { date: userToday },
       });
 
@@ -496,7 +496,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { date: tomorrow },
       });
 
@@ -509,7 +509,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { date: yesterday },
       });
 
@@ -522,14 +522,14 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       await app.inject({
         method: "PATCH",
         url: `/api/habits/${habitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { status: "ARCHIVED" },
       });
 
       const res = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { date: userToday },
       });
 
@@ -540,7 +540,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       await app.inject({
         method: "PATCH",
         url: `/api/habits/${habitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
         payload: { status: "ACTIVE" },
       });
     });
@@ -549,7 +549,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "DELETE",
         url: `/api/habits/${habitId}/completions/${userToday}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.statusCode).toBe(204);
 
@@ -564,7 +564,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resRepeated = await app.inject({
         method: "DELETE",
         url: `/api/habits/${habitId}/completions/${userToday}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(resRepeated.statusCode).toBe(204);
     });
@@ -582,7 +582,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: kolkataUserCookie },
+        headers: { Cookie: kolkataUserCookie, origin: "http://localhost:5173" },
         payload: { title: "Kolkata Timezone Habit" },
       });
       const habitId = res.json().habit.id;
@@ -591,7 +591,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resComp = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: kolkataUserCookie },
+        headers: { Cookie: kolkataUserCookie, origin: "http://localhost:5173" },
         payload: { date: kolkataToday },
       });
       expect([200, 201]).toContain(resComp.statusCode);
@@ -600,7 +600,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resList = await app.inject({
         method: "GET",
         url: "/api/habits",
-        headers: { Cookie: kolkataUserCookie },
+        headers: { Cookie: kolkataUserCookie, origin: "http://localhost:5173" },
       });
       const found = resList.json().habits.find((h: any) => h.id === habitId);
       expect(found.todayCompleted).toBe(true);
@@ -612,7 +612,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/habits",
-        headers: { Cookie: nyUserCookie },
+        headers: { Cookie: nyUserCookie, origin: "http://localhost:5173" },
         payload: { title: "New York Timezone Habit" },
       });
       const habitId = res.json().habit.id;
@@ -620,7 +620,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const resComp = await app.inject({
         method: "POST",
         url: `/api/habits/${habitId}/completions`,
-        headers: { Cookie: nyUserCookie },
+        headers: { Cookie: nyUserCookie, origin: "http://localhost:5173" },
         payload: { date: nyToday },
       });
       expect([200, 201]).toContain(resComp.statusCode);
@@ -644,7 +644,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${habit.id}/history?days=7`,
-        headers: { Cookie: kolkataUserCookie },
+        headers: { Cookie: kolkataUserCookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -679,7 +679,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${streakHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(0);
     });
@@ -690,7 +690,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${streakHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(1);
     });
@@ -703,7 +703,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${streakHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(1);
       expect(res.json().habit.todayCompleted).toBe(false);
@@ -715,7 +715,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${streakHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(2);
       expect(res.json().habit.todayCompleted).toBe(true);
@@ -728,7 +728,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${streakHabitId}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(4);
     });
@@ -756,7 +756,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${gapHabit.id}`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
       expect(res.json().habit.currentStreak).toBe(0);
       expect(res.json().habit.longestStreak).toBe(4);
@@ -791,7 +791,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${habit.id}/history?days=30`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -839,7 +839,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${histHabitId}/history`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -854,7 +854,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${histHabitId}/history?days=7`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(200);
@@ -867,7 +867,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${histHabitId}/history?days=6`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -878,7 +878,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
       const res = await app.inject({
         method: "GET",
         url: `/api/habits/${histHabitId}/history?days=31`,
-        headers: { Cookie: userACookie },
+        headers: { Cookie: userACookie, origin: "http://localhost:5173" },
       });
 
       expect(res.statusCode).toBe(400);
@@ -905,7 +905,7 @@ describe("Habit API & Domain Engine Test Suite (Milestone H03)", () => {
         app.inject({
           method: "POST",
           url: `/api/habits/${habit.id}/completions`,
-          headers: { Cookie: userACookie },
+          headers: { Cookie: userACookie, origin: "http://localhost:5173" },
           payload: { date: today },
         })
       );
