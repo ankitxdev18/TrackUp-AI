@@ -1517,4 +1517,298 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
       expect(screen.getByLabelText('Mark "Read 20 pages" as incomplete')).toBeInTheDocument();
     });
   });
+
+  // ==========================================
+  // 12. PHASE 1: MIDNIGHT BOUNDARY VERIFICATION TESTS
+  // ==========================================
+
+  it("45. MIDNIGHT BOUNDARY: history fetched at 23:59:40 on date D does not cause completion at 00:00:10 on D+1 to blindly reuse date D", async () => {
+    const dateD = "2026-10-08";
+    const dateDPlus1 = "2026-10-09";
+    let historyCallCount = 0;
+    let completionPayloadDate = "";
+
+    const historyAt2359: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-02",
+      endDate: dateD,
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: dateD, completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    const historyAt0000: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: dateDPlus1,
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: dateDPlus1, completed: false, eligible: true, completedAt: null },
+        { date: dateD, completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1", timezone: "America/New_York" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyCallCount++;
+          // First call is initial page load at 23:59:40 on Date D
+          if (historyCallCount === 1) {
+            return { ok: true, json: async () => historyAt2359 };
+          }
+          // Subsequent call is at 00:00:10 on Date D+1
+          return { ok: true, json: async () => historyAt0000 };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          completionPayloadDate = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: { id: "comp-midnight", habitId: "habit-1", completedDate: body.date, completedAt: "2026-10-09T00:00:10.000Z" },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // Simulate clock advancing 30 seconds across midnight (from 23:59:40 to 00:00:10)
+    // Note: 30 seconds is LESS than 60 seconds, proving cache is NOT blindly reused merely due to short age
+    const originalNow = Date.now;
+    vi.spyOn(Date, "now").mockReturnValue(originalNow() + 30_000);
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(completionPayloadDate).not.toBe("");
+    });
+
+    // CRITICAL: The date sent must be Date D+1 (2026-10-09), NOT Date D (2026-10-08)
+    expect(completionPayloadDate).toBe(dateDPlus1);
+    expect(completionPayloadDate).not.toBe(dateD);
+
+    vi.restoreAllMocks();
+  });
+
+  it("46. MIDNIGHT BOUNDARY: history fetched at 23:59:40 on date D does not cause undo at 00:00:10 on D+1 to blindly reuse date D", async () => {
+    const dateD = "2026-10-08";
+    const dateDPlus1 = "2026-10-09";
+    let historyCallCount = 0;
+    let deleteTargetDate = "";
+
+    const historyAt2359: HabitHistoryResponse = {
+      habitId: "habit-2",
+      days: 7,
+      startDate: "2026-10-02",
+      endDate: dateD,
+      currentStreak: 5,
+      longestStreak: 12,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: dateD, completed: true, eligible: true, completedAt: "2026-10-08T18:00:00.000Z" },
+      ],
+    };
+
+    const historyAt0000: HabitHistoryResponse = {
+      habitId: "habit-2",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: dateDPlus1,
+      currentStreak: 6,
+      longestStreak: 12,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: dateDPlus1, completed: true, eligible: true, completedAt: "2026-10-09T00:00:05.000Z" },
+        { date: dateD, completed: true, eligible: true, completedAt: "2026-10-08T18:00:00.000Z" },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1", timezone: "America/New_York" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyCallCount++;
+          if (historyCallCount === 1) {
+            return { ok: true, json: async () => historyAt2359 };
+          }
+          return { ok: true, json: async () => historyAt0000 };
+        }
+        if (options?.method === "DELETE" && urlStr.includes("/completions/")) {
+          const parts = urlStr.split("/completions/");
+          deleteTargetDate = decodeURIComponent(parts[1]);
+          return { ok: true, status: 204 };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit2] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Morning 30m DSA Practice")).toBeInTheDocument();
+    });
+
+    // Advance 30 seconds past midnight (cache age < 60s)
+    const originalNow = Date.now;
+    vi.spyOn(Date, "now").mockReturnValue(originalNow() + 30_000);
+
+    const toggle = screen.getByLabelText('Mark "Morning 30m DSA Practice" as incomplete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(deleteTargetDate).not.toBe("");
+    });
+
+    // CRITICAL: Delete target date must be D+1 (2026-10-09), not D (2026-10-08)
+    expect(deleteTargetDate).toBe(dateDPlus1);
+    expect(deleteTargetDate).not.toBe(dateD);
+
+    vi.restoreAllMocks();
+  });
+
+  it("47. MIDNIGHT BOUNDARY: failure to resolve authoritative date across midnight cleanly rolls back optimistic state with user-facing error", async () => {
+    let historyCallCount = 0;
+    let completionDispatched = false;
+
+    const initialHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-02",
+      endDate: "2026-10-08",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-08", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyCallCount++;
+          if (historyCallCount === 1) {
+            return { ok: true, json: async () => initialHistory };
+          }
+          // Server fails across midnight (e.g. database disconnect during rollover)
+          return { ok: false, status: 503, json: async () => ({ error: "Service unavailable during maintenance" }) };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          completionDispatched = true;
+          return { ok: true, status: 201, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    // Rollback and error banner appear
+    await waitFor(() => {
+      expect(screen.getByText(/Authoritative completion date is unavailable/i)).toBeInTheDocument();
+    });
+
+    // Checkbox rolled back to incomplete
+    expect(screen.getByLabelText('Mark "Read 20 pages" as complete')).toBeInTheDocument();
+    // No completion request was dispatched with an unverified date
+    expect(completionDispatched).toBe(false);
+  });
+
+  it("48. MIDNIGHT BOUNDARY: browser timezone differing from authoritative TrackUp timezone preserves server-authoritative date across midnight", async () => {
+    // User timezone is America/New_York (where midnight just occurred -> 2026-10-09)
+    // Browser timezone is Europe/Berlin (where it is already 06:00:00 on 2026-10-09 or different)
+    const authoritativeServerToday = "2026-10-09";
+    let capturedDateInPayload = "";
+
+    const nyHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: authoritativeServerToday,
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: authoritativeServerToday, completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1", timezone: "America/New_York" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => nyHistory };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          capturedDateInPayload = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: { id: "c-tz", habitId: "habit-1", completedDate: body.date, completedAt: "2026-10-09T00:00:10.000Z" },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(capturedDateInPayload).not.toBe("");
+    });
+
+    // Must strictly match the authoritative server endDate (2026-10-09), never a client-derived date
+    expect(capturedDateInPayload).toBe(authoritativeServerToday);
+  });
 });

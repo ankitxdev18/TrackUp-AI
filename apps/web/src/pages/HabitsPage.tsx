@@ -151,50 +151,12 @@ export function HabitsPage() {
   const handleToggleCompletion = async (habit: Habit, specificDate?: string) => {
     if (togglingHabitIds.has(habit.id)) return; // Prevent race conditions
 
-    // 1. Authoritative date resolution:
-    // If specificDate provided (preserving historical completion behavior where supported), use it.
-    // Otherwise resolve the authoritative user-local date from server contract.
-    let targetDate = specificDate;
-    let currentHistory = histories[habit.id];
-
-    if (!targetDate) {
-      const now = Date.now();
-      const fetchedAt = historyFetchedAt.current[habit.id] || 0;
-      const isStale = !fetchedAt || now - fetchedAt > 60_000;
-
-      // Handle initially unavailable or stale history explicitly
-      if (!currentHistory || !currentHistory.endDate || isStale) {
-        try {
-          currentHistory = await fetchHabitHistory(habit.id, 7);
-          historyFetchedAt.current[habit.id] = Date.now();
-          setHistories((prev) => ({ ...prev, [habit.id]: currentHistory }));
-        } catch {
-          // If fresh fetch fails and we have no cached history with endDate,
-          // the contract cannot reliably provide the date. Report error explicitly without guessing.
-          if (!currentHistory?.endDate) {
-            setActionError(
-              `Could not update "${habit.title}": Authoritative completion date is unavailable. Please check your connection and try again.`
-            );
-            return;
-          }
-        }
-      }
-      targetDate = currentHistory.endDate;
-    }
-
-    if (!targetDate) {
-      setActionError(
-        `Could not update "${habit.title}": Authoritative completion date is unavailable.`
-      );
-      return;
-    }
-
     const currentlyCompleted = Boolean(todayCompletions[habit.id]);
     const nextCompleted = !currentlyCompleted;
     const prevHabits = [...habits];
     const prevHistories = { ...histories };
 
-    // 2. Optimistic UI update
+    // 1. Optimistic UI update (immediate user feedback)
     setTogglingHabitIds((prev) => new Set(prev).add(habit.id));
     setTodayCompletions((prev) => ({ ...prev, [habit.id]: nextCompleted }));
 
@@ -214,28 +176,47 @@ export function HabitsPage() {
       })
     );
 
-    // Optimistically update history dot for the authoritative targetDate
-    setHistories((prev) => {
-      const existing = prev[habit.id];
-      if (!existing) return prev;
-      return {
-        ...prev,
-        [habit.id]: {
-          ...existing,
-          history: existing.history.map((item) =>
-            item.date === targetDate
-              ? {
-                  ...item,
-                  completed: nextCompleted,
-                  completedAt: nextCompleted ? new Date().toISOString() : null,
-                }
-              : item
-          ),
-        },
-      };
-    });
-
     try {
+      // 2. Authoritative date resolution:
+      // If specificDate provided (preserving historical completion behavior), use it.
+      // Otherwise, never assume a cached date remains fresh across midnight—always fetch fresh authoritative history.
+      let targetDate = specificDate;
+      if (!targetDate) {
+        try {
+          const freshHistory = await fetchHabitHistory(habit.id, 7);
+          historyFetchedAt.current[habit.id] = Date.now();
+          setHistories((prev) => ({ ...prev, [habit.id]: freshHistory }));
+          targetDate = freshHistory.endDate;
+        } catch {
+          throw new Error("Authoritative completion date is unavailable. Please check your connection and try again.");
+        }
+      }
+
+      if (!targetDate) {
+        throw new Error("Authoritative completion date is unavailable.");
+      }
+
+      // Optimistically update history dot for the authoritative targetDate
+      setHistories((prev) => {
+        const existing = prev[habit.id];
+        if (!existing) return prev;
+        return {
+          ...prev,
+          [habit.id]: {
+            ...existing,
+            history: existing.history.map((item) =>
+              item.date === targetDate
+                ? {
+                    ...item,
+                    completed: nextCompleted,
+                    completedAt: nextCompleted ? new Date().toISOString() : null,
+                  }
+                : item
+            ),
+          },
+        };
+      });
+
       if (nextCompleted) {
         // Complete habit for authoritative target date
         await completeHabit(habit.id, targetDate);
