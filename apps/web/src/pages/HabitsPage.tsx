@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   AlertCircle,
   Archive,
@@ -47,7 +47,11 @@ export function HabitsPage() {
   const [todayCompletions, setTodayCompletions] = useState<Record<string, boolean>>({});
 
   // History state map: habitId -> HabitHistoryResponse
+  // History state map: habitId -> HabitHistoryResponse
   const [histories, setHistories] = useState<Record<string, HabitHistoryResponse>>({});
+
+  // History fetch timestamp map to track cache freshness and detect midnight rollover: habitId -> timestamp (ms)
+  const historyFetchedAt = useRef<Record<string, number>>({});
 
   // Set of habit IDs currently undergoing an optimistic toggle
   const [togglingHabitIds, setTogglingHabitIds] = useState<Set<string>>(new Set());
@@ -118,8 +122,10 @@ export function HabitsPage() {
         if (result.status === "fulfilled") {
           const hist = result.value;
           newHistories[habit.id] = hist;
-          // Check if today is completed from history
-          const todayItem = hist.history.find((item) => item.date === todayStr);
+          historyFetchedAt.current[habit.id] = Date.now();
+          // Check if today is completed using server-authoritative endDate (derived from users.timezone)
+          const habitToday = hist.endDate || todayStr;
+          const todayItem = hist.history.find((item) => item.date === habitToday);
           if (todayItem && todayItem.completed) {
             newCompletions[habit.id] = true;
           } else if (todayItem && !todayItem.completed) {
@@ -142,15 +148,53 @@ export function HabitsPage() {
   }, [loadHabits]);
 
   // Toggle completion with optimistic update, rollback on failure, and server reconciliation
-  const handleToggleCompletion = async (habit: Habit) => {
+  const handleToggleCompletion = async (habit: Habit, specificDate?: string) => {
     if (togglingHabitIds.has(habit.id)) return; // Prevent race conditions
+
+    // 1. Authoritative date resolution:
+    // If specificDate provided (preserving historical completion behavior where supported), use it.
+    // Otherwise resolve the authoritative user-local date from server contract.
+    let targetDate = specificDate;
+    let currentHistory = histories[habit.id];
+
+    if (!targetDate) {
+      const now = Date.now();
+      const fetchedAt = historyFetchedAt.current[habit.id] || 0;
+      const isStale = !fetchedAt || now - fetchedAt > 60_000;
+
+      // Handle initially unavailable or stale history explicitly
+      if (!currentHistory || !currentHistory.endDate || isStale) {
+        try {
+          currentHistory = await fetchHabitHistory(habit.id, 7);
+          historyFetchedAt.current[habit.id] = Date.now();
+          setHistories((prev) => ({ ...prev, [habit.id]: currentHistory }));
+        } catch {
+          // If fresh fetch fails and we have no cached history with endDate,
+          // the contract cannot reliably provide the date. Report error explicitly without guessing.
+          if (!currentHistory?.endDate) {
+            setActionError(
+              `Could not update "${habit.title}": Authoritative completion date is unavailable. Please check your connection and try again.`
+            );
+            return;
+          }
+        }
+      }
+      targetDate = currentHistory.endDate;
+    }
+
+    if (!targetDate) {
+      setActionError(
+        `Could not update "${habit.title}": Authoritative completion date is unavailable.`
+      );
+      return;
+    }
 
     const currentlyCompleted = Boolean(todayCompletions[habit.id]);
     const nextCompleted = !currentlyCompleted;
     const prevHabits = [...habits];
     const prevHistories = { ...histories };
 
-    // 1. Optimistic UI update
+    // 2. Optimistic UI update
     setTogglingHabitIds((prev) => new Set(prev).add(habit.id));
     setTodayCompletions((prev) => ({ ...prev, [habit.id]: nextCompleted }));
 
@@ -170,7 +214,7 @@ export function HabitsPage() {
       })
     );
 
-    // Optimistically update history dot
+    // Optimistically update history dot for the authoritative targetDate
     setHistories((prev) => {
       const existing = prev[habit.id];
       if (!existing) return prev;
@@ -179,7 +223,7 @@ export function HabitsPage() {
         [habit.id]: {
           ...existing,
           history: existing.history.map((item) =>
-            item.date === todayStr
+            item.date === targetDate
               ? {
                   ...item,
                   completed: nextCompleted,
@@ -193,11 +237,11 @@ export function HabitsPage() {
 
     try {
       if (nextCompleted) {
-        // Complete habit for today's user-local date
-        await completeHabit(habit.id, todayStr);
+        // Complete habit for authoritative target date
+        await completeHabit(habit.id, targetDate);
       } else {
-        // Undo completion
-        await undoHabitCompletion(habit.id, todayStr);
+        // Undo completion for authoritative target date
+        await undoHabitCompletion(habit.id, targetDate);
       }
 
       // Targeted refresh to reconcile server-authoritative streaks and completion indicators
@@ -213,6 +257,7 @@ export function HabitsPage() {
           }
         }
         if (refreshedHistory && Array.isArray(refreshedHistory.history)) {
+          historyFetchedAt.current[habit.id] = Date.now();
           setHistories((prev) => ({ ...prev, [habit.id]: refreshedHistory }));
         }
       } catch {
@@ -288,6 +333,7 @@ export function HabitsPage() {
     if (!histories[savedHabit.id]) {
       fetchHabitHistory(savedHabit.id, 7)
         .then((hist) => {
+          historyFetchedAt.current[savedHabit.id] = Date.now();
           setHistories((prev) => ({ ...prev, [savedHabit.id]: hist }));
         })
         .catch(() => {});
@@ -701,32 +747,49 @@ export function HabitsPage() {
                         {habitHistory.length > 0 ? (
                           // Render trailing days chronologically (reverse descending backend response for left-to-right timeline)
                           [...habitHistory].reverse().map((dayItem) => {
-                            const isToday = dayItem.date === todayStr;
+                            const habitAuthoritativeToday = histories[habit.id]?.endDate || todayStr;
+                            const isToday = dayItem.date === habitAuthoritativeToday;
+                            const isCompleted = Boolean(dayItem.completed);
+                            const isEligible = dayItem.eligible !== false;
+
+                            let statusClass = "is-missed not-done";
+                            let dotClass = "dot-missed dot-empty";
+                            let statusLabel = "Missed";
+
+                            if (isCompleted) {
+                              statusClass = "is-completed is-done";
+                              dotClass = "dot-done";
+                              statusLabel = "Completed";
+                            } else if (!isEligible) {
+                              statusClass = "is-ineligible not-done";
+                              dotClass = "dot-ineligible";
+                              statusLabel = "Ineligible (before habit creation)";
+                            } else if (isToday) {
+                              statusClass = "is-pending not-done";
+                              dotClass = "dot-pending";
+                              statusLabel = "Pending";
+                            }
+
                             const d = new Date(dayItem.date + "T00:00:00");
                             const dayLetter = ["S", "M", "T", "W", "T", "F", "S"][
                               d.getDay()
                             ];
+                            const accessibleLabel = `${dayItem.date}${
+                              isToday ? " (Today)" : ""
+                            }: ${statusLabel}`;
 
                             return (
                               <div
                                 key={dayItem.date}
-                                className={`history-day-chip ${
-                                  dayItem.completed ? "is-done" : "not-done"
-                                } ${isToday ? "is-today" : ""}`}
-                                title={`${dayItem.date}${
-                                  isToday ? " (Today)" : ""
-                                }: ${
-                                  dayItem.completed ? "Completed" : "Incomplete"
+                                className={`history-day-chip ${statusClass} ${
+                                  isToday ? "is-today" : ""
                                 }`}
-                                aria-label={`${dayItem.date}: ${
-                                  dayItem.completed ? "Completed" : "Incomplete"
-                                }`}
+                                title={accessibleLabel}
+                                aria-label={accessibleLabel}
                               >
                                 <span className="day-letter">{dayLetter}</span>
                                 <span
-                                  className={`day-dot ${
-                                    dayItem.completed ? "dot-done" : "dot-empty"
-                                  }`}
+                                  className={`day-dot ${dotClass}`}
                                   aria-hidden="true"
                                 />
                               </div>

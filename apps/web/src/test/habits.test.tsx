@@ -1026,4 +1026,495 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
       expect(patchCount).toBe(1);
     });
   });
+
+  // ==========================================
+  // 11. H04-C1 CORRECTIVE PASS TESTS (C-01 & O-01)
+  // ==========================================
+
+  it("38. C-01: completion uses authoritative endDate when browser timezone diverges from user timezone", async () => {
+    const authoritativeServerToday = "2026-10-09";
+    let capturedDateInPayload = "";
+
+    // Mock history response returning authoritative server date for users.timezone
+    const divergentHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: authoritativeServerToday,
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-08", completed: true, eligible: true, completedAt: "2026-10-08T10:00:00.000Z" },
+        { date: "2026-10-07", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-06", completed: true, eligible: true, completedAt: "2026-10-06T10:00:00.000Z" },
+        { date: "2026-10-05", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-04", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-03", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1", timezone: "America/New_York" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => divergentHistory };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          capturedDateInPayload = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: {
+                id: "c-divergent",
+                habitId: "habit-1",
+                completedDate: body.date,
+                completedAt: "2026-10-09T14:00:00.000Z",
+              },
+            }),
+          };
+        }
+        if (urlStr.match(/\/api\/habits\/[^/?]+$/)) {
+          return {
+            ok: true,
+            json: async () => ({
+              habit: { ...mockActiveHabit1, todayCompleted: true, currentStreak: 1 },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(capturedDateInPayload).not.toBe("");
+    });
+
+    // Must use authoritative server endDate (2026-10-09), respecting users.timezone contract
+    expect(capturedDateInPayload).toBe(authoritativeServerToday);
+  });
+
+  it("39. C-01: undo completion uses authoritative endDate when unmarking habit", async () => {
+    const authoritativeServerToday = "2026-10-09";
+    let capturedDeleteDate = "";
+
+    const divergentHistory: HabitHistoryResponse = {
+      habitId: "habit-2",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: authoritativeServerToday,
+      currentStreak: 5,
+      longestStreak: 12,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-09", completed: true, eligible: true, completedAt: "2026-10-09T10:00:00.000Z" },
+        { date: "2026-10-08", completed: true, eligible: true, completedAt: "2026-10-08T10:00:00.000Z" },
+        { date: "2026-10-07", completed: true, eligible: true, completedAt: "2026-10-07T10:00:00.000Z" },
+        { date: "2026-10-06", completed: true, eligible: true, completedAt: "2026-10-06T10:00:00.000Z" },
+        { date: "2026-10-05", completed: true, eligible: true, completedAt: "2026-10-05T10:00:00.000Z" },
+        { date: "2026-10-04", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-03", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1", timezone: "America/New_York" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => divergentHistory };
+        }
+        if (options?.method === "DELETE" && urlStr.includes("/completions/")) {
+          const parts = urlStr.split("/completions/");
+          capturedDeleteDate = decodeURIComponent(parts[1]);
+          return {
+            ok: true,
+            status: 204,
+          };
+        }
+        if (urlStr.match(/\/api\/habits\/[^/?]+$/)) {
+          return {
+            ok: true,
+            json: async () => ({
+              habit: { ...mockActiveHabit2, todayCompleted: false, currentStreak: 4 },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit2] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Morning 30m DSA Practice")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Morning 30m DSA Practice" as incomplete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(capturedDeleteDate).not.toBe("");
+    });
+
+    // Delete request must use authoritative server endDate (2026-10-09)
+    expect(capturedDeleteDate).toBe(authoritativeServerToday);
+  });
+
+  it("40. C-01: initially unavailable history triggers fetch to resolve authoritative date before completing", async () => {
+    let historyFetchCount = 0;
+    let completionDatePayload = "";
+
+    const freshHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: "2026-10-09",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-08", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-07", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-06", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-05", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-04", completed: false, eligible: true, completedAt: null },
+        { date: "2026-10-03", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyFetchCount++;
+          if (historyFetchCount === 1) {
+            // First load fails or returns unavailable history
+            return { ok: false, status: 500, json: async () => ({ error: "Temporary outage" }) };
+          }
+          // Subsequent fetch resolves fresh history with authoritative date
+          return { ok: true, json: async () => freshHistory };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          completionDatePayload = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: { id: "c-resolved", habitId: "habit-1", completedDate: body.date, completedAt: new Date().toISOString() },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // Click toggle when initial history was unavailable
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(completionDatePayload).toBe("2026-10-09");
+    });
+
+    expect(historyFetchCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("41. C-01: failing to resolve authoritative date displays error without sending guessed date", async () => {
+    let completionAttempted = false;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: false, status: 500, json: async () => ({ error: "History offline" }) };
+        }
+        if (urlStr.includes("/completions")) {
+          completionAttempted = true;
+          return { ok: true, status: 201, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Authoritative completion date is unavailable/i)).toBeInTheDocument();
+    });
+
+    // Crucial: No completion request was dispatched with an unverified guessed date
+    expect(completionAttempted).toBe(false);
+  });
+
+  it("42. C-01: stale history triggers fresh history fetch to verify authoritative date", async () => {
+    let historyCallCount = 0;
+    let completionDatePayload = "";
+
+    const initialHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-02",
+      endDate: "2026-10-08",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-08", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    const rolledOverHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: "2026-10-09",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyCallCount++;
+          if (historyCallCount === 1) {
+            return { ok: true, json: async () => initialHistory };
+          }
+          return { ok: true, json: async () => rolledOverHistory };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          completionDatePayload = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: { id: "c-stale", habitId: "habit-1", completedDate: body.date, completedAt: new Date().toISOString() },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // Advance time past the 60-second cache threshold to simulate staleness
+    const originalDateNow = Date.now;
+    vi.spyOn(Date, "now").mockReturnValue(originalDateNow() + 75_000);
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(completionDatePayload).toBe("2026-10-09");
+    });
+
+    // Stale check triggered a fresh fetch
+    expect(historyCallCount).toBeGreaterThanOrEqual(2);
+
+    vi.restoreAllMocks();
+  });
+
+  it("43. O-01: distinguishes 4 history states: completed, missed, pending, and ineligible", async () => {
+    const detailedHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: "2026-10-09",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-07", // Habit created on Oct 7; Oct 3-6 are ineligible
+      history: [
+        // Index 0: Today (pending, eligible)
+        { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+        // Index 1: Yesterday (completed, eligible)
+        { date: "2026-10-08", completed: true, eligible: true, completedAt: "2026-10-08T10:00:00.000Z" },
+        // Index 2: Two days ago (missed, eligible)
+        { date: "2026-10-07", completed: false, eligible: true, completedAt: null },
+        // Index 3: Three days ago (ineligible - before habit creation)
+        { date: "2026-10-06", completed: false, eligible: false, completedAt: null },
+        { date: "2026-10-05", completed: false, eligible: false, completedAt: null },
+        { date: "2026-10-04", completed: false, eligible: false, completedAt: null },
+        { date: "2026-10-03", completed: false, eligible: false, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => detailedHistory };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // 1. Pending (today, eligible, uncompleted)
+    const pendingChip = screen.getByLabelText("2026-10-09 (Today): Pending");
+    expect(pendingChip).toHaveClass("is-pending");
+    expect(pendingChip).toHaveClass("is-today");
+    expect(pendingChip.querySelector(".dot-pending")).toBeInTheDocument();
+
+    // 2. Completed (eligible, completed)
+    const completedChip = screen.getByLabelText("2026-10-08: Completed");
+    expect(completedChip).toHaveClass("is-completed");
+    expect(completedChip).toHaveClass("is-done");
+    expect(completedChip.querySelector(".dot-done")).toBeInTheDocument();
+
+    // 3. Missed (past eligible day, not completed)
+    const missedChip = screen.getByLabelText("2026-10-07: Missed");
+    expect(missedChip).toHaveClass("is-missed");
+    expect(missedChip).toHaveClass("not-done");
+    expect(missedChip.querySelector(".dot-missed")).toBeInTheDocument();
+
+    // 4. Ineligible (before habit creation)
+    const ineligibleChip = screen.getByLabelText("2026-10-06: Ineligible (before habit creation)");
+    expect(ineligibleChip).toHaveClass("is-ineligible");
+    expect(ineligibleChip).toHaveClass("not-done");
+    expect(ineligibleChip.querySelector(".dot-ineligible")).toBeInTheDocument();
+  });
+
+  it("44. mutation failure with authoritative date rolls back optimistic state and recovers on retry", async () => {
+    let failMutation = true;
+
+    const testHistory: HabitHistoryResponse = {
+      habitId: "habit-1",
+      days: 7,
+      startDate: "2026-10-03",
+      endDate: "2026-10-09",
+      currentStreak: 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
+      history: [
+        { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+      ],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => testHistory };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          if (failMutation) {
+            return {
+              ok: false,
+              status: 500,
+              json: async () => ({ error: "Database transaction deadlock" }),
+            };
+          }
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              completion: { id: "c-rec", habitId: "habit-1", completedDate: "2026-10-09", completedAt: new Date().toISOString() },
+            }),
+          };
+        }
+        if (urlStr.match(/\/api\/habits\/[^/?]+$/)) {
+          return {
+            ok: true,
+            json: async () => ({
+              habit: { ...mockActiveHabit1, todayCompleted: true, currentStreak: 1 },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    fireEvent.click(toggle);
+
+    // Rollback and error displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Could not update "Read 20 pages": Database transaction deadlock/i)).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Mark "Read 20 pages" as complete')).toBeInTheDocument();
+
+    // Now retry after fixing backend issue
+    failMutation = false;
+    fireEvent.click(screen.getByLabelText('Mark "Read 20 pages" as complete'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mark "Read 20 pages" as incomplete')).toBeInTheDocument();
+    });
+  });
 });

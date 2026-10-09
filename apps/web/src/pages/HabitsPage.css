@@ -576,12 +576,16 @@
   padding: 3px 5px;
   border-radius: var(--radius-xs);
   min-width: 24px;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .history-day-chip.is-today {
   background-color: var(--bg-surface-highest);
   box-shadow: 0 0 0 1px var(--primary-border);
+}
+
+.history-day-chip.is-ineligible {
+  opacity: 0.45;
 }
 
 .day-letter {
@@ -600,16 +604,36 @@
   height: 8px;
   border-radius: var(--radius-full);
   display: inline-block;
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
 
+/* 1. Completed eligible day */
 .day-dot.dot-done {
   background-color: var(--color-success);
+  border: none;
 }
 
-.day-dot.dot-empty {
+/* 2. Eligible missed day */
+.day-dot.dot-empty,
+.day-dot.dot-missed {
   background-color: var(--bg-surface-highest);
   border: 1px solid var(--border-subtle);
+}
+
+/* 3. Today's pending state */
+.day-dot.dot-pending {
+  background-color: transparent;
+  border: 1.5px dashed var(--primary);
+}
+
+/* 4. Ineligible day before habit creation date */
+.day-dot.dot-ineligible {
+  width: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--text-muted);
+  border: none;
+  opacity: 0.75;
 }
 
 .history-day-chip:hover .day-dot {
