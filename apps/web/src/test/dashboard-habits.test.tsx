@@ -632,4 +632,236 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     });
     expect(checkedBtn).toHaveAttribute("aria-checked", "true");
   });
+
+  // 14. Desktop sidebar navigation to /habits and active state
+  it("14. renders Habits in desktop sidebar with active highlight and functional navigation", async () => {
+    window.history.pushState({}, "", "/dashboard");
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Today's Habits" })).toBeInTheDocument();
+    });
+
+    const sidebarHabitsLink = document.querySelector(".shell-sidebar .nav-item[href='/habits']");
+    expect(sidebarHabitsLink).toBeInTheDocument();
+    expect(sidebarHabitsLink).toHaveTextContent("Habits");
+
+    // Click to navigate to /habits
+    fireEvent.click(sidebarHabitsLink!);
+    expect(window.location.pathname).toBe("/habits");
+    expect(sidebarHabitsLink).toHaveClass("active");
+    expect(sidebarHabitsLink).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Habits", { selector: ".breadcrumb-current" })).toBeInTheDocument();
+  });
+
+  // 15. Mobile More drawer navigation to /habits
+  it("15. provides Habits inside mobile More menu, navigates to /habits, and closes drawer", async () => {
+    window.history.pushState({}, "", "/dashboard");
+    render(<App />);
+
+    const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
+    fireEvent.click(moreBtn);
+
+    expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
+    const drawerHabitsLink = document.querySelector(".more-drawer-nav .drawer-nav-item[href='/habits']");
+    expect(drawerHabitsLink).toBeInTheDocument();
+    expect(drawerHabitsLink).toHaveTextContent("Habits");
+
+    fireEvent.click(drawerHabitsLink!);
+    expect(window.location.pathname).toBe("/habits");
+    expect(screen.queryByText("Navigation & Account")).not.toBeInTheDocument();
+  });
+
+  // 16. Widget completion uses authoritative endDate across timezone divergence
+  it("16. widget completion sends server-authoritative endDate when browser timezone differs", async () => {
+    const authoritativeServerDate = "2026-10-09";
+    let capturedDate = "";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, status: 200, json: async () => ({ user: { id: "user-1", name: "Alex" } }) };
+        }
+        if (urlStr.includes("/api/tasks")) {
+          return { ok: true, status: 200, json: async () => ({ tasks: [] }) };
+        }
+        if (urlStr.includes("/history")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              habitId: "habit-1",
+              days: 7,
+              startDate: "2026-10-03",
+              endDate: authoritativeServerDate,
+              currentStreak: 0,
+              longestStreak: 5,
+              eligibilityStartDate: "2026-10-01",
+              history: [
+                { date: authoritativeServerDate, completed: false, eligible: true, completedAt: null },
+              ],
+            }),
+          };
+        }
+        if (options?.method === "POST" && urlStr.includes("/completions")) {
+          const body = JSON.parse(options.body);
+          capturedDate = body.date;
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({ completion: { id: "c-1", habitId: "habit-1", completedDate: body.date, completedAt: new Date().toISOString() } }),
+          };
+        }
+        if (urlStr.includes("/api/habits")) {
+          return { ok: true, status: 200, json: async () => ({ habits: [mockActiveHabit1] }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ projects: [], goals: [] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const checkBtn = screen.getByRole("checkbox", { name: "Mark Read 20 pages as complete" });
+    fireEvent.click(checkBtn);
+
+    await waitFor(() => {
+      expect(capturedDate).not.toBe("");
+    });
+
+    expect(capturedDate).toBe(authoritativeServerDate);
+  });
+
+  // 17. Widget undo uses authoritative endDate across timezone divergence
+  it("17. widget undo sends DELETE with server-authoritative endDate when browser timezone differs", async () => {
+    const authoritativeServerDate = "2026-10-09";
+    let capturedDeleteUrl = "";
+
+    const habitWithCompletion: Habit = {
+      ...mockActiveHabit1,
+      todayCompleted: true,
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, status: 200, json: async () => ({ user: { id: "user-1", name: "Alex" } }) };
+        }
+        if (urlStr.includes("/api/tasks")) {
+          return { ok: true, status: 200, json: async () => ({ tasks: [] }) };
+        }
+        if (urlStr.includes("/history")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              habitId: "habit-1",
+              days: 7,
+              startDate: "2026-10-03",
+              endDate: authoritativeServerDate,
+              currentStreak: 1,
+              longestStreak: 5,
+              eligibilityStartDate: "2026-10-01",
+              history: [
+                { date: authoritativeServerDate, completed: true, eligible: true, completedAt: "2026-10-09T10:00:00.000Z" },
+              ],
+            }),
+          };
+        }
+        if (options?.method === "DELETE" && urlStr.includes("/completions/")) {
+          capturedDeleteUrl = urlStr;
+          return { ok: true, status: 204 };
+        }
+        if (urlStr.includes("/api/habits")) {
+          return { ok: true, status: 200, json: async () => ({ habits: [habitWithCompletion] }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ projects: [], goals: [] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const checkBtn = screen.getByRole("checkbox", { name: "Mark Read 20 pages as incomplete" });
+    fireEvent.click(checkBtn);
+
+    await waitFor(() => {
+      expect(capturedDeleteUrl).not.toBe("");
+    });
+
+    expect(capturedDeleteUrl).toContain(`/api/habits/habit-1/completions/${authoritativeServerDate}`);
+  });
+
+  // 18. Widget rolls back and displays action error when authoritative date cannot be obtained
+  it("18. widget rolls back optimistic update and displays error banner when date resolution fails", async () => {
+    let historyCallCount = 0;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, status: 200, json: async () => ({ user: { id: "user-1", name: "Alex" } }) };
+        }
+        if (urlStr.includes("/api/tasks")) {
+          return { ok: true, status: 200, json: async () => ({ tasks: [] }) };
+        }
+        if (urlStr.includes("/history")) {
+          historyCallCount++;
+          if (historyCallCount === 1) {
+            // Initial load works
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                habitId: "habit-1",
+                days: 7,
+                startDate: "2026-10-03",
+                endDate: "2026-10-09",
+                currentStreak: 0,
+                longestStreak: 5,
+                eligibilityStartDate: "2026-10-01",
+                history: [
+                  { date: "2026-10-09", completed: false, eligible: true, completedAt: null },
+                ],
+              }),
+            };
+          }
+          // On toggle: fresh history fails
+          return { ok: false, status: 500, json: async () => ({ error: "Server down" }) };
+        }
+        if (urlStr.includes("/api/habits")) {
+          return { ok: true, status: 200, json: async () => ({ habits: [mockActiveHabit1] }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ projects: [], goals: [] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const checkBtn = screen.getByRole("checkbox", { name: "Mark Read 20 pages as complete" });
+    fireEvent.click(checkBtn);
+
+    // Rollback and error displayed in widget
+    await waitFor(() => {
+      expect(screen.getByText(/Authoritative completion date is unavailable/i)).toBeInTheDocument();
+    });
+
+    // Checkbox rolled back to incomplete
+    expect(screen.getByRole("checkbox", { name: "Mark Read 20 pages as complete" })).toBeInTheDocument();
+  });
 });

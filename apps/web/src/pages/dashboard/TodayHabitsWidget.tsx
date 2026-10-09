@@ -53,10 +53,11 @@ export function TodayHabitsWidget() {
         const habit = displayed[idx];
         if (res.status === "fulfilled") {
           const hist: HabitHistoryResponse = res.value;
-          const todayItem = hist.history?.find((item) => item.date === todayStr);
+          const habitToday = hist.endDate || todayStr;
+          const todayItem = hist.history?.find((item) => item.date === habitToday);
           completionsMap[habit.id] = !!(todayItem && todayItem.completed);
         } else {
-          completionsMap[habit.id] = false;
+          completionsMap[habit.id] = typeof habit.todayCompleted === "boolean" ? habit.todayCompleted : false;
         }
       });
 
@@ -73,7 +74,7 @@ export function TodayHabitsWidget() {
   }, [loadHabitsData]);
 
   // Optimistic completion toggle
-  const handleToggleHabit = async (habit: Habit) => {
+  const handleToggleHabit = async (habit: Habit, specificDate?: string) => {
     if (togglingHabitIds.has(habit.id)) return; // Prevent duplicate rapid clicks
 
     const isCurrentlyCompleted = !!todayCompletions[habit.id];
@@ -85,10 +86,25 @@ export function TodayHabitsWidget() {
     setActionError(null);
 
     try {
+      // Authoritative date resolution:
+      let targetDate = specificDate;
+      if (!targetDate) {
+        try {
+          const freshHistory = await fetchHabitHistory(habit.id, 7);
+          targetDate = freshHistory.endDate;
+        } catch {
+          throw new Error("Authoritative completion date is unavailable. Please check your connection and try again.");
+        }
+      }
+
+      if (!targetDate) {
+        throw new Error("Authoritative completion date is unavailable.");
+      }
+
       if (nextState) {
-        await completeHabit(habit.id, todayStr);
+        await completeHabit(habit.id, targetDate);
       } else {
-        await undoHabitCompletion(habit.id, todayStr);
+        await undoHabitCompletion(habit.id, targetDate);
       }
     } catch (err: unknown) {
       // Rollback on failure
