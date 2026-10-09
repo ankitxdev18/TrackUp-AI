@@ -4,6 +4,7 @@ import {
   Archive,
   CheckCircle2,
   Circle,
+  Flame,
   Loader2,
   MoreVertical,
   Pencil,
@@ -12,10 +13,12 @@ import {
   RotateCcw,
   Sparkles,
   Trash2,
+  Trophy,
 } from "lucide-react";
 import {
   completeHabit,
   deleteHabit,
+  fetchHabit,
   fetchHabitHistory,
   fetchHabits,
   getLocalTodayDateString,
@@ -49,6 +52,9 @@ export function HabitsPage() {
   // Set of habit IDs currently undergoing an optimistic toggle
   const [togglingHabitIds, setTogglingHabitIds] = useState<Set<string>>(new Set());
 
+  // Set of habit IDs currently undergoing archive/restore transition
+  const [transitioningHabitIds, setTransitioningHabitIds] = useState<Set<string>>(new Set());
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
@@ -73,8 +79,30 @@ export function HabitsPage() {
       setError(null);
       setActionError(null);
 
-      const allHabits = await fetchHabits();
+      // Load both active and archived habits to support active/archived tabs with accurate counts
+      let allHabits: Habit[] = [];
+      try {
+        const [activeList, archivedList] = await Promise.all([
+          fetchHabits("ACTIVE"),
+          fetchHabits("ARCHIVED"),
+        ]);
+        const habitMap = new Map<string, Habit>();
+        activeList.forEach((h) => habitMap.set(h.id, h));
+        archivedList.forEach((h) => habitMap.set(h.id, h));
+        allHabits = Array.from(habitMap.values());
+      } catch {
+        allHabits = await fetchHabits();
+      }
+
       setHabits(allHabits);
+
+      // Pre-populate today's completion state directly from server-returned habit flags
+      const initialCompletions: Record<string, boolean> = {};
+      allHabits.forEach((h) => {
+        if (typeof h.todayCompleted === "boolean") {
+          initialCompletions[h.id] = h.todayCompleted;
+        }
+      });
 
       // Fetch 7-day history for all active habits
       const activeHabits = allHabits.filter((h) => h.status === "ACTIVE");
@@ -83,22 +111,20 @@ export function HabitsPage() {
       );
 
       const newHistories: Record<string, HabitHistoryResponse> = {};
-      const newCompletions: Record<string, boolean> = {};
+      const newCompletions: Record<string, boolean> = { ...initialCompletions };
 
       historyResults.forEach((result, idx) => {
         const habit = activeHabits[idx];
         if (result.status === "fulfilled") {
           const hist = result.value;
           newHistories[habit.id] = hist;
-          // Check if today is completed
+          // Check if today is completed from history
           const todayItem = hist.history.find((item) => item.date === todayStr);
           if (todayItem && todayItem.completed) {
             newCompletions[habit.id] = true;
-          } else {
+          } else if (todayItem && !todayItem.completed) {
             newCompletions[habit.id] = false;
           }
-        } else {
-          newCompletions[habit.id] = false;
         }
       });
 
@@ -115,16 +141,34 @@ export function HabitsPage() {
     loadHabits();
   }, [loadHabits]);
 
-  // Toggle completion with optimistic update and rollback
+  // Toggle completion with optimistic update, rollback on failure, and server reconciliation
   const handleToggleCompletion = async (habit: Habit) => {
     if (togglingHabitIds.has(habit.id)) return; // Prevent race conditions
 
     const currentlyCompleted = Boolean(todayCompletions[habit.id]);
     const nextCompleted = !currentlyCompleted;
+    const prevHabits = [...habits];
+    const prevHistories = { ...histories };
 
     // 1. Optimistic UI update
     setTogglingHabitIds((prev) => new Set(prev).add(habit.id));
     setTodayCompletions((prev) => ({ ...prev, [habit.id]: nextCompleted }));
+
+    // Optimistically update habit streak and todayCompleted on the card
+    setHabits((prev) =>
+      prev.map((h) => {
+        if (h.id !== habit.id) return h;
+        const newStreak = nextCompleted
+          ? h.currentStreak + 1
+          : Math.max(0, h.currentStreak - 1);
+        return {
+          ...h,
+          todayCompleted: nextCompleted,
+          currentStreak: newStreak,
+          longestStreak: nextCompleted ? Math.max(h.longestStreak, newStreak) : h.longestStreak,
+        };
+      })
+    );
 
     // Optimistically update history dot
     setHistories((prev) => {
@@ -155,29 +199,32 @@ export function HabitsPage() {
         // Undo completion
         await undoHabitCompletion(habit.id, todayStr);
       }
+
+      // Targeted refresh to reconcile server-authoritative streaks and completion indicators
+      try {
+        const [refreshedHabit, refreshedHistory] = await Promise.all([
+          fetchHabit(habit.id),
+          fetchHabitHistory(habit.id, 7),
+        ]);
+        if (refreshedHabit && typeof refreshedHabit === "object") {
+          setHabits((prev) => prev.map((h) => (h.id === habit.id ? refreshedHabit : h)));
+          if (typeof refreshedHabit.todayCompleted === "boolean") {
+            setTodayCompletions((prev) => ({ ...prev, [habit.id]: refreshedHabit.todayCompleted }));
+          }
+        }
+        if (refreshedHistory && Array.isArray(refreshedHistory.history)) {
+          setHistories((prev) => ({ ...prev, [habit.id]: refreshedHistory }));
+        }
+      } catch {
+        // Keep optimistic state if targeted refresh call fails
+      }
+
       setActionError(null);
     } catch (err: unknown) {
       // Rollback on failure
       setTodayCompletions((prev) => ({ ...prev, [habit.id]: currentlyCompleted }));
-      setHistories((prev) => {
-        const existing = prev[habit.id];
-        if (!existing) return prev;
-        return {
-          ...prev,
-          [habit.id]: {
-            ...existing,
-            history: existing.history.map((item) =>
-              item.date === todayStr
-                ? {
-                    ...item,
-                    completed: currentlyCompleted,
-                    completedAt: currentlyCompleted ? new Date().toISOString() : null,
-                  }
-                : item
-            ),
-          },
-        };
-      });
+      setHabits(prevHabits);
+      setHistories(prevHistories);
       setActionError(
         err instanceof Error
           ? `Could not update "${habit.title}": ${err.message}`
@@ -192,10 +239,13 @@ export function HabitsPage() {
     }
   };
 
-  // Archive / Restore habit
+  // Archive / Restore habit with transition guard to prevent duplicate clicks
   const handleToggleArchive = async (habit: Habit) => {
+    if (transitioningHabitIds.has(habit.id)) return;
+
     const nextStatus = habit.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
     try {
+      setTransitioningHabitIds((prev) => new Set(prev).add(habit.id));
       const updated = await updateHabit(habit.id, { status: nextStatus });
       setHabits((prev) => prev.map((h) => (h.id === habit.id ? updated : h)));
       setOpenMenuId(null);
@@ -206,6 +256,12 @@ export function HabitsPage() {
           ? err.message
           : "Failed to change habit status. Please try again."
       );
+    } finally {
+      setTransitioningHabitIds((prev) => {
+        const next = new Set(prev);
+        next.delete(habit.id);
+        return next;
+      });
     }
   };
 
@@ -466,6 +522,7 @@ export function HabitsPage() {
                       {habit.status === "ACTIVE" ? (
                         <button
                           type="button"
+                          role="checkbox"
                           className={`btn-check-toggle ${
                             isCompleted ? "checked" : ""
                           }`}
@@ -476,6 +533,7 @@ export function HabitsPage() {
                               ? `Mark "${habit.title}" as incomplete`
                               : `Mark "${habit.title}" as complete`
                           }
+                          aria-checked={isCompleted}
                           aria-pressed={isCompleted}
                         >
                           {isToggling ? (
@@ -521,6 +579,47 @@ export function HabitsPage() {
                           </h2>
                           <span className="cadence-tag">Daily</span>
                         </div>
+
+                        {/* Current and Longest Streak Metrics */}
+                        <div
+                          className="habit-streaks-row"
+                          aria-label={`Current streak: ${habit.currentStreak ?? 0} days, Best streak: ${habit.longestStreak ?? 0} days`}
+                        >
+                          <div
+                            className={`habit-current-streak ${
+                              (habit.currentStreak ?? 0) > 0 ? "has-streak" : ""
+                            }`}
+                            title="Current consecutive days streak"
+                          >
+                            <Flame
+                              size={13}
+                              className="streak-flame-icon"
+                              aria-hidden="true"
+                            />
+                            <span>
+                              {habit.currentStreak ?? 0}{" "}
+                              {(habit.currentStreak ?? 0) === 1 ? "day" : "days"} streak
+                            </span>
+                          </div>
+                          <span className="streak-dot-divider" aria-hidden="true">
+                            •
+                          </span>
+                          <div
+                            className="habit-longest-streak"
+                            title="Longest streak achieved"
+                          >
+                            <Trophy
+                              size={13}
+                              className="longest-streak-icon"
+                              aria-hidden="true"
+                            />
+                            <span>
+                              Best: {habit.longestStreak ?? 0}{" "}
+                              {(habit.longestStreak ?? 0) === 1 ? "day" : "days"}
+                            </span>
+                          </div>
+                        </div>
+
                         {habit.description && (
                           <p className="habit-desc">{habit.description}</p>
                         )}
@@ -561,6 +660,7 @@ export function HabitsPage() {
                               role="menuitem"
                               className="dropdown-item"
                               onClick={() => handleToggleArchive(habit)}
+                              disabled={transitioningHabitIds.has(habit.id)}
                             >
                               {habit.status === "ACTIVE" ? (
                                 <>

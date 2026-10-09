@@ -34,6 +34,9 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     description: "Personal reading routine",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 2,
+    longestStreak: 5,
+    todayCompleted: false,
     createdAt: "2026-10-01T10:00:00.000Z",
     updatedAt: "2026-10-01T10:00:00.000Z",
   };
@@ -45,6 +48,9 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     description: "Morning workout",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 1,
+    longestStreak: 3,
+    todayCompleted: false,
     createdAt: "2026-10-02T10:00:00.000Z",
     updatedAt: "2026-10-02T10:00:00.000Z",
   };
@@ -56,6 +62,9 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     description: "1 problem per day",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 0,
+    longestStreak: 2,
+    todayCompleted: false,
     createdAt: "2026-10-03T10:00:00.000Z",
     updatedAt: "2026-10-03T10:00:00.000Z",
   };
@@ -67,6 +76,9 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     description: "Evening reflections",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 4,
+    longestStreak: 6,
+    todayCompleted: false,
     createdAt: "2026-10-04T10:00:00.000Z",
     updatedAt: "2026-10-04T10:00:00.000Z",
   };
@@ -78,6 +90,9 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     description: "Hydration tracking",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 5,
+    longestStreak: 10,
+    todayCompleted: false,
     createdAt: "2026-10-05T10:00:00.000Z",
     updatedAt: "2026-10-05T10:00:00.000Z",
   };
@@ -88,10 +103,14 @@ describe("Milestone H01-E: Dashboard Habits Integration", () => {
     days: 7,
     startDate: "2026-09-30",
     endDate: localToday,
+    currentStreak: isCompletedToday ? 1 : 0,
+    longestStreak: 3,
+    eligibilityStartDate: "2026-09-30",
     history: [
       {
         date: localToday,
         completed: isCompletedToday,
+        eligible: true,
         completedAt: isCompletedToday ? "2026-10-06T10:00:00.000Z" : null,
       },
     ],

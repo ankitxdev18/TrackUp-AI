@@ -14,6 +14,9 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
     description: "Personal development routine before sleep",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 3,
+    longestStreak: 7,
+    todayCompleted: false,
     createdAt: "2026-10-01T10:00:00.000Z",
     updatedAt: "2026-10-01T10:00:00.000Z",
   };
@@ -25,6 +28,9 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
     description: "Solve 1 medium problem on LeetCode/TUF",
     frequency: "DAILY",
     status: "ACTIVE",
+    currentStreak: 5,
+    longestStreak: 12,
+    todayCompleted: true,
     createdAt: "2026-10-02T10:00:00.000Z",
     updatedAt: "2026-10-02T10:00:00.000Z",
   };
@@ -36,6 +42,9 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
     description: "Paused habit",
     frequency: "DAILY",
     status: "ARCHIVED",
+    currentStreak: 0,
+    longestStreak: 4,
+    todayCompleted: false,
     createdAt: "2026-09-01T10:00:00.000Z",
     updatedAt: "2026-09-15T10:00:00.000Z",
   };
@@ -60,9 +69,13 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
       days: 7,
       startDate: dates[dates.length - 1],
       endDate: dates[0],
+      currentStreak: todayCompleted ? 1 : 0,
+      longestStreak: 5,
+      eligibilityStartDate: "2026-10-01",
       history: dates.map((date, idx) => ({
         date,
         completed: idx === 0 ? todayCompleted : idx % 2 === 0, // Today is idx 0
+        eligible: true,
         completedAt: (idx === 0 && todayCompleted) || (idx > 0 && idx % 2 === 0)
           ? "2026-10-06T10:00:00.000Z"
           : null,
@@ -203,6 +216,9 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
             description: body.description ?? null,
             frequency: body.frequency ?? "DAILY",
             status: "ACTIVE",
+            currentStreak: 0,
+            longestStreak: 0,
+            todayCompleted: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -867,6 +883,9 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
             json: async () => ({ completion: { id: "c1", completedDate: body.date } }),
           };
         }
+        if (urlStr.match(/\/api\/habits\/[^/?]+$/)) {
+          return { ok: true, json: async () => ({ habit: mockActiveHabit1 }) };
+        }
         return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
       })
     );
@@ -890,5 +909,121 @@ describe("Milestone H01-D: Habits Frontend Vertical Slice", () => {
     expect(capturedDateInPayload).toBe(expectedLocal);
     // Explicitly verify it matches getLocalTodayDateString()
     expect(capturedDateInPayload).toBe(localToday);
+  });
+
+  // ==========================================
+  // 10. H04 STREAK & ACCESSIBILITY TESTS
+  // ==========================================
+
+  it("34. displays current streak and longest streak supporting metrics on habit cards", async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // mockActiveHabit1 has currentStreak: 3, longestStreak: 7
+    expect(screen.getByText("3 days streak")).toBeInTheDocument();
+    expect(screen.getByText("Best: 7 days")).toBeInTheDocument();
+
+    // mockActiveHabit2 has currentStreak: 5, longestStreak: 12
+    expect(screen.getByText("5 days streak")).toBeInTheDocument();
+    expect(screen.getByText("Best: 12 days")).toBeInTheDocument();
+  });
+
+  it("35. completion toggle has role='checkbox' and accessible aria-checked state", async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    const uncheckedToggle = screen.getByLabelText('Mark "Read 20 pages" as complete');
+    expect(uncheckedToggle).toHaveAttribute("role", "checkbox");
+    expect(uncheckedToggle).toHaveAttribute("aria-checked", "false");
+
+    const checkedToggle = screen.getByLabelText('Mark "Morning 30m DSA Practice" as incomplete');
+    expect(checkedToggle).toHaveAttribute("role", "checkbox");
+    expect(checkedToggle).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("36. handles 204 No Content for deleteHabit and undoHabitCompletion safely", async () => {
+    const { deleteHabit, undoHabitCompletion } = await import("../api/habits");
+
+    // Test deleteHabit with 204
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      })
+    );
+
+    const deleteResult = await deleteHabit("habit-123");
+    expect(deleteResult).toEqual({ success: true, id: "habit-123" });
+
+    // Test undoHabitCompletion with 204
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      })
+    );
+
+    const undoResult = await undoHabitCompletion("habit-123", "2026-10-09");
+    expect(undoResult).toEqual({
+      success: true,
+      habitId: "habit-123",
+      completedDate: "2026-10-09",
+    });
+  });
+
+  it("37. prevents duplicate archive/restore transitions while transition is in progress", async () => {
+    let patchCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, options?: any) => {
+        const urlStr = url.toString();
+        if (urlStr.includes("/api/auth/me")) {
+          return { ok: true, json: async () => ({ user: { id: "user-1" } }) };
+        }
+        if (urlStr.includes("/history")) {
+          return { ok: true, json: async () => makeMockHistory("habit-1", false) };
+        }
+        if (options?.method === "PATCH") {
+          patchCount++;
+          // simulate delayed response
+          await new Promise((r) => setTimeout(r, 100));
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              habit: { ...mockActiveHabit1, status: "ARCHIVED" },
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ habits: [mockActiveHabit1] }) };
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read 20 pages")).toBeInTheDocument();
+    });
+
+    // Open dropdown menu
+    fireEvent.click(screen.getByLabelText("Options for Read 20 pages"));
+
+    const archiveBtn = screen.getByRole("menuitem", { name: /Archive/i });
+    fireEvent.click(archiveBtn);
+
+    // Click again while transition is in flight
+    fireEvent.click(archiveBtn);
+
+    await waitFor(() => {
+      expect(patchCount).toBe(1);
+    });
   });
 });

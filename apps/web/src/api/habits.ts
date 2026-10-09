@@ -19,6 +19,9 @@ export interface Habit {
   description: string | null;
   frequency: "DAILY";
   status: "ACTIVE" | "ARCHIVED";
+  currentStreak: number;
+  longestStreak: number;
+  todayCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,15 +29,14 @@ export interface Habit {
 export interface HabitCompletion {
   id: string;
   habitId: string;
-  userId: string;
   completedDate: string;
   completedAt: string;
-  createdAt: string;
 }
 
 export interface HabitHistoryItem {
   date: string;
   completed: boolean;
+  eligible: boolean;
   completedAt: string | null;
 }
 
@@ -43,6 +45,9 @@ export interface HabitHistoryResponse {
   days: number;
   startDate: string;
   endDate: string;
+  currentStreak: number;
+  longestStreak: number;
+  eligibilityStartDate: string;
   history: HabitHistoryItem[];
 }
 
@@ -237,7 +242,15 @@ export async function deleteHabit(id: string): Promise<{ success: boolean; id: s
     );
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return { success: true, id };
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return { success: true, id };
+  }
 }
 
 /**
@@ -304,7 +317,15 @@ export async function undoHabitCompletion(
     );
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return { success: true, habitId, completedDate: date };
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return { success: true, habitId, completedDate: date };
+  }
 }
 
 /**

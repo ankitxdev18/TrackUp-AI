@@ -22,10 +22,12 @@ export function HabitModal({
   const [error, setError] = useState<string | null>(null);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const isEditing = Boolean(habitToEdit);
 
   useEffect(() => {
     if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
       if (habitToEdit) {
         setTitle(habitToEdit.title);
         setDescription(habitToEdit.description || "");
@@ -36,6 +38,8 @@ export function HabitModal({
       setError(null);
       setLoading(false);
       setTimeout(() => titleInputRef.current?.focus(), 50);
+    } else {
+      previousFocusRef.current?.focus?.();
     }
   }, [isOpen, habitToEdit]);
 

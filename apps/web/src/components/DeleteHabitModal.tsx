@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AlertCircle, AlertTriangle, Loader2, X } from "lucide-react";
 import "./DeleteHabitModal.css";
 
@@ -19,6 +19,16 @@ export function DeleteHabitModal({
   loading = false,
   error = null,
 }: DeleteHabitModalProps) {
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+    } else {
+      previousFocusRef.current?.focus?.();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !loading) {
