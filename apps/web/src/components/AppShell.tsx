@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
+import { NotificationBell } from "./notifications/NotificationBell";
 import "./AppShell.css";
 
 interface AppShellProps {
@@ -177,6 +178,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           <div className="header-actions">
+            <NotificationBell />
             <div className="user-avatar-sm" aria-label="User profile" title={`${displayName} (${displayRole})`}>
               {userInitials}
             </div>

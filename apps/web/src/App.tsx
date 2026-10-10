@@ -148,13 +148,16 @@ function AppRoutes() {
 }
 
 import { AuthProvider } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 export function App() {
   return (
     <AuthProvider>
-      <RouterProvider>
-        <AppRoutes />
-      </RouterProvider>
+      <NotificationProvider>
+        <RouterProvider>
+          <AppRoutes />
+        </RouterProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
