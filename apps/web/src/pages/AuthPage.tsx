@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { registerApi } from "../api/auth";
+import { getSafeReturnTo } from "../components/ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
 import "./AuthPage.css";
@@ -65,8 +66,13 @@ export function AuthPage({ mode }: AuthPageProps) {
       try {
         await login({ email, password });
         setSuccess("Logged in successfully! Loading workspace...");
+        const searchParams = new URLSearchParams(
+          typeof window !== "undefined" ? window.location.search : ""
+        );
+        const rawReturnTo = searchParams.get("returnTo");
+        const destination = getSafeReturnTo(rawReturnTo, "/dashboard");
         setTimeout(() => {
-          navigate("/dashboard");
+          navigate(destination);
         }, 400);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Invalid email or password.");

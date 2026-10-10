@@ -3,9 +3,11 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
 import { getMeApi, loginApi, logoutApi, registerApi } from "../api/auth";
+import { setTestAuthOverride } from "../context/AuthContext";
 
 describe("M2.5 Frontend Authentication & Session Suite", () => {
   beforeEach(() => {
+    setTestAuthOverride(null);
     vi.restoreAllMocks();
   });
 

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "./components/AppShell";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthPage } from "./pages/AuthPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { DashboardView } from "./pages/DashboardView";
@@ -25,150 +26,125 @@ import { RouterProvider, useRouter } from "./router/Router";
 function AppRoutes() {
   const { path } = useRouter();
 
+  // Public unauthenticated routes
+  if (path === "/") {
+    return <LandingPage />;
+  }
+
+  if (path === "/login") {
+    return <AuthPage mode="login" />;
+  }
+
+  if (path === "/signup") {
+    return <AuthPage mode="signup" />;
+  }
+
+  // All other routes are private workspace routes guarded by ProtectedRoute
   if (path.startsWith("/projects/")) {
     const projectId = path.replace("/projects/", "").split("/")[0];
     return (
-      <AppShell>
-        <ProjectDetailPage projectId={projectId} />
-      </AppShell>
+      <ProtectedRoute>
+        <AppShell>
+          <ProjectDetailPage projectId={projectId} />
+        </AppShell>
+      </ProtectedRoute>
     );
   }
 
   if (path.startsWith("/goals/")) {
     const goalId = path.replace("/goals/", "").split("/")[0];
     return (
-      <AppShell>
-        <GoalDetailPage goalId={goalId} />
-      </AppShell>
+      <ProtectedRoute>
+        <AppShell>
+          <GoalDetailPage goalId={goalId} />
+        </AppShell>
+      </ProtectedRoute>
     );
   }
 
-  switch (path) {
-    case "/":
-      return <LandingPage />;
+  const renderPrivateContent = () => {
+    switch (path) {
+      case "/dashboard":
+        return <DashboardView />;
 
-    case "/login":
-      return <AuthPage mode="login" />;
+      case "/tasks":
+        return <TasksPage />;
 
-    case "/signup":
-      return <AuthPage mode="signup" />;
+      case "/projects":
+        return <ProjectsPage />;
 
-    case "/dashboard":
-      return (
-        <AppShell>
-          <DashboardView />
-        </AppShell>
-      );
+      case "/goals":
+        return <GoalsPage />;
 
-    case "/tasks":
-      return (
-        <AppShell>
-          <TasksPage />
-        </AppShell>
-      );
+      case "/habits":
+        return <HabitsPage />;
 
-    case "/projects":
-      return (
-        <AppShell>
-          <ProjectsPage />
-        </AppShell>
-      );
+      case "/journal":
+        return <JournalPage />;
 
-    case "/goals":
-      return (
-        <AppShell>
-          <GoalsPage />
-        </AppShell>
-      );
+      case "/ideas":
+        return <IdeasPage />;
 
-    case "/habits":
-      return (
-        <AppShell>
-          <HabitsPage />
-        </AppShell>
-      );
+      case "/calendar":
+        return <CalendarPage />;
 
-    case "/journal":
-      return (
-        <AppShell>
-          <JournalPage />
-        </AppShell>
-      );
-
-    case "/ideas":
-      return (
-        <AppShell>
-          <IdeasPage />
-        </AppShell>
-      );
-
-    case "/calendar":
-      return (
-        <AppShell>
-          <CalendarPage />
-        </AppShell>
-      );
-
-    case "/notes":
-      return (
-        <AppShell>
+      case "/notes":
+        return (
           <FeaturePlaceholder
             title="Notes & Focus Journal"
             description="Distraction-free quick capture, markdown thinking pads, and contextual project documentation."
             icon={BookOpen}
             plannedMilestone="Phase 4 Milestone"
           />
-        </AppShell>
-      );
+        );
 
-    case "/expenses":
-      return (
-        <AppShell>
+      case "/expenses":
+        return (
           <FeaturePlaceholder
             title="Expenses & Budgeting"
             description="Log financial transactions, track monthly budgets, and analyze spending habits without bloated spreadsheet complexity."
             icon={Receipt}
             plannedMilestone="Phase 4 Milestone"
           />
-        </AppShell>
-      );
+        );
 
-    case "/health":
-      return (
-        <AppShell>
+      case "/health":
+        return (
           <FeaturePlaceholder
             title="Health & Recovery"
             description="Monitor sleep consistency, workout streaks, and daily wellness habits unified inside your personal Life OS."
             icon={HeartPulse}
             plannedMilestone="Phase 5 Milestone"
           />
-        </AppShell>
-      );
+        );
 
-    case "/settings":
-      return (
-        <AppShell>
+      case "/settings":
+        return (
           <FeaturePlaceholder
             title="Workspace Settings"
             description="Manage personal preferences, notifications, theme density, and account details."
             icon={Settings}
             plannedMilestone="Phase 5 Milestone"
           />
-        </AppShell>
-      );
+        );
 
-    default:
-      return (
-        <AppShell>
+      default:
+        return (
           <FeaturePlaceholder
             title="Page Not Found"
             description="The requested page does not exist in the TrackUp Life OS application."
             icon={Compass}
             plannedMilestone="404 Status"
           />
-        </AppShell>
-      );
-  }
+        );
+    }
+  };
+
+  return (
+    <ProtectedRoute>
+      <AppShell>{renderPrivateContent()}</AppShell>
+    </ProtectedRoute>
+  );
 }
 
 import { AuthProvider } from "./context/AuthContext";

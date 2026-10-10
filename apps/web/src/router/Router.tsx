@@ -29,10 +29,14 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const navigate = (to: string) => {
-    if (to === path) return;
+    const pathname = to.split("?")[0].split("#")[0] || "/";
     window.history.pushState({}, "", to);
-    setPath(to);
-    window.scrollTo(0, 0);
+    setPath(pathname);
+    try {
+      window.scrollTo(0, 0);
+    } catch {
+      // Ignore in environments without window.scrollTo
+    }
   };
 
   return (
