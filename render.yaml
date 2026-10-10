@@ -1,0 +1,38 @@
+# Render Blueprint Specification for TrackUp
+# Deploys TrackUp API as a Node.js Web Service paired with managed PostgreSQL.
+services:
+  - type: web
+    name: trackup-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build:api
+    startCommand: npm run db:migrate:api:prod && npm run start --workspace=apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trackup-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+      - key: TRUST_PROXY
+        value: "true"
+
+databases:
+  - name: trackup-db
+    databaseName: trackup
+    user: trackup_user
+    plan: starter
+    region: oregon
+    postgresMajorVersion: "16"

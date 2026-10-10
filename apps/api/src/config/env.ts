@@ -95,6 +95,25 @@ export const envSchema = z
         }
       ),
     /**
+     * DATABASE_SSL:
+     * Controls TLS/SSL mode for PostgreSQL connections.
+     * Values: 'true', 'false', 'require', 'verify-full'
+     * When enabled, TLS with strict certificate verification (rejectUnauthorized: true) is enforced.
+     */
+    DATABASE_SSL: z
+      .enum(["true", "false", "require", "verify-full"])
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        return val === "true" || val === "require" || val === "verify-full";
+      }),
+    /**
+     * DATABASE_SSL_CA:
+     * Optional root CA certificate (PEM format) for verifying PostgreSQL servers
+     * using custom or private Certificate Authorities.
+     */
+    DATABASE_SSL_CA: z.string().optional(),
+    /**
      * COOKIE_SECRET:
      * Used by @fastify/cookie for signing cookies.
      * In production (NODE_ENV === 'production'):

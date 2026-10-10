@@ -12,6 +12,7 @@
     "typecheck:api": "npm run typecheck --workspace=apps/api",
     "db:generate:api": "npm run db:generate --workspace=apps/api",
     "db:migrate:api": "npm run db:migrate --workspace=apps/api",
+    "db:migrate:api:prod": "npm run db:migrate:prod --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
     "test:web": "npm run test --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
