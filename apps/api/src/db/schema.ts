@@ -441,3 +441,58 @@ export const calendarEvents = pgTable(
 
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type NewCalendarEvent = typeof calendarEvents.$inferInsert;
+
+/**
+ * TrackUp Notification Entity Schema (Phase 2 / Notifications Foundation)
+ *
+ * Implements user-facing notifications with event identity and deduplication:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - type: Domain notification category ('GOAL_COMPLETED' | 'HABIT_STREAK_MILESTONE' | 'TASK_OVERDUE')
+ * - title: Concise headline summary (1-255 chars)
+ * - body: Optional supporting detail/narrative (<= 1000 chars)
+ * - isRead: Fast boolean indicator of read state (default false)
+ * - readAt: Timestamp instant with timezone when marked read (nullable)
+ * - resourceType: Optional related domain type ('goal' | 'habit' | 'task', <= 50 chars)
+ * - resourceId: Optional UUID reference to target entity (nullable)
+ * - dedupeKey: Unique event identity key per user (<= 255 chars)
+ * - createdAt: Timestamp of record creation with timezone
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 50 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    body: varchar("body", { length: 1000 }),
+    isRead: boolean("is_read").default(false).notNull(),
+    readAt: timestamp("read_at", { withTimezone: true, mode: "date" }),
+    resourceType: varchar("resource_type", { length: 50 }),
+    resourceId: uuid("resource_id"),
+    dedupeKey: varchar("dedupe_key", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("notifications_user_dedupe_idx").on(
+      table.userId,
+      table.dedupeKey
+    ),
+    index("notifications_user_created_idx").on(
+      table.userId,
+      table.createdAt.desc()
+    ),
+    index("notifications_user_unread_idx").on(
+      table.userId,
+      table.isRead
+    ),
+  ]
+);
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+

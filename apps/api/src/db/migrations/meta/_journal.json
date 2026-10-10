@@ -71,6 +71,13 @@
       "when": 1791478873124,
       "tag": "0009_redundant_blue_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791657087426,
+      "tag": "0010_stale_dragon_man",
+      "breakpoints": true
     }
   ]
 }
