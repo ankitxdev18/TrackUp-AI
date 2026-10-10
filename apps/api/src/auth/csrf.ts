@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { SESSION_COOKIE_NAME } from "./session.js";
+import { extractSessionToken } from "./session.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -118,7 +118,7 @@ export function createCsrfProtection(options: CsrfProtectionOptions) {
     }
 
     // 5. Fail closed for cookie-authenticated mutations missing both headers
-    const hasSessionCookie = Boolean(request.cookies?.[SESSION_COOKIE_NAME]);
+    const hasSessionCookie = Boolean(extractSessionToken(request.cookies));
     if (hasSessionCookie) {
       return reply.status(403).send({
         error:

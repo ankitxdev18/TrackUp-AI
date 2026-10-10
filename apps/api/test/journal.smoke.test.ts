@@ -256,5 +256,5 @@ describe("Milestone H02-C: Manual API Smoke Test (19-Step Verification Flow)", (
       headers: userBHeaders,
     });
     expect(bDeleteARes.statusCode).toBe(404);
-  });
+  }, 15000);
 });

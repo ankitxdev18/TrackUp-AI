@@ -80,7 +80,7 @@ export class IdentityError extends Error {
   }
 }
 
-import { validateSession, SESSION_COOKIE_NAME } from "./session.js";
+import { validateSession, extractSessionToken } from "./session.js";
 
 export async function resolveUserIdentity(
   request: FastifyRequest
@@ -96,7 +96,7 @@ export async function resolveUserIdentity(
   }
 
   // 2. Check for real session cookie
-  const rawToken = request.cookies?.[SESSION_COOKIE_NAME];
+  const rawToken = extractSessionToken(request.cookies);
   if (rawToken) {
     const sessionWithUser = await validateSession(rawToken);
     if (sessionWithUser) {

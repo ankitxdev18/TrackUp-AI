@@ -5,9 +5,11 @@ import { requireAuth } from "../auth/authenticate.js";
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password.js";
 import {
   createSession,
+  DEFAULT_SESSION_COOKIE_NAME,
+  extractSessionToken,
+  getSessionCookieName,
   getSessionCookieOptions,
   invalidateSession,
-  SESSION_COOKIE_NAME,
 } from "../auth/session.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
@@ -182,7 +184,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
       // 5. Issue HttpOnly session cookie
       reply.setCookie(
-        SESSION_COOKIE_NAME,
+        getSessionCookieName(),
         rawToken,
         getSessionCookieOptions()
       );
@@ -218,17 +220,23 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
   // POST /api/auth/logout — Invalidate server session and clear cookie
   server.post("/logout", async (request, reply) => {
-    const rawToken = request.cookies?.[SESSION_COOKIE_NAME];
+    const rawToken = extractSessionToken(request.cookies);
     if (rawToken) {
       await invalidateSession(rawToken);
     }
 
-    reply.clearCookie(SESSION_COOKIE_NAME, {
+    const cookieOptions = {
       path: "/",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    });
+      sameSite: "lax" as const,
+    };
+
+    const cookieName = getSessionCookieName();
+    reply.clearCookie(cookieName, cookieOptions);
+    if (cookieName !== DEFAULT_SESSION_COOKIE_NAME) {
+      reply.clearCookie(DEFAULT_SESSION_COOKIE_NAME, cookieOptions);
+    }
 
     return reply.status(200).send({
       message: "Logged out successfully",

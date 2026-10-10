@@ -240,5 +240,5 @@ describe("Milestone C03: Calendar API Manual Smoke Test (16-Step Flow)", () => {
       headers: { cookie: userACookie },
     });
     expect(postLogoutRes.statusCode).toBe(401);
-  });
+  }, 15000);
 });

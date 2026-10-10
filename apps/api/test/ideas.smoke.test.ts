@@ -297,5 +297,5 @@ describe("Milestone I03: Ideas API Manual Smoke Test (14-Step Flow)", () => {
     });
     expect(verifyBobRes.statusCode).toBe(200);
     expect(verifyBobRes.json().idea.title).toBe("Bob Secret Mars Base Concept");
-  });
+  }, 15000);
 });

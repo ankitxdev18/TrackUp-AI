@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, type User } from "../db/schema.js";
-import { validateSession, SESSION_COOKIE_NAME } from "./session.js";
+import { validateSession, extractSessionToken } from "./session.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -18,7 +18,7 @@ const UUID_REGEX =
  * Reusable Fastify authentication preHandler hook.
  *
  * Flow:
- * 1. Checks HttpOnly session cookie ('trackup_session').
+ * 1. Checks HttpOnly session cookie ('__Host-trackup_session' in prod, 'trackup_session' in dev/test).
  * 2. Computes SHA-256 hash of token and queries PostgreSQL sessions table.
  * 3. Checks session expiration and joins active user.
  * 4. Attaches authenticated user to request.user.
@@ -35,7 +35,7 @@ export async function requireAuth(
   reply: FastifyReply
 ): Promise<void> {
   // 1. Session cookie resolution (Production authentication path)
-  const rawToken = request.cookies?.[SESSION_COOKIE_NAME];
+  const rawToken = extractSessionToken(request.cookies);
 
   if (rawToken) {
     const sessionWithUser = await validateSession(rawToken);

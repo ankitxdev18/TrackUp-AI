@@ -4,6 +4,7 @@ import { closeDatabasePool } from "./db/index.js";
 
 const server = buildApp({
   logger: env.NODE_ENV !== "test",
+  enableSessionCleanup: env.NODE_ENV !== "test",
 });
 
 const start = async () => {

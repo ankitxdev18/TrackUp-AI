@@ -13,6 +13,7 @@ import { ideasRoutes } from "./routes/ideas.routes.js";
 import { journalRoutes } from "./routes/journal.routes.js";
 import { projectRoutes } from "./routes/project.routes.js";
 import { taskRoutes } from "./routes/task.routes.js";
+import { runSafeSessionCleanup } from "./auth/session.js";
 
 export interface BuildAppOptions {
   checkDbHealth?: () => Promise<{ ok: boolean }>;
@@ -25,6 +26,8 @@ export interface BuildAppOptions {
     authMax?: number;
     authWindowMs?: number;
   };
+  enableSessionCleanup?: boolean;
+  sessionCleanupIntervalMs?: number;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -128,6 +131,34 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   server.register(projectRoutes, { prefix: "/api/projects" });
   server.register(taskRoutes, { prefix: "/api/tasks" });
 
+  // 4. Periodic background session cleanup lifecycle
+  if (options.enableSessionCleanup) {
+    const intervalMs = options.sessionCleanupIntervalMs ?? 3600000; // default 1 hour
+    const cleanupTimer = setInterval(async () => {
+      try {
+        const result = await runSafeSessionCleanup();
+        if (result && result.deletedCount > 0) {
+          server.log.info(
+            { deletedCount: result.deletedCount },
+            "Cleaned up expired sessions"
+          );
+        }
+      } catch (err: unknown) {
+        server.log.error(
+          { error: err instanceof Error ? err.message : "Unknown error" },
+          "Session cleanup failed"
+        );
+      }
+    }, intervalMs);
+
+    cleanupTimer.unref();
+
+    server.addHook("onClose", async () => {
+      clearInterval(cleanupTimer);
+    });
+  }
+
   return server;
 }
+
 
