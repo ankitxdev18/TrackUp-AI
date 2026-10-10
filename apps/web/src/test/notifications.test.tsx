@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { NotificationBell } from "../components/notifications/NotificationBell";
-import { NotificationProvider, useNotifications } from "../context/NotificationContext";
+import { NotificationProvider } from "../context/NotificationContext";
 import { AuthProvider } from "../context/AuthContext";
 import { RouterProvider } from "../router/Router";
 import type { NotificationItem } from "../api/notifications";

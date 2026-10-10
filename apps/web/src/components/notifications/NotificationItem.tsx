@@ -34,7 +34,9 @@ export function NotificationItem({
   const getTargetRoute = (): string => {
     switch (notification.resourceType) {
       case "goal":
-        return "/goals";
+        return notification.resourceId
+          ? `/goals/${notification.resourceId}`
+          : "/goals";
       case "habit":
         return "/habits";
       case "task":

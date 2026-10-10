@@ -74,6 +74,17 @@ export function NotificationProvider({
     }
   }, [user, refreshNotifications]);
 
+  // Sync notifications when user returns focus to tab
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        refreshNotifications();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [user, refreshNotifications]);
+
   const togglePanel = useCallback(() => {
     setIsPanelOpen((prev) => !prev);
   }, []);
