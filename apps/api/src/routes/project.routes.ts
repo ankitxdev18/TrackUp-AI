@@ -277,31 +277,41 @@ export const projectRoutes: FastifyPluginAsync = async (server: FastifyInstance)
 
       const projectId = paramResult.data.id;
 
-      // First verify project exists and is owned by this user
-      const [existingProject] = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)))
-        .limit(1);
+      // Safely delete project atomically: detaches tasks and deletes project within a transaction.
+      // If either operation fails, changes are completely rolled back to maintain consistency.
+      const deleted = await db.transaction(async (tx) => {
+        // First verify project exists and is owned by this user within transaction
+        const [existingProject] = await tx
+          .select({ id: projects.id })
+          .from(projects)
+          .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)))
+          .limit(1);
 
-      if (!existingProject) {
+        if (!existingProject) {
+          return false;
+        }
+
+        // Explicitly detach all tasks belonging to this project (setting projectId = NULL)
+        // This guarantees no accidental task deletion occurs
+        await tx
+          .update(tasks)
+          .set({ projectId: null, updatedAt: new Date() })
+          .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, user.id)));
+
+        // Delete the project
+        await tx
+          .delete(projects)
+          .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)));
+
+        return true;
+      });
+
+      if (!deleted) {
         return reply.status(404).send({
           error: "Project not found",
           code: "PROJECT_NOT_FOUND",
         });
       }
-
-      // Explicitly detach all tasks belonging to this project (setting projectId = NULL)
-      // This guarantees no accidental task deletion occurs
-      await db
-        .update(tasks)
-        .set({ projectId: null, updatedAt: new Date() })
-        .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, user.id)));
-
-      // Delete the project
-      await db
-        .delete(projects)
-        .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)));
 
       return reply.status(200).send({
         success: true,
