@@ -57,11 +57,11 @@ export async function createNotification(
   const insertValues: NewNotification = {
     userId,
     type: input.type,
-    title: input.title,
-    body: input.body ?? null,
+    title: input.title.length > 255 ? input.title.slice(0, 255) : input.title,
+    body: input.body ? (input.body.length > 1000 ? input.body.slice(0, 1000) : input.body) : null,
     resourceType: input.resourceType ?? null,
     resourceId: input.resourceId ?? null,
-    dedupeKey: input.dedupeKey,
+    dedupeKey: input.dedupeKey.length > 255 ? input.dedupeKey.slice(0, 255) : input.dedupeKey,
   };
 
   const inserted = await txClient
