@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { eq, sql } from "drizzle-orm";
 import { loginSchema, registerSchema } from "../auth/auth.schema.js";
 import { requireAuth } from "../auth/authenticate.js";
-import { hashPassword, verifyPassword } from "../auth/password.js";
+import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password.js";
 import {
   createSession,
   getSessionCookieOptions,
@@ -11,6 +11,7 @@ import {
 } from "../auth/session.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
+import { env } from "../config/env.js";
 
 interface DatabaseError extends Error {
   code?: string;
@@ -21,9 +22,31 @@ interface DatabaseError extends Error {
   };
 }
 
-export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
+export interface AuthRoutesOptions {
+  authRateLimitMax?: number;
+  authRateLimitWindowMs?: number;
+}
+
+export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
+  server: FastifyInstance,
+  options: AuthRoutesOptions = {}
+) => {
+  const authRateLimitMax = options.authRateLimitMax ?? env.AUTH_RATE_LIMIT_MAX;
+  const authRateLimitWindowMs =
+    options.authRateLimitWindowMs ?? env.AUTH_RATE_LIMIT_WINDOW_MS;
+
   // POST /api/auth/register — Create a new account with hashed password
-  server.post("/register", async (request, reply) => {
+  server.post(
+    "/register",
+    {
+      config: {
+        rateLimit: {
+          max: authRateLimitMax,
+          timeWindow: authRateLimitWindowMs,
+        },
+      },
+    },
+    async (request, reply) => {
     // 1. Validate request body against registration schema
     const parseResult = registerSchema.safeParse(request.body);
 
@@ -94,7 +117,17 @@ export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance) =>
   });
 
   // POST /api/auth/login — Authenticate credentials and establish session
-  server.post("/login", async (request, reply) => {
+  server.post(
+    "/login",
+    {
+      config: {
+        rateLimit: {
+          max: authRateLimitMax,
+          timeWindow: authRateLimitWindowMs,
+        },
+      },
+    },
+    async (request, reply) => {
     // 1. Validate request body
     const parseResult = loginSchema.safeParse(request.body);
     if (!parseResult.success) {
@@ -122,6 +155,8 @@ export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance) =>
 
       // Constant-time / generic failure if user not found or inactive
       if (!user || !user.isActive) {
+        // Mitigate login timing attacks: execute dummy Argon2id verification with fixed valid hash
+        await verifyPassword(DUMMY_PASSWORD_HASH, password);
         return reply.status(401).send({
           error: "Invalid email or password",
           code: "UNAUTHENTICATED",

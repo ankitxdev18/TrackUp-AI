@@ -19,6 +19,16 @@ export const TRACKUP_ARGON2ID_CONFIG = Object.freeze({
   saltLength: 16,
 });
 
+/**
+ * Valid, precomputed Argon2id dummy hash generated using the standard
+ * TRACKUP_ARGON2ID_CONFIG parameters (memoryCost: 65536, timeCost: 3, parallelism: 4).
+ *
+ * Used in the nonexistent-user login authentication path to execute a genuine Argon2id
+ * verification computation, mitigating timing attacks that reveal account existence.
+ */
+export const DUMMY_PASSWORD_HASH =
+  "$argon2id$v=19$m=65536,t=3,p=4$OSbPmndO4uolaNSDTwFMSg$JsKa5jJWtWWt8tONYmIQgX7EwQQI+dM0YaGBDMEKkao";
+
 export const PASSWORD_POLICY = Object.freeze({
   minLength: 10,
   maxLength: 128,

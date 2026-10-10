@@ -261,5 +261,37 @@ describe("Environment Configuration (Zod)", () => {
       ).toThrowError(/must not contain a path component/);
     });
   });
+
+  describe("Rate Limiting & Proxy Configuration", () => {
+    it("applies default rate limit and proxy configurations", () => {
+      const config = validateEnv(baseValidEnv);
+      expect(config.AUTH_RATE_LIMIT_MAX).toBe(10);
+      expect(config.AUTH_RATE_LIMIT_WINDOW_MS).toBe(60000);
+      expect(config.GLOBAL_RATE_LIMIT_MAX).toBe(100);
+      expect(config.GLOBAL_RATE_LIMIT_WINDOW_MS).toBe(60000);
+      expect(config.trustProxy).toBe(false);
+    });
+
+    it("parses custom numeric and string rate limit values", () => {
+      const config = validateEnv({
+        ...baseValidEnv,
+        AUTH_RATE_LIMIT_MAX: "5",
+        AUTH_RATE_LIMIT_WINDOW_MS: "30000",
+        GLOBAL_RATE_LIMIT_MAX: "50",
+        GLOBAL_RATE_LIMIT_WINDOW_MS: "30000",
+      });
+      expect(config.AUTH_RATE_LIMIT_MAX).toBe(5);
+      expect(config.AUTH_RATE_LIMIT_WINDOW_MS).toBe(30000);
+      expect(config.GLOBAL_RATE_LIMIT_MAX).toBe(50);
+      expect(config.GLOBAL_RATE_LIMIT_WINDOW_MS).toBe(30000);
+    });
+
+    it("parses TRUST_PROXY settings (boolean and custom IP/proxy)", () => {
+      expect(validateEnv({ ...baseValidEnv, TRUST_PROXY: "true" }).trustProxy).toBe(true);
+      expect(validateEnv({ ...baseValidEnv, TRUST_PROXY: "false" }).trustProxy).toBe(false);
+      expect(validateEnv({ ...baseValidEnv, TRUST_PROXY: "127.0.0.1" }).trustProxy).toBe("127.0.0.1");
+      expect(validateEnv({ ...baseValidEnv, TRUST_PROXY: "10.0.0.1" }).trustProxy).toBe("10.0.0.1");
+    });
+  });
 });
 

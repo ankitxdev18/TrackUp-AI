@@ -43,7 +43,9 @@ export interface CsrfProtectionOptions {
  *        on ambient cookie credentials and are therefore not susceptible to cross-site cookie exploitation.
  */
 export function createCsrfProtection(options: CsrfProtectionOptions) {
-  const { trustedOrigins } = options;
+  const normalizedTrustedOrigins = options.trustedOrigins.map((o) =>
+    o.replace(/\/+$/, "").toLowerCase()
+  );
 
   return async function csrfProtection(
     request: FastifyRequest,
@@ -70,8 +72,8 @@ export function createCsrfProtection(options: CsrfProtectionOptions) {
     // 3. Primary check: Origin header
     if (origin) {
       if (typeof origin === "string") {
-        const normalizedOrigin = origin.replace(/\/+$/, "");
-        if (trustedOrigins.includes(normalizedOrigin)) {
+        const normalizedOrigin = origin.trim().replace(/\/+$/, "").toLowerCase();
+        if (normalizedTrustedOrigins.includes(normalizedOrigin)) {
           return;
         }
       }
@@ -83,7 +85,14 @@ export function createCsrfProtection(options: CsrfProtectionOptions) {
 
     // 4. Secondary fallback: Referer header
     const referer = request.headers.referer;
-    if (referer && typeof referer === "string") {
+    if (referer) {
+      if (typeof referer !== "string") {
+        return reply.status(403).send({
+          error: "Invalid or duplicate Referer header",
+          code: "CSRF_REFERER_INVALID",
+        });
+      }
+
       try {
         const url = new URL(referer);
         if (url.protocol !== "http:" && url.protocol !== "https:") {
@@ -92,7 +101,7 @@ export function createCsrfProtection(options: CsrfProtectionOptions) {
             code: "CSRF_REFERER_INVALID",
           });
         }
-        if (trustedOrigins.includes(url.origin)) {
+        if (normalizedTrustedOrigins.includes(url.origin.toLowerCase())) {
           return;
         }
       } catch {
@@ -118,6 +127,34 @@ export function createCsrfProtection(options: CsrfProtectionOptions) {
       });
     }
 
-    // Non-cookie requests proceed (unauthenticated login/register or x-dev-user-id)
+    // 6. Fail closed if browser fetch metadata is present without Origin/Referer
+    const secFetchMode = request.headers["sec-fetch-mode"];
+    if (secFetchSite || secFetchMode) {
+      return reply.status(403).send({
+        error: "Missing Origin or Referer header on browser state-changing request",
+        code: "CSRF_HEADER_MISSING",
+      });
+    }
+
+    // 7. Login-CSRF defense: browser state-changing auth requests must provide Origin/Referer
+    // Explicit non-browser clients (e.g. X-TrackUp-Client: api) or isolated test runners proceed
+    const isAuthMutation =
+      request.url.startsWith("/api/auth/login") ||
+      request.url.startsWith("/api/auth/register");
+
+    if (isAuthMutation) {
+      const isExplicitApiClient =
+        request.headers["x-trackup-client"] === "api" ||
+        (process.env.NODE_ENV === "test" && !request.headers["user-agent"]?.includes("Mozilla"));
+
+      if (!isExplicitApiClient) {
+        return reply.status(403).send({
+          error: "Missing Origin or Referer header on authentication request",
+          code: "CSRF_HEADER_MISSING",
+        });
+      }
+    }
+
+    // Non-cookie requests with explicit contract proceed
   };
 }

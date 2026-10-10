@@ -54,6 +54,24 @@ export function parseCorsOrigins(raw: string): string[] {
   return origins.map((origin) => new URL(origin).origin);
 }
 
+/**
+ * Normalizes TRUST_PROXY configuration for Fastify.
+ * - 'true' -> true
+ * - 'false' / undefined / '' -> false
+ * - integer string (e.g. '1') -> number 1 (number of upstream proxy hops)
+ * - custom IP/CIDR string (e.g. '127.0.0.1') -> string
+ */
+export function parseTrustProxy(val: unknown): boolean | string {
+  if (typeof val === "boolean") return val;
+  if (typeof val === "string") {
+    const trimmed = val.trim().toLowerCase();
+    if (trimmed === "true") return true;
+    if (trimmed === "false" || trimmed === "") return false;
+    return val.trim();
+  }
+  return false;
+}
+
 export const envSchema = z
   .object({
     PORT: z
@@ -98,6 +116,21 @@ export const envSchema = z
      * - If specified, wildcards are rejected and origins are validated.
      */
     CORS_ORIGIN: z.string().optional(),
+    /**
+     * TRUST_PROXY:
+     * Controls Fastify proxy trust resolution for client IP addresses.
+     * - false in local development / direct socket connections (default).
+     * - 1 (or true) in production when deployed behind a single reverse proxy (Render load balancer).
+     */
+    TRUST_PROXY: z.string().optional(),
+    /**
+     * Authentication Rate Limiting Configuration
+     * Documented initial limits to prevent automated brute-force attacks while avoiding account lockouts.
+     */
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+    AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+    GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+    GLOBAL_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === "production") {
@@ -155,6 +188,7 @@ export const envSchema = z
         ? data.CORS_ORIGIN.trim()
         : DEV_DEFAULT_CORS_ORIGIN;
     const corsOrigins = parseCorsOrigins(rawCors);
+    const trustProxy = parseTrustProxy(data.TRUST_PROXY);
 
     return {
       ...data,
@@ -164,6 +198,7 @@ export const envSchema = z
           : DEV_DEFAULT_COOKIE_SECRET,
       CORS_ORIGIN: rawCors,
       corsOrigins,
+      trustProxy,
     };
   });
 

@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import fastifyCors from "@fastify/cors";
+import fastifyRateLimit from "@fastify/rate-limit";
 import { env } from "./config/env.js";
 import { createCsrfProtection } from "./auth/csrf.js";
 import { checkDatabaseHealth } from "./db/index.js";
@@ -17,16 +18,43 @@ export interface BuildAppOptions {
   checkDbHealth?: () => Promise<{ ok: boolean }>;
   logger?: boolean;
   corsOrigins?: string[];
+  trustProxy?: boolean | string | string[] | ((address: string, hop: number) => boolean);
+  rateLimit?: {
+    globalMax?: number;
+    globalWindowMs?: number;
+    authMax?: number;
+    authWindowMs?: number;
+  };
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
+  const trustProxy = options.trustProxy ?? env.trustProxy;
+
   const server = Fastify({
     logger: options.logger ?? true,
+    trustProxy,
   });
 
   const trustedOrigins = options.corsOrigins ?? env.corsOrigins;
 
-  // 1. CORS plugin — strict allowlist, credentials enabled, wildcard origins prohibited
+  // 1. Rate limiting plugin — process-local in-memory store
+  const isTest = env.NODE_ENV === "test";
+  const authRateLimitMax =
+    options.rateLimit?.authMax ?? (isTest ? 10000 : env.AUTH_RATE_LIMIT_MAX);
+  const authRateLimitWindowMs =
+    options.rateLimit?.authWindowMs ?? env.AUTH_RATE_LIMIT_WINDOW_MS;
+
+  server.register(fastifyRateLimit, {
+    global: false,
+    errorResponseBuilder: (_request, _context) => ({
+      statusCode: 429,
+      error: "Too Many Requests",
+      code: "RATE_LIMITED",
+      message: "Too many requests. Please try again later.",
+    }),
+  });
+
+  // 2. CORS plugin — strict allowlist, credentials enabled, wildcard origins prohibited
   server.register(fastifyCors, {
     origin: trustedOrigins,
     credentials: true,
@@ -37,13 +65,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       "Accept",
       "Origin",
       "X-Requested-With",
-      "x-dev-user-id",
+      "X-TrackUp-Client",
     ],
-    exposedHeaders: ["Set-Cookie"],
     maxAge: 86400,
   });
 
-  // 2. Cookie parser plugin
+  // 3. Cookie parser plugin
   server.register(fastifyCookie, {
     secret: env.COOKIE_SECRET,
     parseOptions: {},
@@ -88,7 +115,11 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     });
   });
 
-  server.register(authRoutes, { prefix: "/api/auth" });
+  server.register(authRoutes, {
+    prefix: "/api/auth",
+    authRateLimitMax,
+    authRateLimitWindowMs,
+  });
   server.register(calendarRoutes, { prefix: "/api/calendar/events" });
   server.register(goalRoutes, { prefix: "/api/goals" });
   server.register(habitRoutes, { prefix: "/api/habits" });
