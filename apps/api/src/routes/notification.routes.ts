@@ -10,6 +10,7 @@ import {
   getUserNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  triageOverdueTasks,
 } from "../notifications/notification.service.js";
 
 export const notificationRoutes: FastifyPluginAsync = async (
@@ -34,6 +35,9 @@ export const notificationRoutes: FastifyPluginAsync = async (
           details,
         });
       }
+
+      // Ensure overdue tasks have up-to-date notifications
+      await triageOverdueTasks(user.id);
 
       const { limit, unreadOnly } = parseResult.data;
       const items = await getUserNotifications(user.id, {
@@ -65,6 +69,10 @@ export const notificationRoutes: FastifyPluginAsync = async (
   server.get("/unread-count", async (request, reply) => {
     try {
       const user = await resolveUserIdentity(request);
+
+      // Ensure overdue tasks are triaged
+      await triageOverdueTasks(user.id);
+
       const count = await getUnreadNotificationCount(user.id);
 
       return reply.status(200).send({
@@ -155,4 +163,31 @@ export const notificationRoutes: FastifyPluginAsync = async (
       });
     }
   });
+
+  // POST /api/notifications/triage — Explicit on-demand triage of overdue tasks
+  server.post("/triage", async (request, reply) => {
+    try {
+      const user = await resolveUserIdentity(request);
+      const createdCount = await triageOverdueTasks(user.id);
+
+      return reply.status(200).send({
+        success: true,
+        createdCount,
+      });
+    } catch (err: unknown) {
+      if (err instanceof IdentityError) {
+        return reply.status(err.statusCode).send({
+          error: err.message,
+          code: err.code,
+        });
+      }
+
+      server.log.error(err, "Failed to triage overdue tasks");
+      return reply.status(500).send({
+        error: "An unexpected error occurred while triaging overdue tasks",
+        code: "INTERNAL_SERVER_ERROR",
+      });
+    }
+  });
 };
+

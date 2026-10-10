@@ -1,6 +1,6 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { notifications, Notification, NewNotification } from "../db/schema.js";
+import { notifications, tasks, Notification, NewNotification } from "../db/schema.js";
 import {
   CreateNotificationInput,
   NotificationResponse,
@@ -164,3 +164,52 @@ export async function markAllNotificationsAsRead(
 
   return updated.length;
 }
+
+/**
+ * Triages overdue tasks for an authenticated user and creates deduplicated notifications.
+ * Evaluates incomplete tasks ('TODO') where dueDate < today.
+ * Completely idempotent: uses ON CONFLICT DO NOTHING against (userId, dedupeKey).
+ */
+export async function triageOverdueTasks(
+  userId: string,
+  todayDate?: string
+): Promise<number> {
+  const today = todayDate ?? new Date().toISOString().slice(0, 10);
+
+  const overdueList = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      dueDate: tasks.dueDate,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.userId, userId),
+        eq(tasks.status, "TODO"),
+        isNotNull(tasks.dueDate),
+        lt(tasks.dueDate, today)
+      )
+    );
+
+  let createdCount = 0;
+  for (const task of overdueList) {
+    if (task.dueDate) {
+      const created = await createNotification(userId, {
+        type: "TASK_OVERDUE",
+        title: `Task Overdue: ${task.title}`,
+        body: `Due on ${task.dueDate}. Review or reschedule this task.`,
+        resourceType: "task",
+        resourceId: task.id,
+        dedupeKey: buildDedupeKey("TASK_OVERDUE", task.id, task.dueDate),
+      });
+
+      if (created) {
+        createdCount++;
+      }
+    }
+  }
+
+  return createdCount;
+}
+

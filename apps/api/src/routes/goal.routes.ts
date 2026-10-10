@@ -10,6 +10,10 @@ import {
   GOAL_STATUS_VALUES,
   updateGoalSchema,
 } from "../goals/goal.schema.js";
+import {
+  buildDedupeKey,
+  createNotification,
+} from "../notifications/notification.service.js";
 
 export const goalRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
   server.addHook("preHandler", requireAuth);
@@ -220,11 +224,33 @@ export const goalRoutes: FastifyPluginAsync = async (server: FastifyInstance) =>
       if (parseResult.data.progress !== undefined) updateData.progress = parseResult.data.progress;
       if (parseResult.data.targetDate !== undefined) updateData.targetDate = parseResult.data.targetDate;
 
-      const [updatedGoal] = await db
-        .update(goals)
-        .set(updateData)
-        .where(and(eq(goals.id, goalId), eq(goals.userId, user.id)))
-        .returning();
+      const updatedGoal = await db.transaction(async (tx) => {
+        const [goalResult] = await tx
+          .update(goals)
+          .set(updateData)
+          .where(and(eq(goals.id, goalId), eq(goals.userId, user.id)))
+          .returning();
+
+        if (
+          goalResult &&
+          (goalResult.status === "COMPLETED" || goalResult.progress === 100)
+        ) {
+          await createNotification(
+            user.id,
+            {
+              type: "GOAL_COMPLETED",
+              title: `Goal Achieved: ${goalResult.title}`,
+              body: "Congratulations! You completed this goal.",
+              resourceType: "goal",
+              resourceId: goalResult.id,
+              dedupeKey: buildDedupeKey("GOAL_COMPLETED", goalResult.id),
+            },
+            tx
+          );
+        }
+
+        return goalResult;
+      });
 
       return reply.status(200).send({
         goal: updatedGoal,

@@ -20,6 +20,10 @@ import {
   habitStatusQuerySchema,
   updateHabitSchema,
 } from "../habits/habit.schema.js";
+import {
+  buildDedupeKey,
+  createNotification,
+} from "../notifications/notification.service.js";
 
 export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
   // Enforce session authentication across all habit endpoints
@@ -513,6 +517,38 @@ export const habitRoutes: FastifyPluginAsync = async (server: FastifyInstance) =
           .returning();
 
         if (inserted) {
+          // Check if current streak reaches a milestone threshold
+          try {
+            const allCompletions = await db
+              .select({ completedDate: habitCompletions.completedDate })
+              .from(habitCompletions)
+              .where(eq(habitCompletions.habitId, habitId));
+
+            const completedDates = allCompletions.map((c) => c.completedDate);
+            const { currentStreak } = calculateStreaks(
+              completedDates,
+              userLocalToday
+            );
+
+            const STREAK_MILESTONES = [7, 30, 100];
+            if (STREAK_MILESTONES.includes(currentStreak)) {
+              await createNotification(user.id, {
+                type: "HABIT_STREAK_MILESTONE",
+                title: `${currentStreak}-Day Streak: ${habit.title}`,
+                body: `You've maintained your streak for ${currentStreak} consecutive days!`,
+                resourceType: "habit",
+                resourceId: habit.id,
+                dedupeKey: buildDedupeKey(
+                  "HABIT_STREAK_MILESTONE",
+                  habit.id,
+                  String(currentStreak)
+                ),
+              });
+            }
+          } catch (notifErr) {
+            server.log.warn(notifErr, "Failed to create habit streak notification");
+          }
+
           return reply.status(201).send({
             completion: {
               id: inserted.id,
