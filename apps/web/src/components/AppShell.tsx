@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   Target,
+  TrendingUp,
   User as UserIcon,
   X,
 } from "lucide-react";
@@ -68,6 +69,7 @@ export function AppShell({ children }: AppShellProps) {
     if (path.startsWith("/habits")) return "Habits";
     if (path.startsWith("/projects")) return "Projects";
     if (path.startsWith("/goals")) return "Goals";
+    if (path.startsWith("/analytics")) return "Analytics";
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/journal")) return "Journal";
     if (path.startsWith("/ideas")) return "Ideas";
@@ -130,6 +132,18 @@ export function AppShell({ children }: AppShellProps) {
                 </Link>
               );
             })}
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-title">Insights</span>
+            <Link
+              to="/analytics"
+              className={`nav-item ${path === "/analytics" ? "active" : ""}`}
+              aria-current={path === "/analytics" ? "page" : undefined}
+            >
+              <TrendingUp size={16} className="nav-icon" aria-hidden="true" />
+              <span>Analytics</span>
+            </Link>
           </div>
 
           <div className="nav-group">
@@ -303,6 +317,14 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Lightbulb size={16} />
                 <span>Ideas</span>
+              </Link>
+              <Link
+                to="/analytics"
+                className={`drawer-nav-item ${path === "/analytics" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <TrendingUp size={16} />
+                <span>Analytics</span>
               </Link>
               <Link
                 to="/settings"

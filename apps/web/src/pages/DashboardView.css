@@ -46,6 +46,33 @@
   color: var(--text-muted);
 }
 
+.dashboard-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-analytics-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.12s ease;
+}
+
+.btn-analytics-link:hover {
+  background-color: var(--bg-elevated);
+  color: var(--primary);
+  border-color: var(--border-active);
+}
+
 .date-pill {
   display: inline-flex;
   align-items: center;

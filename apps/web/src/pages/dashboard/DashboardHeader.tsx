@@ -1,6 +1,7 @@
-import { Calendar } from "lucide-react";
+import { Calendar, TrendingUp } from "lucide-react";
 import { getTimeAwareGreeting } from "../../api/tasks";
 import { useAuth } from "../../context/AuthContext";
+import { Link } from "../../router/Router";
 import { DailyMomentum } from "./DailyMomentum";
 
 interface DashboardHeaderProps {
@@ -41,9 +42,19 @@ export function DashboardHeader({
           </p>
         </div>
 
-        <div className="date-pill" aria-label={`Current date: ${formattedDate}`}>
-          <Calendar size={13} aria-hidden="true" />
-          <span>{formattedDate}</span>
+        <div className="dashboard-hero-actions">
+          <Link
+            to="/analytics"
+            className="btn-analytics-link"
+            aria-label="View Execution Analytics"
+          >
+            <TrendingUp size={13} aria-hidden="true" />
+            <span>Analytics</span>
+          </Link>
+          <div className="date-pill" aria-label={`Current date: ${formattedDate}`}>
+            <Calendar size={13} aria-hidden="true" />
+            <span>{formattedDate}</span>
+          </div>
         </div>
       </div>
 

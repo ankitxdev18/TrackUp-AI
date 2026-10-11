@@ -9,6 +9,7 @@ import {
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthPage } from "./pages/AuthPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { DashboardView } from "./pages/DashboardView";
 import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
@@ -78,6 +79,9 @@ function AppRoutes() {
 
       case "/habits":
         return <HabitsPage />;
+
+      case "/analytics":
+        return <AnalyticsPage />;
 
       case "/journal":
         return <JournalPage />;
