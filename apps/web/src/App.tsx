@@ -2,7 +2,6 @@ import {
   BookOpen,
   Compass,
   HeartPulse,
-  Receipt,
 } from "lucide-react";
 
 import { AppShell } from "./components/AppShell";
@@ -20,6 +19,7 @@ import { JournalPage } from "./pages/journal/JournalPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { ExpensesPage } from "./pages/ExpensesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { RouterProvider, useRouter } from "./router/Router";
@@ -103,14 +103,7 @@ function AppRoutes() {
         );
 
       case "/expenses":
-        return (
-          <FeaturePlaceholder
-            title="Expenses & Budgeting"
-            description="Log financial transactions, track monthly budgets, and analyze spending habits without bloated spreadsheet complexity."
-            icon={Receipt}
-            plannedMilestone="Phase 4 Milestone"
-          />
-        );
+        return <ExpensesPage />;
 
       case "/health":
         return (

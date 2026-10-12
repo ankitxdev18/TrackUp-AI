@@ -496,3 +496,45 @@ export const notifications = pgTable(
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 
+/**
+ * TrackUp Expense Entity Schema (Milestone 5 / Expenses Foundation)
+ *
+ * Implements personal financial expenditure tracking:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - amountCents: Monetary amount in minor integer units (cents), strictly > 0
+ * - date: ISO calendar date 'YYYY-MM-DD' representing user's local transaction date
+ * - categoryId: Canonical category identifier ('food', 'housing', etc.)
+ * - description: Optional merchant context / transaction narrative (<= 500 chars)
+ * - createdAt: Timestamp of record insertion with timezone
+ * - updatedAt: Timestamp of last modification with timezone
+ */
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    date: varchar("date", { length: 10 }).notNull(),
+    categoryId: varchar("category_id", { length: 50 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("expenses_amount_positive_check", sql`${table.amountCents} > 0`),
+    index("expenses_user_id_idx").on(table.userId),
+    index("expenses_user_date_idx").on(table.userId, table.date.desc()),
+    index("expenses_user_category_idx").on(table.userId, table.categoryId),
+  ]
+);
+
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;
+

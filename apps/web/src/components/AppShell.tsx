@@ -8,6 +8,7 @@ import {
   Lightbulb,
   LogOut,
   MoreHorizontal,
+  Receipt,
   Settings,
   Sparkles,
   Target,
@@ -59,6 +60,7 @@ export function AppShell({ children }: AppShellProps) {
     { label: "Habits", href: "/habits", icon: Sparkles },
     { label: "Journal", href: "/journal", icon: BookOpen },
     { label: "Ideas", href: "/ideas", icon: Lightbulb },
+    { label: "Expenses", href: "/expenses", icon: Receipt },
   ];
 
 
@@ -70,6 +72,7 @@ export function AppShell({ children }: AppShellProps) {
     if (path.startsWith("/projects")) return "Projects";
     if (path.startsWith("/goals")) return "Goals";
     if (path.startsWith("/analytics")) return "Analytics";
+    if (path.startsWith("/expenses")) return "Expenses";
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/journal")) return "Journal";
     if (path.startsWith("/ideas")) return "Ideas";
@@ -344,6 +347,14 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Lightbulb size={16} />
                 <span>Ideas</span>
+              </Link>
+              <Link
+                to="/expenses"
+                className={`drawer-nav-item ${path === "/expenses" ? "active" : ""}`}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <Receipt size={16} />
+                <span>Expenses</span>
               </Link>
               <Link
                 to="/analytics"

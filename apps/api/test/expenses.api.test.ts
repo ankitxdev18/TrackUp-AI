@@ -1,0 +1,571 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { FastifyInstance } from "fastify";
+import { eq } from "drizzle-orm";
+import { buildApp } from "../src/app.js";
+import { hashPassword } from "../src/auth/password.js";
+import { closeDatabasePool, db } from "../src/db/index.js";
+import { expenses, users } from "../src/db/schema.js";
+
+describe("Milestone 5.6: Expenses CRUD API & Tenant Isolation Suite", () => {
+  let app: FastifyInstance;
+
+  const userAEmail = `expenses_api_usera_${Date.now()}@example.com`;
+  const userBEmail = `expenses_api_userb_${Date.now()}@example.com`;
+  const plainPassword = "SecurePassword123!";
+
+  let userAId: string;
+  let userBId: string;
+  let userACookie: string;
+  let userBCookie: string;
+
+  const ORIGIN = "http://localhost:5173";
+  let authHeadersA: { cookie: string; origin: string };
+  let authHeadersB: { cookie: string; origin: string };
+
+  const nonExistentUuid = "00000000-0000-4000-a000-000000000000";
+
+  beforeAll(async () => {
+    app = buildApp({ logger: false });
+    await app.ready();
+
+    const passwordHash = await hashPassword(plainPassword);
+
+    const [userA] = await db
+      .insert(users)
+      .values({
+        email: userAEmail,
+        name: "Alice Expenses",
+        passwordHash,
+      })
+      .returning();
+    userAId = userA.id;
+
+    const [userB] = await db
+      .insert(users)
+      .values({
+        email: userBEmail,
+        name: "Bob Expenses",
+        passwordHash,
+      })
+      .returning();
+    userBId = userB.id;
+
+    // Login user A to obtain session cookie
+    const loginARes = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: userAEmail, password: plainPassword },
+    });
+    const setCookieA = loginARes.headers["set-cookie"];
+    const rawCookieA = Array.isArray(setCookieA) ? setCookieA[0] : setCookieA;
+    userACookie = (rawCookieA as string).split(";")[0]!;
+    authHeadersA = { cookie: userACookie, origin: ORIGIN };
+
+    // Login user B to obtain session cookie
+    const loginBRes = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email: userBEmail, password: plainPassword },
+    });
+    const setCookieB = loginBRes.headers["set-cookie"];
+    const rawCookieB = Array.isArray(setCookieB) ? setCookieB[0] : setCookieB;
+    userBCookie = (rawCookieB as string).split(";")[0]!;
+    authHeadersB = { cookie: userBCookie, origin: ORIGIN };
+  });
+
+  afterAll(async () => {
+    await db.delete(expenses).where(eq(expenses.userId, userAId));
+    await db.delete(expenses).where(eq(expenses.userId, userBId));
+    await db.delete(users).where(eq(users.id, userAId));
+    await db.delete(users).where(eq(users.id, userBId));
+    await app.close();
+    await closeDatabasePool();
+  });
+
+  // ==========================================
+  // 1. AUTHENTICATION ENFORCEMENT
+  // ==========================================
+  describe("Authentication Enforcement", () => {
+    it("1. rejects unauthenticated requests with HTTP 401", async () => {
+      const endpoints = [
+        { method: "GET" as const, url: "/api/expenses" },
+        { method: "POST" as const, url: "/api/expenses" },
+        { method: "GET" as const, url: `/api/expenses/${nonExistentUuid}` },
+        { method: "PATCH" as const, url: `/api/expenses/${nonExistentUuid}` },
+        { method: "DELETE" as const, url: `/api/expenses/${nonExistentUuid}` },
+      ];
+
+      for (const ep of endpoints) {
+        const res = await app.inject({
+          method: ep.method,
+          url: ep.url,
+        });
+        expect(res.statusCode).toBe(401);
+        expect(res.json().code).toBe("UNAUTHENTICATED");
+      }
+    });
+  });
+
+  // ==========================================
+  // 2. CREATE EXPENSE (POST /api/expenses)
+  // ==========================================
+  describe("POST /api/expenses — Create Expense", () => {
+    it("2. creates an expense successfully with valid payload (HTTP 201)", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 4250,
+          date: "2026-10-12",
+          categoryId: "food",
+          description: "Whole Foods groceries",
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const data = res.json();
+      expect(data.expense).toBeDefined();
+      expect(data.expense.id).toBeDefined();
+      expect(data.expense.userId).toBe(userAId);
+      expect(data.expense.amountCents).toBe(4250);
+      expect(data.expense.date).toBe("2026-10-12");
+      expect(data.expense.categoryId).toBe("food");
+      expect(data.expense.description).toBe("Whole Foods groceries");
+      expect(data.expense.createdAt).toBeDefined();
+      expect(data.expense.updatedAt).toBeDefined();
+    });
+
+    it("3. creates an expense with optional null description", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 1500,
+          date: "2026-10-11",
+          categoryId: "transport",
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const data = res.json();
+      expect(data.expense.amountCents).toBe(1500);
+      expect(data.expense.description).toBeNull();
+    });
+
+    it("4. rejects zero or negative amountCents with HTTP 400 VALIDATION_ERROR", async () => {
+      const resZero = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 0,
+          date: "2026-10-12",
+          categoryId: "food",
+        },
+      });
+      expect(resZero.statusCode).toBe(400);
+      expect(resZero.json().code).toBe("VALIDATION_ERROR");
+
+      const resNegative = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: -1250,
+          date: "2026-10-12",
+          categoryId: "food",
+        },
+      });
+      expect(resNegative.statusCode).toBe(400);
+      expect(resNegative.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("5. rejects invalid categoryId with HTTP 400 VALIDATION_ERROR", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 2000,
+          date: "2026-10-12",
+          categoryId: "cryptocurrency_speculation",
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("6. rejects malformed date format with HTTP 400 VALIDATION_ERROR", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 2000,
+          date: "12-10-2026",
+          categoryId: "food",
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("7. rejects description exceeding 500 characters", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 2000,
+          date: "2026-10-12",
+          categoryId: "food",
+          description: "x".repeat(501),
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+  });
+
+  // ==========================================
+  // 3. LIST EXPENSES (GET /api/expenses)
+  // ==========================================
+  describe("GET /api/expenses — List & Filter", () => {
+    let expenseA1Id: string;
+    let expenseA2Id: string;
+    let expenseA3Id: string;
+
+    beforeAll(async () => {
+      // Clear existing expenses for deterministic testing
+      await db.delete(expenses).where(eq(expenses.userId, userAId));
+      await db.delete(expenses).where(eq(expenses.userId, userBId));
+
+      // Seed User A expenses
+      const [e1] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 5000,
+          date: "2026-10-05",
+          categoryId: "housing",
+          description: "Home internet bill",
+        })
+        .returning();
+      expenseA1Id = e1.id;
+
+      const [e2] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 3500,
+          date: "2026-10-10",
+          categoryId: "food",
+          description: "Italian dinner",
+        })
+        .returning();
+      expenseA2Id = e2.id;
+
+      const [e3] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 1200,
+          date: "2026-10-12",
+          categoryId: "food",
+          description: "Coffee and croissant",
+        })
+        .returning();
+      expenseA3Id = e3.id;
+
+      // Seed User B expense for tenant isolation
+      await db.insert(expenses).values({
+        userId: userBId,
+        amountCents: 9999,
+        date: "2026-10-10",
+        categoryId: "shopping",
+        description: "User B Secret Expense",
+      });
+    });
+
+    it("8. lists expenses ordered by date DESC and strictly scoped to current user", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(3);
+      expect(data.expenses.length).toBe(3);
+      // Newest date first
+      expect(data.expenses[0].id).toBe(expenseA3Id); // 2026-10-12
+      expect(data.expenses[1].id).toBe(expenseA2Id); // 2026-10-10
+      expect(data.expenses[2].id).toBe(expenseA1Id); // 2026-10-05
+      // Zero leakage of User B's expense
+      expect(data.expenses.every((e: any) => e.userId === userAId)).toBe(true);
+    });
+
+    it("9. filters expenses by date range (startDate & endDate)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?startDate=2026-10-08&endDate=2026-10-11",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(1);
+      expect(data.expenses.length).toBe(1);
+      expect(data.expenses[0].id).toBe(expenseA2Id); // 2026-10-10
+    });
+
+    it("10. filters expenses by categoryId", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?categoryId=housing",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(1);
+      expect(data.expenses[0].categoryId).toBe("housing");
+      expect(data.expenses[0].id).toBe(expenseA1Id);
+    });
+
+    it("11. filters expenses by search text matching description", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?search=dinner",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(1);
+      expect(data.expenses[0].description).toBe("Italian dinner");
+    });
+
+    it("12. respects pagination parameters limit and offset", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=1&offset=1",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(3); // Total count remains 3
+      expect(data.expenses.length).toBe(1);
+      expect(data.expenses[0].id).toBe(expenseA2Id); // 2nd item
+    });
+  });
+
+  // ==========================================
+  // 4. GET SINGLE EXPENSE (GET /api/expenses/:id)
+  // ==========================================
+  describe("GET /api/expenses/:id — Single Expense & IDOR Protection", () => {
+    let userAExpenseId: string;
+
+    beforeAll(async () => {
+      const [created] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 2500,
+          date: "2026-10-12",
+          categoryId: "entertainment",
+          description: "Movie tickets",
+        })
+        .returning();
+      userAExpenseId = created.id;
+    });
+
+    it("13. retrieves single expense for owner with HTTP 200", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/expenses/${userAExpenseId}`,
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.expense.id).toBe(userAExpenseId);
+      expect(data.expense.amountCents).toBe(2500);
+    });
+
+    it("14. returns HTTP 404 NOT_FOUND for non-existent expense ID", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/expenses/${nonExistentUuid}`,
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+
+    it("15. returns HTTP 404 NOT_FOUND when User B attempts to access User A expense (IDOR immunity)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/expenses/${userAExpenseId}`,
+        headers: authHeadersB,
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+
+    it("16. returns HTTP 400 INVALID_ID for malformed UUID param", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/not-a-uuid",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("INVALID_ID");
+    });
+  });
+
+  // ==========================================
+  // 5. UPDATE EXPENSE (PATCH /api/expenses/:id)
+  // ==========================================
+  describe("PATCH /api/expenses/:id — Update Expense", () => {
+    let expenseToUpdateId: string;
+
+    beforeAll(async () => {
+      const [created] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 3000,
+          date: "2026-10-09",
+          categoryId: "shopping",
+          description: "New shoes",
+        })
+        .returning();
+      expenseToUpdateId = created.id;
+    });
+
+    it("17. updates amount and category successfully with HTTP 200", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/expenses/${expenseToUpdateId}`,
+        headers: authHeadersA,
+        payload: {
+          amountCents: 3500,
+          categoryId: "other",
+          description: "Sneakers on sale",
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.expense.id).toBe(expenseToUpdateId);
+      expect(data.expense.amountCents).toBe(3500);
+      expect(data.expense.categoryId).toBe("other");
+      expect(data.expense.description).toBe("Sneakers on sale");
+    });
+
+    it("18. rejects empty update payload with HTTP 400", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/expenses/${expenseToUpdateId}`,
+        headers: authHeadersA,
+        payload: {},
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("19. rejects invalid update data (negative amount) with HTTP 400", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/expenses/${expenseToUpdateId}`,
+        headers: authHeadersA,
+        payload: { amountCents: -50 },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("20. returns HTTP 404 when User B attempts to mutate User A expense", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/expenses/${expenseToUpdateId}`,
+        headers: authHeadersB,
+        payload: { amountCents: 100 },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+  });
+
+  // ==========================================
+  // 6. DELETE EXPENSE (DELETE /api/expenses/:id)
+  // ==========================================
+  describe("DELETE /api/expenses/:id — Delete Expense", () => {
+    let expenseToDeleteId: string;
+
+    beforeAll(async () => {
+      const [created] = await db
+        .insert(expenses)
+        .values({
+          userId: userAId,
+          amountCents: 800,
+          date: "2026-10-12",
+          categoryId: "food",
+          description: "Temporary snack",
+        })
+        .returning();
+      expenseToDeleteId = created.id;
+    });
+
+    it("21. returns HTTP 404 when User B attempts to delete User A expense", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/expenses/${expenseToDeleteId}`,
+        headers: authHeadersB,
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+
+    it("22. successfully deletes owner's expense with HTTP 200", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/expenses/${expenseToDeleteId}`,
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().success).toBe(true);
+
+      // Verify row is physically gone from database
+      const [found] = await db
+        .select()
+        .from(expenses)
+        .where(eq(expenses.id, expenseToDeleteId));
+      expect(found).toBeUndefined();
+    });
+
+    it("23. returns HTTP 404 when attempting to delete already deleted expense", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/expenses/${expenseToDeleteId}`,
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe("NOT_FOUND");
+    });
+  });
+});

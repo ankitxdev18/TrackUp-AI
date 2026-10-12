@@ -173,6 +173,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
         "/habits",
         "/journal",
         "/ideas",
+        "/expenses",
       ]);
 
       // Persistent More navigation trigger in sidebar and mobile nav
@@ -435,10 +436,19 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
+  describe("Active Expenses Route (Phase 5)", () => {
+    it("renders active Expenses page at /expenses", async () => {
+      window.history.pushState({}, "", "/expenses");
+      render(<App />);
+
+      expect(screen.getByRole("heading", { name: "Expenses" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log new expense" })).toBeInTheDocument();
+    });
+  });
+
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
       { path: "/notes", title: "Notes & Focus Journal", milestone: "Phase 4 Milestone" },
-      { path: "/expenses", title: "Expenses & Budgeting", milestone: "Phase 4 Milestone" },
       { path: "/health", title: "Health & Recovery", milestone: "Phase 5 Milestone" },
     ];
 

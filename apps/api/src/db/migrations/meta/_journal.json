@@ -78,6 +78,13 @@
       "when": 1791657087426,
       "tag": "0010_stale_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791782321932,
+      "tag": "0011_dizzy_warstar",
+      "breakpoints": true
     }
   ]
 }
