@@ -1,6 +1,11 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { eq, sql } from "drizzle-orm";
-import { loginSchema, registerSchema } from "../auth/auth.schema.js";
+import {
+  changePasswordSchema,
+  loginSchema,
+  registerSchema,
+  updateProfileSchema,
+} from "../auth/auth.schema.js";
 import { requireAuth } from "../auth/authenticate.js";
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password.js";
 import {
@@ -9,6 +14,7 @@ import {
   extractSessionToken,
   getSessionCookieName,
   getSessionCookieOptions,
+  invalidateAllUserSessions,
   invalidateSession,
 } from "../auth/session.js";
 import { db } from "../db/index.js";
@@ -214,9 +220,139 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        timezone: user.timezone,
+        createdAt: user.createdAt.toISOString(),
       },
     });
   });
+
+  // PATCH /api/auth/profile — Update mutable profile attributes (name, timezone)
+  server.patch("/profile", { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user!;
+    const parseResult = updateProfileSchema.safeParse(request.body);
+
+    if (!parseResult.success) {
+      const details = parseResult.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      }));
+
+      return reply.status(400).send({
+        error: "Validation failed",
+        code: "VALIDATION_ERROR",
+        details,
+      });
+    }
+
+    const { name, timezone } = parseResult.data;
+    const updateData: Partial<typeof users.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (name !== undefined) updateData.name = name;
+    if (timezone !== undefined) updateData.timezone = timezone;
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, user.id))
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        timezone: users.timezone,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      });
+
+    return reply.status(200).send({
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        timezone: updatedUser.timezone,
+        createdAt: updatedUser.createdAt.toISOString(),
+        updatedAt: updatedUser.updatedAt.toISOString(),
+      },
+    });
+  });
+
+  // POST /api/auth/change-password — Verify current credentials, update password, revoke other sessions
+  server.post(
+    "/change-password",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: authRateLimitMax,
+          timeWindow: authRateLimitWindowMs,
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.user!;
+      const parseResult = changePasswordSchema.safeParse(request.body);
+
+      if (!parseResult.success) {
+        const details = parseResult.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        }));
+
+        return reply.status(400).send({
+          error: "Validation failed",
+          code: "VALIDATION_ERROR",
+          details,
+        });
+      }
+
+      const { currentPassword, newPassword } = parseResult.data;
+
+      // 1. Verify current password hash
+      const isValid = await verifyPassword(user.passwordHash, currentPassword);
+      if (!isValid) {
+        return reply.status(401).send({
+          error: "Current password is incorrect",
+          code: "INCORRECT_CURRENT_PASSWORD",
+        });
+      }
+
+      // 2. Hash new password using Argon2id
+      const newHash = await hashPassword(newPassword);
+
+      // 3. Atomically update password_hash and updated_at
+      await db
+        .update(users)
+        .set({
+          passwordHash: newHash,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      // 4. Invalidate all existing sessions for this user
+      await invalidateAllUserSessions(user.id);
+
+      // 5. Issue a fresh session for the current client so the caller remains logged in
+      const userAgent = request.headers["user-agent"];
+      const ipAddress = request.ip;
+      const { rawToken } = await createSession(user.id, {
+        userAgent: typeof userAgent === "string" ? userAgent : undefined,
+        ipAddress,
+      });
+
+      // 6. Set new session cookie
+      reply.setCookie(
+        getSessionCookieName(),
+        rawToken,
+        getSessionCookieOptions()
+      );
+
+      return reply.status(200).send({
+        message: "Password changed successfully",
+        sessionsRevoked: true,
+      });
+    }
+  );
 
   // POST /api/auth/logout — Invalidate server session and clear cookie
   server.post("/logout", async (request, reply) => {

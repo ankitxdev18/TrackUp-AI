@@ -3,8 +3,10 @@ import {
   getMeApi,
   loginApi,
   logoutApi,
+  updateProfileApi,
   type AuthUser,
   type LoginCredentials,
+  type UpdateProfilePayload,
 } from "../api/auth";
 
 interface AuthContextValue {
@@ -13,6 +15,7 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -66,6 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(currentUser);
   };
 
+  const updateProfile = async (payload: UpdateProfilePayload) => {
+    const updatedUser = await updateProfileApi(payload);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -74,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshUser,
+        updateProfile,
       }}
     >
       {children}

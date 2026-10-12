@@ -423,12 +423,23 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
     });
   });
 
+  describe("Active Settings Route (Phase 4)", () => {
+    it("renders active Settings & Account page at /settings", async () => {
+      window.history.pushState({}, "", "/settings");
+      render(<App />);
+
+      expect(screen.getByRole("heading", { name: "Settings & Account" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Profile & Regional Identity" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Appearance & Theme" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Account Security" })).toBeInTheDocument();
+    });
+  });
+
   describe("Future Route Placeholders", () => {
     const placeholderRoutes = [
       { path: "/notes", title: "Notes & Focus Journal", milestone: "Phase 4 Milestone" },
       { path: "/expenses", title: "Expenses & Budgeting", milestone: "Phase 4 Milestone" },
       { path: "/health", title: "Health & Recovery", milestone: "Phase 5 Milestone" },
-      { path: "/settings", title: "Workspace Settings", milestone: "Phase 5 Milestone" },
     ];
 
     placeholderRoutes.forEach(({ path, title, milestone }) => {

@@ -162,13 +162,29 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-avatar-sm" aria-hidden="true">
-            {userInitials}
-          </div>
-          <div className="user-info">
-            <span className="user-name" title={displayName}>{displayName}</span>
-            <span className="user-role" title={displayRole}>{displayRole}</span>
-          </div>
+          <Link
+            to="/settings"
+            className="sidebar-user-link"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              textDecoration: "none",
+              color: "inherit",
+              flex: 1,
+              minWidth: 0,
+              cursor: "pointer",
+            }}
+            aria-label="User Profile"
+          >
+            <div className="user-avatar-sm" aria-hidden="true">
+              {userInitials}
+            </div>
+            <div className="user-info">
+              <span className="user-name" title={displayName}>{displayName}</span>
+              <span className="user-role" title={displayRole}>{displayRole}</span>
+            </div>
+          </Link>
           <button
             type="button"
             className="btn-shell-logout"
@@ -193,9 +209,20 @@ export function AppShell({ children }: AppShellProps) {
 
           <div className="header-actions">
             <NotificationBell />
-            <div className="user-avatar-sm" aria-label="User profile" title={`${displayName} (${displayRole})`}>
-              {userInitials}
-            </div>
+            <Link
+              to="/settings"
+              style={{
+                display: "flex",
+                textDecoration: "none",
+                color: "inherit",
+                cursor: "pointer",
+              }}
+              aria-label="User Profile"
+            >
+              <div className="user-avatar-sm" aria-label="User profile" title={`${displayName} (${displayRole})`}>
+                {userInitials}
+              </div>
+            </Link>
           </div>
         </header>
 

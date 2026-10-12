@@ -3,7 +3,6 @@ import {
   Compass,
   HeartPulse,
   Receipt,
-  Settings,
 } from "lucide-react";
 
 import { AppShell } from "./components/AppShell";
@@ -21,6 +20,7 @@ import { JournalPage } from "./pages/journal/JournalPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { RouterProvider, useRouter } from "./router/Router";
 
@@ -123,14 +123,7 @@ function AppRoutes() {
         );
 
       case "/settings":
-        return (
-          <FeaturePlaceholder
-            title="Workspace Settings"
-            description="Manage personal preferences, notifications, theme density, and account details."
-            icon={Settings}
-            plannedMilestone="Phase 5 Milestone"
-          />
-        );
+        return <SettingsPage />;
 
       default:
         return (
