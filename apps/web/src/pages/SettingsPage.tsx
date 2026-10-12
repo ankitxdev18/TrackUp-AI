@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { changePasswordApi } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
-import { applyTheme, getStoredTheme, type Theme } from "../utils/theme";
+import { applyTheme, getStoredTheme, subscribeTheme, type Theme } from "../utils/theme";
 import {
   formatCurrentTimeInZone,
   getLocalDetectedTimezone,
@@ -110,6 +110,12 @@ export function SettingsPage() {
 
   // --- Appearance / Theme State ---
   const [currentTheme, setCurrentTheme] = useState<Theme>(getStoredTheme());
+
+  useEffect(() => {
+    return subscribeTheme((theme) => {
+      setCurrentTheme(theme);
+    });
+  }, []);
 
   const handleSelectTheme = (theme: Theme) => {
     setCurrentTheme(theme);

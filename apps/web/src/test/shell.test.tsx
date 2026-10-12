@@ -161,7 +161,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       expect(screen.getAllByRole("link", { name: /Ideas/i }).length).toBeGreaterThan(0);
 
       // Verify exact desktop sidebar primary navigation order
-      const sidebarLinks = Array.from(document.querySelectorAll(".shell-sidebar .nav-group:first-child .nav-item")).map(
+      const sidebarLinks = Array.from(document.querySelectorAll(".shell-sidebar .nav-item")).map(
         (el) => el.getAttribute("href")
       );
       expect(sidebarLinks).toEqual([
@@ -174,6 +174,8 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
         "/journal",
         "/ideas",
         "/expenses",
+        "/analytics",
+        "/settings",
       ]);
 
       // Persistent More navigation trigger in sidebar and mobile nav
@@ -368,9 +370,9 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
       const moreBtn = screen.getAllByRole("button", { name: /More navigation/i })[0];
       fireEvent.click(moreBtn);
 
-      // More drawer should be open with non-duplicated Settings destination
+      // More drawer should be open with Settings destination
       expect(screen.getByText("Navigation & Account")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Settings/i })).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: /Settings/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("button", { name: /Log Out/i }).length).toBeGreaterThan(0);
 
       // Close drawer

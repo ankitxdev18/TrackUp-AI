@@ -177,7 +177,7 @@ describe("Milestone C05: Calendar Product Integration (Navigation, Breadcrumbs, 
       render(<App />);
 
       const navItems = Array.from(
-        document.querySelectorAll(".shell-sidebar .nav-group:first-child .nav-item")
+        document.querySelectorAll(".shell-sidebar .nav-item")
       );
       const navHrefs = navItems.map((el) => el.getAttribute("href"));
 
@@ -201,11 +201,10 @@ describe("Milestone C05: Calendar Product Integration (Navigation, Breadcrumbs, 
       expect(sidebarCalendarLink).toHaveAttribute("aria-current", "page");
     });
 
-    it("displays correct breadcrumb: TrackUp / Calendar on /calendar", async () => {
+    it("displays correct header title on /calendar", async () => {
       window.history.pushState({}, "", "/calendar");
       render(<App />);
 
-      expect(screen.getByText("TrackUp", { selector: ".breadcrumb-brand" })).toBeInTheDocument();
       expect(screen.getByText("Calendar", { selector: ".breadcrumb-current" })).toBeInTheDocument();
     });
 

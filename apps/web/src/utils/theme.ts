@@ -19,6 +19,19 @@ export function getStoredTheme(): Theme {
   return "dark";
 }
 
+type ThemeListener = (theme: Theme) => void;
+const themeListeners = new Set<ThemeListener>();
+
+/**
+ * Subscribes a callback to theme changes. Returns an unsubscribe function.
+ */
+export function subscribeTheme(listener: ThemeListener): () => void {
+  themeListeners.add(listener);
+  return () => {
+    themeListeners.delete(listener);
+  };
+}
+
 /**
  * Applies theme to the document root via data-theme attribute and synchronizes localStorage.
  */
@@ -38,6 +51,14 @@ export function applyTheme(theme: Theme): void {
   } catch {
     // Ignore storage exceptions
   }
+
+  themeListeners.forEach((listener) => {
+    try {
+      listener(theme);
+    } catch {
+      // Ignore listener callback errors
+    }
+  });
 }
 
 /**

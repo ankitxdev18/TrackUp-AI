@@ -223,6 +223,23 @@
   z-index: 30;
 }
 
+.header-title-container {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .header-breadcrumbs {
   display: flex;
   align-items: center;
@@ -230,9 +247,20 @@
   font-size: 0.8125rem;
 }
 
-.breadcrumb-brand {
+.breadcrumb-parent {
   color: var(--text-muted);
+  text-decoration: none;
   font-weight: 500;
+  transition: color 0.12s ease;
+}
+
+.breadcrumb-parent:hover {
+  color: var(--text-primary);
+}
+
+.breadcrumb-parent:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .breadcrumb-separator {
@@ -240,7 +268,7 @@
   font-size: 0.75rem;
 }
 
-.breadcrumb-current {
+.header-title-detail {
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -249,6 +277,32 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.btn-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.btn-theme-toggle:hover {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.btn-theme-toggle:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .user-pill-preview {
@@ -324,7 +378,7 @@
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 100;
+  z-index: var(--z-drawer, 100);
   display: flex;
   justify-content: flex-end;
   animation: fadeIn 0.15s ease-out;
@@ -381,6 +435,11 @@
   color: var(--text-primary);
 }
 
+.btn-drawer-close:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 .more-drawer-user {
   padding: var(--space-4);
   display: flex;
@@ -396,6 +455,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .drawer-nav-item {
@@ -415,6 +476,11 @@
 .drawer-nav-item.active {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
+}
+
+.drawer-nav-item:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .more-drawer-footer {
@@ -444,6 +510,11 @@
   border-color: var(--color-danger-border);
 }
 
+.btn-drawer-logout:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 900px) {
   .shell-sidebar {
@@ -456,7 +527,7 @@
 
   .shell-content {
     padding: var(--space-3);
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 12px));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
   }
 
   /* Mobile Bottom Navigation Bar — Persistent 5 destinations */
@@ -467,11 +538,13 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 54px;
+    min-height: 56px;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background-color: var(--bg-sidebar);
     border-top: 1px solid var(--border-subtle);
-    z-index: 50;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: var(--z-mobile-nav, 50);
+    box-sizing: border-box;
   }
 
   .mobile-nav-item {
@@ -486,6 +559,18 @@
     text-decoration: none;
     transition: color 0.12s ease;
     min-height: 48px;
+    padding: 4px 2px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mobile-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.625rem;
+    line-height: 1.1;
   }
 
   .mobile-nav-item:hover,
@@ -498,12 +583,18 @@
     font-weight: 600;
   }
 
+  .mobile-nav-item:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+  }
+
   .btn-more-trigger {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 0;
+    padding: 4px 2px;
     font-family: inherit;
+    width: 100%;
   }
 }
 
