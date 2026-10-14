@@ -600,4 +600,68 @@ describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => 
     expect(postBody.spentAmountCents).toBe(700000);
     expect(postBody.transactionCount).toBe(2);
   });
+
+  it("15. correctly aggregates budget spentAmountCents exceeding 2,147,483,647 paise without overflow", async () => {
+    const targetMonth = "2029-06";
+    const budgetAmountCents = 2000000000; // 2,000,000,000 paise (₹2 Crores)
+
+    // Create a budget for 2029-06
+    const budgetRes = await app.inject({
+      method: "POST",
+      url: "/api/expenses/budget",
+      headers: authHeadersA,
+      payload: {
+        month: targetMonth,
+        amountCents: budgetAmountCents,
+      },
+    });
+    expect(budgetRes.statusCode).toBe(201);
+
+    // Expense A: 1,500,000,000 paise in 2029-06
+    const expARes = await app.inject({
+      method: "POST",
+      url: "/api/expenses",
+      headers: authHeadersA,
+      payload: {
+        amountCents: 1500000000,
+        date: "2029-06-05",
+        categoryId: "housing",
+        description: "Large property maintenance expense",
+      },
+    });
+    expect(expARes.statusCode).toBe(201);
+
+    // Expense B: 1,000,000,000 paise in 2029-06
+    const expBRes = await app.inject({
+      method: "POST",
+      url: "/api/expenses",
+      headers: authHeadersA,
+      payload: {
+        amountCents: 1000000000,
+        date: "2029-06-15",
+        categoryId: "other",
+        description: "Large machinery expense",
+      },
+    });
+    expect(expBRes.statusCode).toBe(201);
+
+    // Query GET /api/expenses/budget?month=2029-06
+    const getRes = await app.inject({
+      method: "GET",
+      url: `/api/expenses/budget?month=${targetMonth}`,
+      headers: authHeadersA,
+    });
+
+    expect(getRes.statusCode).toBe(200);
+    const body = getRes.json();
+    expect(body.month).toBe(targetMonth);
+    expect(body.budgetAmountCents).toBe(budgetAmountCents);
+    expect(typeof body.spentAmountCents).toBe("number");
+    expect(body.spentAmountCents).toBe(2500000000);
+    expect(body.transactionCount).toBe(2);
+    expect(body.isExceeded).toBe(true);
+    expect(body.remainingAmountCents).toBe(0);
+    expect(body.overBudgetAmountCents).toBe(500000000); // 2,500,000,000 - 2,000,000,000
+    expect(body.utilizationPercent).toBe(125); // Math.round((2500000000 / 2000000000) * 1000) / 10 = 125
+  });
 });

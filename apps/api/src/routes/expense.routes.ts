@@ -16,6 +16,57 @@ import {
   updateExpenseSchema,
 } from "../expenses/expense.schema.js";
 
+export class MonetaryAggregateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MonetaryAggregateError";
+  }
+}
+
+/**
+ * Safely parses and validates an aggregate monetary amount (in paise/cents)
+ * returned by PostgreSQL/Drizzle, preventing 32-bit overflow while guaranteeing
+ * lossless conversion to a safe JavaScript integer.
+ */
+export function parseSafeMonetaryAggregate(value: unknown): number {
+  if (value === null || value === undefined) {
+    return 0;
+  }
+
+  let str: string;
+  if (typeof value === "string") {
+    str = value.trim();
+  } else if (typeof value === "number") {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new MonetaryAggregateError(`Invalid monetary aggregate value: ${value}`);
+    }
+    return value;
+  } else {
+    throw new MonetaryAggregateError(`Invalid monetary aggregate type: ${typeof value}`);
+  }
+
+  // Reject malformed input: only non-negative integers (digits only, optional leading +)
+  if (!/^\+?\d+$/.test(str)) {
+    throw new MonetaryAggregateError(`Malformed monetary aggregate string: "${str}"`);
+  }
+
+  const big = BigInt(str);
+  if (big < 0n || big > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new MonetaryAggregateError(
+      `Monetary aggregate exceeds safe integer limit: "${str}"`
+    );
+  }
+
+  const num = Number(big);
+  if (!Number.isSafeInteger(num) || num < 0) {
+    throw new MonetaryAggregateError(
+      `Monetary aggregate is not a safe integer after conversion: "${str}"`
+    );
+  }
+
+  return num;
+}
+
 export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
   // Enforce session authentication on all expenses endpoints
   server.addHook("preHandler", requireAuth);
@@ -130,7 +181,7 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
       const [overallResult, categoryRows] = await Promise.all([
         db
           .select({
-            totalAmountCents: sql<number>`cast(coalesce(sum(${expenses.amountCents}), 0) as integer)`,
+            totalAmountCents: sql<string>`cast(coalesce(sum(${expenses.amountCents}), 0) as text)`,
             transactionCount: sql<number>`cast(count(${expenses.id}) as integer)`,
           })
           .from(expenses)
@@ -144,7 +195,7 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
         db
           .select({
             categoryId: expenses.categoryId,
-            totalAmountCents: sql<number>`cast(coalesce(sum(${expenses.amountCents}), 0) as integer)`,
+            totalAmountCents: sql<string>`cast(coalesce(sum(${expenses.amountCents}), 0) as text)`,
             transactionCount: sql<number>`cast(count(${expenses.id}) as integer)`,
           })
           .from(expenses)
@@ -159,18 +210,23 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
           .orderBy(desc(sql`sum(${expenses.amountCents})`)),
       ]);
 
-      const totalAmountCents = overallResult[0]?.totalAmountCents ?? 0;
+      const totalAmountCents = parseSafeMonetaryAggregate(
+        overallResult[0]?.totalAmountCents
+      );
       const transactionCount = overallResult[0]?.transactionCount ?? 0;
 
-      const byCategory = categoryRows.map((cat) => ({
-        categoryId: cat.categoryId,
-        totalAmountCents: cat.totalAmountCents,
-        transactionCount: cat.transactionCount,
-        percentage:
-          totalAmountCents > 0
-            ? Math.round((cat.totalAmountCents / totalAmountCents) * 1000) / 10
-            : 0,
-      }));
+      const byCategory = categoryRows.map((cat) => {
+        const catTotal = parseSafeMonetaryAggregate(cat.totalAmountCents);
+        return {
+          categoryId: cat.categoryId,
+          totalAmountCents: catTotal,
+          transactionCount: cat.transactionCount,
+          percentage:
+            totalAmountCents > 0
+              ? Math.round((catTotal / totalAmountCents) * 1000) / 10
+              : 0,
+        };
+      });
 
       return reply.status(200).send({
         startDate,
@@ -237,7 +293,7 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
           .limit(1),
         db
           .select({
-            spentAmountCents: sql<number>`cast(coalesce(sum(${expenses.amountCents}), 0) as integer)`,
+            spentAmountCents: sql<string>`cast(coalesce(sum(${expenses.amountCents}), 0) as text)`,
             transactionCount: sql<number>`cast(count(${expenses.id}) as integer)`,
           })
           .from(expenses)
@@ -250,7 +306,9 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
           ),
       ]);
 
-      const spentAmountCents = spendingResult?.spentAmountCents ?? 0;
+      const spentAmountCents = parseSafeMonetaryAggregate(
+        spendingResult?.spentAmountCents
+      );
       const transactionCount = spendingResult?.transactionCount ?? 0;
 
       let remainingAmountCents = 0;

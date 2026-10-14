@@ -6,6 +6,10 @@ import { hashPassword } from "../src/auth/password.js";
 import { closeDatabasePool, db } from "../src/db/index.js";
 import { expenses, users } from "../src/db/schema.js";
 import { listExpensesQuerySchema } from "../src/expenses/expense.schema.js";
+import {
+  MonetaryAggregateError,
+  parseSafeMonetaryAggregate,
+} from "../src/routes/expense.routes.js";
 
 describe("Milestone 5.6: Expenses CRUD API & Tenant Isolation Suite", () => {
   let app: FastifyInstance;
@@ -714,6 +718,117 @@ describe("Milestone 5.6: Expenses CRUD API & Tenant Isolation Suite", () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.json().code).toBe("NOT_FOUND");
+    });
+  });
+
+  // ==========================================
+  // F-02: MONETARY AGGREGATE OVERFLOW & CONVERSION SAFETY
+  // ==========================================
+  describe("F-02: Monetary Aggregate Overflow & Conversion Safety", () => {
+    describe("parseSafeMonetaryAggregate conversion unit safety", () => {
+      it("accepts zero as number, string, null, and undefined", () => {
+        expect(parseSafeMonetaryAggregate(0)).toBe(0);
+        expect(parseSafeMonetaryAggregate("0")).toBe(0);
+        expect(parseSafeMonetaryAggregate(null)).toBe(0);
+        expect(parseSafeMonetaryAggregate(undefined)).toBe(0);
+      });
+
+      it("accepts valid values above the 32-bit integer limit (2,147,483,647)", () => {
+        expect(parseSafeMonetaryAggregate("2147483648")).toBe(2147483648);
+        expect(parseSafeMonetaryAggregate("2500000000")).toBe(2500000000);
+      });
+
+      it("accepts a value at Number.MAX_SAFE_INTEGER", () => {
+        expect(parseSafeMonetaryAggregate(String(Number.MAX_SAFE_INTEGER))).toBe(
+          Number.MAX_SAFE_INTEGER
+        );
+      });
+
+      it("rejects values above Number.MAX_SAFE_INTEGER", () => {
+        const beyondMaxSafe = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+        expect(() => parseSafeMonetaryAggregate(beyondMaxSafe.toString())).toThrow(
+          MonetaryAggregateError
+        );
+      });
+
+      it("rejects invalid, negative, or malformed aggregate text", () => {
+        expect(() => parseSafeMonetaryAggregate("not-a-number")).toThrow(
+          MonetaryAggregateError
+        );
+        expect(() => parseSafeMonetaryAggregate("-100")).toThrow(
+          MonetaryAggregateError
+        );
+        expect(() => parseSafeMonetaryAggregate("12.34")).toThrow(
+          MonetaryAggregateError
+        );
+        expect(() => parseSafeMonetaryAggregate("Infinity")).toThrow(
+          MonetaryAggregateError
+        );
+        expect(() => parseSafeMonetaryAggregate("NaN")).toThrow(
+          MonetaryAggregateError
+        );
+        expect(() => parseSafeMonetaryAggregate("")).toThrow(
+          MonetaryAggregateError
+        );
+      });
+    });
+
+    it("aggregates expense summary totals exceeding 2,147,483,647 paise without 32-bit overflow", async () => {
+      const startDate = "2029-02-01";
+      const endDate = "2029-02-28";
+      const categoryId = "shopping";
+
+      // Expense A: 1,500,000,000 paise
+      const resA = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 1500000000,
+          date: "2029-02-10",
+          categoryId,
+          description: "High value expense A",
+        },
+      });
+      expect(resA.statusCode).toBe(201);
+
+      // Expense B: 1,000,000,000 paise
+      const resB = await app.inject({
+        method: "POST",
+        url: "/api/expenses",
+        headers: authHeadersA,
+        payload: {
+          amountCents: 1000000000,
+          date: "2029-02-15",
+          categoryId,
+          description: "High value expense B",
+        },
+      });
+      expect(resB.statusCode).toBe(201);
+
+      // Query GET /api/expenses/summary
+      const summaryRes = await app.inject({
+        method: "GET",
+        url: `/api/expenses/summary?startDate=${startDate}&endDate=${endDate}`,
+        headers: authHeadersA,
+      });
+
+      expect(summaryRes.statusCode).toBe(200);
+      const data = summaryRes.json();
+      expect(data.startDate).toBe(startDate);
+      expect(data.endDate).toBe(endDate);
+      expect(typeof data.totalAmountCents).toBe("number");
+      expect(data.totalAmountCents).toBe(2500000000);
+      expect(data.transactionCount).toBe(2);
+
+      const matchingCategory = data.byCategory.find(
+        (c: { categoryId: string }) => c.categoryId === categoryId
+      );
+      expect(matchingCategory).toBeDefined();
+      expect(typeof matchingCategory.totalAmountCents).toBe("number");
+      expect(matchingCategory.totalAmountCents).toBe(2500000000);
+      expect(matchingCategory.transactionCount).toBe(2);
+      expect(matchingCategory.percentage).toBe(100);
     });
   });
 });
