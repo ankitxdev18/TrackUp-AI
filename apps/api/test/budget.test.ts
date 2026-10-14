@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { buildApp } from "../src/app.js";
 import { hashPassword } from "../src/auth/password.js";
 import { closeDatabasePool, db } from "../src/db/index.js";
-import { expenses, monthlyBudgets, users } from "../src/db/schema.js";
+import { expenses, monthlyBudgets, sessions, users } from "../src/db/schema.js";
 
 describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => {
   let app: FastifyInstance;
@@ -19,6 +19,15 @@ describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => 
   let userBCookie: string;
   let authHeadersA: { cookie: string; origin: string };
   let authHeadersB: { cookie: string; origin: string };
+
+  let kolkataUserId: string;
+  let laUserId: string;
+  let invalidTzUserId: string;
+  let utcUserId: string;
+  let authHeadersKolkata: { cookie: string; origin: string };
+  let authHeadersLA: { cookie: string; origin: string };
+  let authHeadersInvalidTz: { cookie: string; origin: string };
+  let authHeadersUTC: { cookie: string; origin: string };
 
   beforeAll(async () => {
     app = buildApp({ logger: false });
@@ -105,16 +114,104 @@ describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => 
         description: "User B shopping",
       },
     ]);
+
+    // Seed Kolkata user (UTC+5:30)
+    const kolkataEmail = `budget_kolkata_${Date.now()}@example.com`;
+    const [kolkataUser] = await db
+      .insert(users)
+      .values({
+        email: kolkataEmail,
+        name: "Kolkata Budget User",
+        passwordHash,
+        timezone: "Asia/Kolkata",
+      })
+      .returning();
+    kolkataUserId = kolkataUser.id;
+
+    // Seed LA user (UTC-7 / America/Los_Angeles)
+    const laEmail = `budget_la_${Date.now()}@example.com`;
+    const [laUser] = await db
+      .insert(users)
+      .values({
+        email: laEmail,
+        name: "LA Budget User",
+        passwordHash,
+        timezone: "America/Los_Angeles",
+      })
+      .returning();
+    laUserId = laUser.id;
+
+    // Seed user with invalid timezone
+    const invalidTzEmail = `budget_invalid_${Date.now()}@example.com`;
+    const [invalidTzUser] = await db
+      .insert(users)
+      .values({
+        email: invalidTzEmail,
+        name: "Invalid Tz User",
+        passwordHash,
+        timezone: "Invalid/Fake_Zone_99",
+      })
+      .returning();
+    invalidTzUserId = invalidTzUser.id;
+
+    // Seed user with explicit UTC timezone
+    const utcEmail = `budget_utc_${Date.now()}@example.com`;
+    const [utcUser] = await db
+      .insert(users)
+      .values({
+        email: utcEmail,
+        name: "UTC Budget User",
+        passwordHash,
+        timezone: "UTC",
+      })
+      .returning();
+    utcUserId = utcUser.id;
+
+    const [loginKolkataRes, loginLARes, loginInvalidTzRes, loginUtcRes] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: kolkataEmail, password: plainPassword },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: laEmail, password: plainPassword },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: invalidTzEmail, password: plainPassword },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: utcEmail, password: plainPassword },
+      }),
+    ]);
+
+    const getCookie = (res: any) => {
+      const setCookie = res.headers["set-cookie"];
+      const raw = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+      return (raw as string).split(";")[0]!;
+    };
+
+    authHeadersKolkata = { cookie: getCookie(loginKolkataRes), origin: "http://localhost:5173" };
+    authHeadersLA = { cookie: getCookie(loginLARes), origin: "http://localhost:5173" };
+    authHeadersInvalidTz = { cookie: getCookie(loginInvalidTzRes), origin: "http://localhost:5173" };
+    authHeadersUTC = { cookie: getCookie(loginUtcRes), origin: "http://localhost:5173" };
+
+    // Extend all test sessions into future so Date mocking in tests never expires active test sessions
+    await db.update(sessions).set({ expiresAt: new Date("2035-01-01T00:00:00.000Z") });
   });
 
   afterAll(async () => {
     try {
-      await db.delete(expenses).where(eq(expenses.userId, userAId));
-      await db.delete(expenses).where(eq(expenses.userId, userBId));
-      await db.delete(monthlyBudgets).where(eq(monthlyBudgets.userId, userAId));
-      await db.delete(monthlyBudgets).where(eq(monthlyBudgets.userId, userBId));
-      await db.delete(users).where(eq(users.id, userAId));
-      await db.delete(users).where(eq(users.id, userBId));
+      const allUserIds = [userAId, userBId, kolkataUserId, laUserId, invalidTzUserId, utcUserId].filter(Boolean);
+      await db.delete(expenses).where(inArray(expenses.userId, allUserIds));
+      await db.delete(monthlyBudgets).where(inArray(monthlyBudgets.userId, allUserIds));
+      await db.delete(sessions).where(inArray(sessions.userId, allUserIds));
+      await db.delete(users).where(inArray(users.id, allUserIds));
     } catch {
       // Best-effort cleanup
     }
@@ -663,5 +760,128 @@ describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => 
     expect(body.remainingAmountCents).toBe(0);
     expect(body.overBudgetAmountCents).toBe(500000000); // 2,500,000,000 - 2,000,000,000
     expect(body.utilizationPercent).toBe(125); // Math.round((2500000000 / 2000000000) * 1000) / 10 = 125
+  });
+
+  it("16. resolves default month in user authoritative timezone across month boundary (Asia/Kolkata)", async () => {
+    // UTC instant: 2026-10-31T20:00:00.000Z
+    // In Asia/Kolkata (+5:30), user-local time is November 1, 2026 at 1:30 AM
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/budget",
+        headers: authHeadersKolkata,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.month).toBe("2026-11");
+      expect(body.startDate).toBe("2026-11-01");
+      expect(body.endDate).toBe("2026-11-30");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("17. resolves default month in user authoritative timezone across opposite month boundary (America/Los_Angeles)", async () => {
+    // UTC instant: 2026-11-01T01:00:00.000Z
+    // In America/Los_Angeles (-7:00 PDT), user-local date is October 31, 2026 at 18:00
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-01T01:00:00.000Z"));
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/budget",
+        headers: authHeadersLA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.month).toBe("2026-10");
+      expect(body.startDate).toBe("2026-10-01");
+      expect(body.endDate).toBe("2026-10-31");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("18. explicit month parameter remains authoritative regardless of user timezone", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/budget?month=2026-05",
+        headers: authHeadersKolkata,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.month).toBe("2026-05");
+      expect(body.startDate).toBe("2026-05-01");
+      expect(body.endDate).toBe("2026-05-31");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("19. rejects invalid month query parameters with 400 VALIDATION_ERROR", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/expenses/budget?month=2026-13",
+      headers: authHeadersA,
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json();
+    expect(body.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("20. safely falls back to UTC when user timezone is invalid without crashing", async () => {
+    // UTC instant: 2026-10-31T20:00:00.000Z
+    // In UTC, month is 2026-10
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/budget",
+        headers: authHeadersInvalidTz,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.month).toBe("2026-10");
+      expect(body.startDate).toBe("2026-10-01");
+      expect(body.endDate).toBe("2026-10-31");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("21. resolves default month for user with explicit UTC timezone", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses/budget",
+        headers: authHeadersUTC,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.month).toBe("2026-10");
+      expect(body.startDate).toBe("2026-10-01");
+      expect(body.endDate).toBe("2026-10-31");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

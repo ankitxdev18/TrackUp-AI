@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { AuthProvider, setTestAuthOverride } from "../context/AuthContext";
 import * as expensesApi from "../api/expenses";
 import { ExpensesPage } from "../pages/ExpensesPage";
 
@@ -603,6 +604,347 @@ describe("ExpensesPage Component Integration Suite", () => {
       expect(screen.getByRole("heading", { name: /edit monthly budget/i })).toBeInTheDocument();
       expect(screen.getByText("Network connection error")).toBeInTheDocument();
     });
+  });
+
+  it("17. rolls over active calendar month when page remains open across midnight without hard refresh", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 0)); // Oct 31, 2026, 23:59:00
+
+    try {
+      render(<ExpensesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-10");
+        expect(screen.getByText("October 2026")).toBeInTheDocument();
+      });
+
+      // Clear mock calls before advancing
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockClear();
+
+      // November summary: empty unconfigured budget for November 2026
+      const novBudgetSummary: expensesApi.MonthlyBudgetSummary = {
+        budget: null,
+        month: "2026-11",
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        budgetAmountCents: null,
+        spentAmountCents: 0,
+        remainingAmountCents: 0,
+        overBudgetAmountCents: 0,
+        utilizationPercent: 0,
+        transactionCount: 0,
+        isExceeded: false,
+      };
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValueOnce(novBudgetSummary);
+
+      // Advance clock past midnight into next month
+      vi.setSystemTime(new Date(2026, 10, 1, 0, 1, 0)); // Nov 1, 2026, 00:01:00
+
+      // Trigger supported rollover mechanism (visibility change event)
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      await waitFor(() => {
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+        expect(screen.getByText(/no spending limit configured for this month/i)).toBeInTheDocument();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("18. targets new active month for budget create, edit, and delete after month rollover", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 0));
+
+    try {
+      render(<ExpensesPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-10");
+      });
+
+      // Advance into November 2026
+      vi.setSystemTime(new Date(2026, 10, 1, 0, 5, 0));
+
+      const novEmptySummary: expensesApi.MonthlyBudgetSummary = {
+        budget: null,
+        month: "2026-11",
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        budgetAmountCents: null,
+        spentAmountCents: 0,
+        remainingAmountCents: 0,
+        overBudgetAmountCents: 0,
+        utilizationPercent: 0,
+        transactionCount: 0,
+        isExceeded: false,
+      };
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValue(novEmptySummary);
+
+      // Trigger rollover via focus
+      act(() => {
+        window.dispatchEvent(new Event("focus"));
+      });
+
+      await waitFor(() => {
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+      });
+
+      // Click Set Monthly Budget
+      fireEvent.click(screen.getByRole("button", { name: /set monthly budget/i }));
+
+      // Modal should show November 2026
+      expect(screen.getByRole("heading", { name: /set monthly budget/i })).toBeInTheDocument();
+      expect(screen.getAllByText("November 2026").length).toBeGreaterThanOrEqual(2);
+
+      // Mock response for save and subsequent fetch
+      const novConfiguredSummary: expensesApi.MonthlyBudgetSummary = {
+        budget: {
+          id: "budget-nov",
+          userId: "user-1",
+          month: "2026-11",
+          amountCents: 60000,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        month: "2026-11",
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        budgetAmountCents: 60000,
+        spentAmountCents: 0,
+        remainingAmountCents: 60000,
+        overBudgetAmountCents: 0,
+        utilizationPercent: 0,
+        transactionCount: 0,
+        isExceeded: false,
+      };
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValue(novConfiguredSummary);
+
+      // Enter amount ₹600 (60,000 paise) and submit
+      const input = screen.getByLabelText(/monthly budget limit/i);
+      fireEvent.change(input, { target: { value: "600" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save Budget" }));
+
+      await waitFor(() => {
+        expect(expensesApi.saveMonthlyBudget).toHaveBeenCalledWith({
+          month: "2026-11",
+          amountCents: 60000,
+        });
+      });
+
+      // Open Edit Budget modal
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /edit.*budget/i })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole("button", { name: /edit.*budget/i }));
+
+      // Click Remove Budget -> Confirm Remove
+      fireEvent.click(screen.getByRole("button", { name: /remove budget/i }));
+      fireEvent.click(screen.getByRole("button", { name: /confirm remove/i }));
+
+      await waitFor(() => {
+        expect(expensesApi.deleteMonthlyBudget).toHaveBeenCalledWith("2026-11");
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("19. discards stale asynchronous budget response when month rolls over during inflight request", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 0));
+
+    try {
+      let resolveInitialBudget: (value: expensesApi.MonthlyBudgetSummary) => void = () => {};
+      const slowInitialBudgetPromise = new Promise<expensesApi.MonthlyBudgetSummary>((resolve) => {
+        resolveInitialBudget = resolve;
+      });
+
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockReturnValueOnce(slowInitialBudgetPromise);
+
+      render(<ExpensesPage />);
+
+      // While initial request for 2026-10 is still inflight, rollover to 2026-11 occurs
+      vi.setSystemTime(new Date(2026, 10, 1, 0, 1, 0));
+
+      const novSummary: expensesApi.MonthlyBudgetSummary = {
+        budget: {
+          id: "budget-nov",
+          userId: "user-1",
+          month: "2026-11",
+          amountCents: 75000,
+          createdAt: "2026-11-01T00:00:00Z",
+          updatedAt: "2026-11-01T00:00:00Z",
+        },
+        month: "2026-11",
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        budgetAmountCents: 75000,
+        spentAmountCents: 0,
+        remainingAmountCents: 75000,
+        overBudgetAmountCents: 0,
+        utilizationPercent: 0,
+        transactionCount: 0,
+        isExceeded: false,
+      };
+
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValueOnce(novSummary);
+
+      // Trigger rollover
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      await waitFor(() => {
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+      });
+
+      // Now resolve the old 2026-10 response late
+      resolveInitialBudget(mockBudgetSummary);
+
+      // Verify that November 2026 remains rendered and is NOT overwritten by the old October response
+      await waitFor(() => {
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+        expect(screen.queryByText("October 2026")).not.toBeInTheDocument();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("20. rolls over active month when continuously visible across midnight without any focus or visibilitychange events", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 59, 0)); // Oct 31, 2026, 23:59:00
+
+    try {
+      render(<ExpensesPage />);
+
+      // Flush mount effects
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10);
+      });
+
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+      expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-10");
+      expect(screen.getByText("October 2026")).toBeInTheDocument();
+
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockClear();
+
+      const novBudgetSummary: expensesApi.MonthlyBudgetSummary = {
+        budget: null,
+        month: "2026-11",
+        startDate: "2026-11-01",
+        endDate: "2026-11-30",
+        budgetAmountCents: null,
+        spentAmountCents: 0,
+        remainingAmountCents: 0,
+        overBudgetAmountCents: 0,
+        utilizationPercent: 0,
+        transactionCount: 0,
+        isExceeded: false,
+      };
+      vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValue(novBudgetSummary);
+
+      // Advance clock and timers past midnight to 00:00:05 Nov 1, 2026 (65 seconds)
+      // The scheduled next-midnight timer must fire without any user interaction or browser events
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(65 * 1000);
+      });
+
+      expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+      expect(screen.getByText("November 2026")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("21. derives active calendar month from user timezone prop when browser timezone differs", async () => {
+    // Instant: 2026-10-31T20:00:00.000Z
+    // In UTC / America/Los_Angeles: October 31, 2026 (month: 2026-10)
+    // In Asia/Kolkata (+5:30): November 1, 2026 at 01:30 (month: 2026-11)
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    const novBudgetSummary: expensesApi.MonthlyBudgetSummary = {
+      budget: null,
+      month: "2026-11",
+      startDate: "2026-11-01",
+      endDate: "2026-11-30",
+      budgetAmountCents: null,
+      spentAmountCents: 0,
+      remainingAmountCents: 0,
+      overBudgetAmountCents: 0,
+      utilizationPercent: 0,
+      transactionCount: 0,
+      isExceeded: false,
+    };
+    vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValue(novBudgetSummary);
+
+    try {
+      render(<ExpensesPage timezone="Asia/Kolkata" />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("22. adopts authoritative timezone from AuthContext when rendered within AuthProvider", async () => {
+    setTestAuthOverride({
+      user: {
+        id: "test-user-id",
+        email: "test@example.com",
+        name: "Workspace",
+        timezone: "Asia/Kolkata",
+      },
+      loading: false,
+    });
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-31T20:00:00.000Z"));
+
+    const novBudgetSummary: expensesApi.MonthlyBudgetSummary = {
+      budget: null,
+      month: "2026-11",
+      startDate: "2026-11-01",
+      endDate: "2026-11-30",
+      budgetAmountCents: null,
+      spentAmountCents: 0,
+      remainingAmountCents: 0,
+      overBudgetAmountCents: 0,
+      utilizationPercent: 0,
+      transactionCount: 0,
+      isExceeded: false,
+    };
+    vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValue(novBudgetSummary);
+
+    try {
+      render(
+        <AuthProvider>
+          <ExpensesPage />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+        expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith("2026-11");
+        expect(screen.getByText("November 2026")).toBeInTheDocument();
+      });
+    } finally {
+      vi.useRealTimers();
+      setTestAuthOverride(null);
+    }
   });
 });
 

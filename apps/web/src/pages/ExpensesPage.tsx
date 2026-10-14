@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   createExpense,
   deleteExpense,
@@ -28,7 +29,86 @@ import { MonthlyBudgetCard } from "./expenses/MonthlyBudgetCard";
 import { SpendingPulseCards } from "./expenses/SpendingPulseCards";
 import "./ExpensesPage.css";
 
-export function ExpensesPage() {
+/**
+ * Derives YYYY-MM formatted calendar month string for a given instant in a specified timezone.
+ * Gracefully falls back to browser-local month if timezone is missing, unsupported, or invalid.
+ */
+function getCalendarMonthInTimezone(timeZone?: string, date = new Date()): string {
+  if (timeZone) {
+    try {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+      });
+      const parts = formatter.formatToParts(date);
+      const year = parts.find((p) => p.type === "year")?.value;
+      const month = parts.find((p) => p.type === "month")?.value;
+      if (year && month) {
+        return `${year}-${month}`;
+      }
+    } catch {
+      // Graceful fallback to browser local
+    }
+  }
+  return getCurrentCalendarMonth(date);
+}
+
+/**
+ * Calculates milliseconds remaining until the next calendar midnight boundary (plus 1s buffer)
+ * evaluated in the target timezone (or local time) so timers fire deterministically across days.
+ */
+function getMsUntilNextMidnight(timeZone?: string, now = new Date()): number {
+  try {
+    if (timeZone) {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        hour12: false,
+      });
+      const parts = formatter.formatToParts(now);
+      const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+      const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+      const second = parseInt(parts.find((p) => p.type === "second")?.value ?? "0", 10);
+      const secondsRemaining = (23 - hour) * 3600 + (59 - minute) * 60 + (60 - second) + 1;
+      return Math.max(1000, secondsRemaining * 1000);
+    }
+  } catch {
+    // Fall back to local time
+  }
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    1
+  );
+  return Math.max(1000, nextMidnight.getTime() - now.getTime());
+}
+
+/**
+ * Safe hook to read user timezone from AuthContext without throwing if mounted outside AuthProvider.
+ */
+function useSafeUserTimezone(): string | undefined {
+  try {
+    const auth = useAuth();
+    return auth?.user?.timezone;
+  } catch {
+    return undefined;
+  }
+}
+
+export interface ExpensesPageProps {
+  timezone?: string;
+}
+
+export function ExpensesPage({ timezone: propTimezone }: ExpensesPageProps = {}) {
+  const authTimezone = useSafeUserTimezone();
+  const effectiveTimezone = propTimezone || authTimezone;
+
   const [period, setPeriod] = useState<PeriodFilterOption>("month");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -55,6 +135,78 @@ export function ExpensesPage() {
       setFeedbackMessage((current) => (current === msg ? null : current));
     }, 3500);
   };
+
+  // The Monthly Budget tracker always targets the active calendar month,
+  // updating dynamically across midnight/month rollovers while remaining
+  // independent of table date filters (such as '30d' or 'last_month').
+  const [activeCalendarMonth, setActiveCalendarMonth] = useState<string>(() =>
+    getCalendarMonthInTimezone(effectiveTimezone)
+  );
+
+  const activeRequestIdRef = useRef(0);
+
+  // Synchronize active calendar month if the calendar month has rolled over
+  const syncMonthRollover = useCallback((): boolean => {
+    const latestMonth = getCalendarMonthInTimezone(effectiveTimezone);
+    let hasChanged = false;
+    setActiveCalendarMonth((prev) => {
+      if (prev !== latestMonth) {
+        hasChanged = true;
+        return latestMonth;
+      }
+      return prev;
+    });
+    return hasChanged;
+  }, [effectiveTimezone]);
+
+  // Synchronize active calendar month when authoritative timezone changes
+  useEffect(() => {
+    if (effectiveTimezone) {
+      const targetMonth = getCalendarMonthInTimezone(effectiveTimezone);
+      setActiveCalendarMonth((prev) => (prev !== targetMonth ? targetMonth : prev));
+    }
+  }, [effectiveTimezone]);
+
+  // Listen for window focus, document visibility, and schedule a timeout for the next calendar boundary (midnight)
+  // so continuous-visible sessions roll over without polling or hard refresh.
+  useEffect(() => {
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNextRollover = () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+      const delay = getMsUntilNextMidnight(effectiveTimezone);
+      timerId = setTimeout(() => {
+        syncMonthRollover();
+        scheduleNextRollover();
+      }, delay);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncMonthRollover();
+        scheduleNextRollover();
+      }
+    };
+
+    const handleFocus = () => {
+      syncMonthRollover();
+      scheduleNextRollover();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    scheduleNextRollover();
+
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [syncMonthRollover, effectiveTimezone]);
 
   // Compute period boundaries YYYY-MM-DD
   const { startDate, endDate } = useMemo(() => {
@@ -88,15 +240,18 @@ export function ExpensesPage() {
       startDate: formatYMD(firstDayMonth),
       endDate: formatYMD(lastDayMonth),
     };
-  }, [period]);
-
-  // The Monthly Budget tracker always targets the active calendar month,
-  // regardless of rolling or historical date filters applied to the expenses table.
-  const activeCalendarMonth = useMemo(() => getCurrentCalendarMonth(), []);
+  }, [period, activeCalendarMonth]);
 
   const loadData = useCallback(
     async (forceInitial?: boolean) => {
       const isInitial = forceInitial ?? !hasLoadedRef.current;
+      const latestMonth = getCalendarMonthInTimezone(effectiveTimezone);
+      if (latestMonth !== activeCalendarMonth) {
+        setActiveCalendarMonth(latestMonth);
+        return;
+      }
+
+      const reqId = ++activeRequestIdRef.current;
       try {
         if (isInitial) {
           setLoading(true);
@@ -117,26 +272,38 @@ export function ExpensesPage() {
           fetchMonthlyBudget(activeCalendarMonth).catch(() => null),
         ]);
 
-        setExpenses(expensesRes.expenses);
-        setSummary(summaryRes);
-        if (budgetRes) {
-          setBudgetSummary(budgetRes);
+        if (reqId === activeRequestIdRef.current) {
+          setExpenses(expensesRes.expenses);
+          setSummary(summaryRes);
+          if (budgetRes && budgetRes.month === activeCalendarMonth) {
+            setBudgetSummary(budgetRes);
+          } else if (!budgetRes) {
+            setBudgetSummary(null);
+          }
         }
       } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load financial records"
-        );
+        if (reqId === activeRequestIdRef.current) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load financial records"
+          );
+        }
       } finally {
-        setLoading(false);
-        setIsRefreshing(false);
-        hasLoadedRef.current = true;
+        if (reqId === activeRequestIdRef.current) {
+          setLoading(false);
+          setIsRefreshing(false);
+          hasLoadedRef.current = true;
+        }
       }
     },
-    [startDate, endDate, activeCalendarMonth, selectedCategory, searchQuery]
+    [startDate, endDate, activeCalendarMonth, selectedCategory, searchQuery, effectiveTimezone]
   );
 
   useEffect(() => {
     loadData();
+    return () => {
+      // Invalidate in-flight requests on unmount
+      activeRequestIdRef.current++;
+    };
   }, [loadData]);
 
   const handleOpenCreateModal = () => {
@@ -176,14 +343,18 @@ export function ExpensesPage() {
     await saveMonthlyBudget(input);
     showFeedback("Monthly budget saved successfully");
     const updated = await fetchMonthlyBudget(input.month);
-    setBudgetSummary(updated);
+    if (input.month === activeCalendarMonth) {
+      setBudgetSummary(updated);
+    }
   };
 
   const handleDeleteBudget = async (month: string) => {
     await deleteMonthlyBudget(month);
     showFeedback("Monthly budget removed successfully");
     const updated = await fetchMonthlyBudget(month);
-    setBudgetSummary(updated);
+    if (month === activeCalendarMonth) {
+      setBudgetSummary(updated);
+    }
   };
 
   const handleResetFilters = () => {
@@ -279,7 +450,11 @@ export function ExpensesPage() {
 
           {/* Zone 2.5: Monthly Spending Budget Tracker */}
           <MonthlyBudgetCard
-            budgetSummary={budgetSummary}
+            budgetSummary={
+              budgetSummary && budgetSummary.month === activeCalendarMonth
+                ? budgetSummary
+                : null
+            }
             onOpenBudgetModal={() => setIsBudgetModalOpen(true)}
             isLoading={isRefreshing}
           />
@@ -323,7 +498,11 @@ export function ExpensesPage() {
         onSubmit={handleSaveBudget}
         onDelete={handleDeleteBudget}
         currentMonth={activeCalendarMonth}
-        existingBudgetAmountCents={budgetSummary?.budgetAmountCents}
+        existingBudgetAmountCents={
+          budgetSummary && budgetSummary.month === activeCalendarMonth
+            ? budgetSummary.budgetAmountCents
+            : null
+        }
       />
 
       {/* Delete Confirmation Dialog */}

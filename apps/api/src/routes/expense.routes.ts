@@ -4,6 +4,7 @@ import { requireAuth } from "../auth/authenticate.js";
 import { IdentityError, resolveUserIdentity } from "../auth/dev-user.js";
 import { db } from "../db/index.js";
 import { expenses, monthlyBudgets } from "../db/schema.js";
+import { isValidIanaTimeZone } from "../habits/habit.date.js";
 import {
   createBudgetSchema,
   createExpenseSchema,
@@ -65,6 +66,30 @@ export function parseSafeMonetaryAggregate(value: unknown): number {
   }
 
   return num;
+}
+
+/**
+ * Resolves the calendar month 'YYYY-MM' for the given instant evaluated in the
+ * user's authoritative IANA timezone. Safely falls back to UTC if the timezone is missing or invalid.
+ */
+function getUserLocalCalendarMonth(timeZone?: string, now = new Date()): string {
+  const effectiveTz = timeZone && isValidIanaTimeZone(timeZone) ? timeZone : "UTC";
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: effectiveTz,
+      year: "numeric",
+      month: "2-digit",
+    });
+    const parts = formatter.formatToParts(now);
+    const year = parts.find((p) => p.type === "year")?.value;
+    const month = parts.find((p) => p.type === "month")?.value;
+    if (year && month) {
+      return `${year}-${month}`;
+    }
+  } catch {
+    // Graceful fallback to UTC
+  }
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance) => {
@@ -270,7 +295,7 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
       }
 
       const now = new Date();
-      const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      const defaultMonth = getUserLocalCalendarMonth(user.timezone, now);
       const targetMonth = queryResult.data.month ?? defaultMonth;
 
       const [yearStr, monthStr] = targetMonth.split("-");
