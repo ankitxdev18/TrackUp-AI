@@ -36,6 +36,8 @@ export function ExpenseModal({
   const [error, setError] = useState<string | null>(null);
 
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   const getTodayDateString = () => {
     const today = new Date();
@@ -47,6 +49,8 @@ export function ExpenseModal({
 
   useEffect(() => {
     if (isOpen) {
+      previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
       if (initialExpense) {
         setAmountStr((initialExpense.amountCents / 100).toFixed(2));
         setDate(initialExpense.date);
@@ -64,27 +68,80 @@ export function ExpenseModal({
       setTimeout(() => {
         amountInputRef.current?.focus();
       }, 50);
+    } else if (previousFocusedElementRef.current) {
+      previousFocusedElementRef.current.focus?.();
     }
   }, [isOpen, initialExpense]);
 
+  // Focus trap & Escape key handler
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !loading) {
+      if (e.key === "Escape" && !loading) {
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
+  const handleCategoryKeyDown = (
+    e: React.KeyboardEvent,
+    currentKey: CanonicalCategory
+  ) => {
+    const currentIndex = CANONICAL_CATEGORIES.indexOf(currentKey);
+    let nextIndex = currentIndex;
+
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      nextIndex = (currentIndex + 1) % CANONICAL_CATEGORIES.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      nextIndex =
+        (currentIndex - 1 + CANONICAL_CATEGORIES.length) %
+        CANONICAL_CATEGORIES.length;
+    }
+
+    if (nextIndex !== currentIndex) {
+      const nextCategory = CANONICAL_CATEGORIES[nextIndex]!;
+      setCategoryId(nextCategory);
+      // Focus target element
+      const targetBtn = modalRef.current?.querySelector<HTMLButtonElement>(
+        `button[data-category="${nextCategory}"]`
+      );
+      targetBtn?.focus();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     const cents = parseCurrencyInputToCents(amountStr);
-    if (cents <= 0) {
+    if (!cents || cents <= 0) {
       setError("Please enter a valid amount greater than zero.");
       amountInputRef.current?.focus();
       return;
@@ -114,6 +171,7 @@ export function ExpenseModal({
   return (
     <div className="expense-modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={modalRef}
         className="expense-modal-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -137,7 +195,7 @@ export function ExpenseModal({
 
         <form onSubmit={handleSubmit} className="expense-modal-form">
           {error && (
-            <div className="modal-error-banner" role="alert">
+            <div className="modal-error-banner" role="alert" aria-live="assertive">
               <AlertCircle size={15} />
               <span>{error}</span>
             </div>
@@ -146,10 +204,10 @@ export function ExpenseModal({
           {/* Amount Hero Input */}
           <div className="form-group amount-group">
             <label htmlFor="amount-input" className="form-label">
-              Amount ($)
+              Amount (₹)
             </label>
             <div className="amount-input-wrap">
-              <span className="currency-prefix" aria-hidden="true">$</span>
+              <span className="currency-prefix" aria-hidden="true">₹</span>
               <input
                 id="amount-input"
                 ref={amountInputRef}
@@ -163,6 +221,9 @@ export function ExpenseModal({
                 required
               />
             </div>
+            <span className="amount-helper-hint">
+              Enter amount in rupees and paise (e.g. 150.50). Stored with zero rounding drift.
+            </span>
           </div>
 
           {/* Category Selector Grid */}
@@ -178,8 +239,11 @@ export function ExpenseModal({
                   <button
                     key={catKey}
                     type="button"
+                    data-category={catKey}
+                    tabIndex={isSelected ? 0 : -1}
                     className={`category-tile ${isSelected ? "is-selected" : ""}`}
                     onClick={() => setCategoryId(catKey)}
+                    onKeyDown={(e) => handleCategoryKeyDown(e, catKey)}
                     role="radio"
                     aria-checked={isSelected}
                     disabled={loading}
@@ -224,9 +288,12 @@ export function ExpenseModal({
 
           {/* Optional Description */}
           <div className="form-group desc-group">
-            <label htmlFor="description-input" className="form-label">
-              Description (Optional)
-            </label>
+            <div className="label-with-counter">
+              <label htmlFor="description-input" className="form-label">
+                Description (Optional)
+              </label>
+              <span className="char-counter font-tabular">{description.length}/500</span>
+            </div>
             <input
               id="description-input"
               type="text"

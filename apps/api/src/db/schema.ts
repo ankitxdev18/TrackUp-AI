@@ -622,3 +622,39 @@ export const savingsContributions = pgTable(
 export type SavingsContribution = typeof savingsContributions.$inferSelect;
 export type NewSavingsContribution = typeof savingsContributions.$inferInsert;
 
+/**
+ * TrackUp Monthly Budget Entity Schema (Milestone A / Expenses Budget Tracker)
+ *
+ * Implements user spending limit for a calendar month:
+ * - id: UUIDv4 primary key
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - month: ISO year-month string 'YYYY-MM' (e.g. '2026-10')
+ * - amountCents: Budget limit in integer minor units (paise), strictly > 0
+ * - createdAt: Timestamp of record creation with timezone
+ * - updatedAt: Timestamp of last modification with timezone
+ */
+export const monthlyBudgets = pgTable(
+  "monthly_budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    month: varchar("month", { length: 7 }).notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("monthly_budgets_amount_positive_check", sql`${table.amountCents} > 0`),
+    uniqueIndex("monthly_budgets_user_month_unique_idx").on(table.userId, table.month),
+    index("monthly_budgets_user_id_idx").on(table.userId),
+  ]
+);
+
+export type MonthlyBudget = typeof monthlyBudgets.$inferSelect;
+export type NewMonthlyBudget = typeof monthlyBudgets.$inferInsert;

@@ -8,7 +8,7 @@ const mockExpenses: expensesApi.Expense[] = [
   {
     id: "exp-1",
     userId: "user-1",
-    amountCents: 8450, // $84.50
+    amountCents: 8450, // ₹84.50
     date: "2026-10-12",
     categoryId: "food",
     description: "Whole Foods groceries",
@@ -18,7 +18,7 @@ const mockExpenses: expensesApi.Expense[] = [
   {
     id: "exp-2",
     userId: "user-1",
-    amountCents: 6500, // $65.00
+    amountCents: 6500, // ₹65.00
     date: "2026-10-11",
     categoryId: "transport",
     description: "Metro monthly pass",
@@ -28,7 +28,7 @@ const mockExpenses: expensesApi.Expense[] = [
   {
     id: "exp-3",
     userId: "user-1",
-    amountCents: 15000, // $150.00
+    amountCents: 15000, // ₹150.00
     date: "2026-10-05",
     categoryId: "housing",
     description: "Fiber internet bill",
@@ -40,7 +40,7 @@ const mockExpenses: expensesApi.Expense[] = [
 const mockSummary: expensesApi.ExpenseSummaryResponse = {
   startDate: "2026-10-01",
   endDate: "2026-10-31",
-  totalAmountCents: 29950, // $299.50
+  totalAmountCents: 29950, // ₹299.50
   transactionCount: 3,
   byCategory: [
     {
@@ -64,6 +64,29 @@ const mockSummary: expensesApi.ExpenseSummaryResponse = {
   ],
 };
 
+const mockBudget: expensesApi.MonthlyBudget = {
+  id: "budget-1",
+  userId: "user-1",
+  month: "2026-10",
+  amountCents: 50000, // ₹500.00
+  createdAt: "2026-10-01T00:00:00.000Z",
+  updatedAt: "2026-10-01T00:00:00.000Z",
+};
+
+const mockBudgetSummary: expensesApi.MonthlyBudgetSummary = {
+  budget: mockBudget,
+  month: "2026-10",
+  startDate: "2026-10-01",
+  endDate: "2026-10-31",
+  budgetAmountCents: 50000, // ₹500.00
+  spentAmountCents: 29950, // ₹299.50
+  remainingAmountCents: 20050, // ₹200.50
+  overBudgetAmountCents: 0,
+  utilizationPercent: 59.9,
+  transactionCount: 3,
+  isExceeded: false,
+};
+
 describe("ExpensesPage Component Integration Suite", () => {
   beforeEach(() => {
     vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
@@ -71,6 +94,8 @@ describe("ExpensesPage Component Integration Suite", () => {
       total: 3,
     });
     vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue(mockSummary);
+    vi.spyOn(expensesApi, "fetchMonthlyBudget").mockResolvedValue(mockBudgetSummary);
+    vi.spyOn(expensesApi, "saveMonthlyBudget").mockResolvedValue(mockBudget);
     vi.spyOn(expensesApi, "createExpense").mockResolvedValue({
       id: "exp-new",
       userId: "user-1",
@@ -90,6 +115,11 @@ describe("ExpensesPage Component Integration Suite", () => {
       success: true,
       id: "exp-1",
     });
+    vi.spyOn(expensesApi, "deleteMonthlyBudget").mockResolvedValue({
+      success: true,
+      message: "Monthly budget deleted successfully",
+      month: "2026-10",
+    });
   });
 
   afterEach(() => {
@@ -105,10 +135,10 @@ describe("ExpensesPage Component Integration Suite", () => {
 
     // Await API resolution
     await waitFor(() => {
-      // Total spent: $299.50
-      expect(screen.getByText("$299.50")).toBeInTheDocument();
-      // Total transactions: 3
-      expect(screen.getByText("3")).toBeInTheDocument();
+      // Total spent: ₹299.50 (present in spending pulse card and monthly budget tracker)
+      expect(screen.getAllByText("₹299.50").length).toBeGreaterThan(0);
+      // Total transactions: 3 (present in summary pulse card and ledger header counter)
+      expect(screen.getAllByText("3").length).toBeGreaterThan(0);
       // Top category
       expect(screen.getAllByText("Housing & Utilities").length).toBeGreaterThan(0);
     });
@@ -120,16 +150,16 @@ describe("ExpensesPage Component Integration Suite", () => {
 
     // Table renders transactions with correct formatted amounts
     expect(screen.getAllByText("Whole Foods groceries").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("$84.50").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("₹84.50").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Metro monthly pass").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("$65.00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("₹65.00").length).toBeGreaterThan(0);
   });
 
   it("2. opens New Expense modal, fills fields, and submits successfully", async () => {
     render(<ExpensesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("$299.50")).toBeInTheDocument();
+      expect(screen.getAllByText("₹299.50").length).toBeGreaterThan(0);
     });
 
     // Click "New Expense"
@@ -168,7 +198,7 @@ describe("ExpensesPage Component Integration Suite", () => {
     render(<ExpensesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("$299.50")).toBeInTheDocument();
+      expect(screen.getAllByText("₹299.50").length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
@@ -257,7 +287,7 @@ describe("ExpensesPage Component Integration Suite", () => {
     render(<ExpensesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("$299.50")).toBeInTheDocument();
+      expect(screen.getAllByText("₹299.50").length).toBeGreaterThan(0);
     });
 
     // Click "Last 30 Days"
@@ -274,7 +304,7 @@ describe("ExpensesPage Component Integration Suite", () => {
     render(<ExpensesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("$299.50")).toBeInTheDocument();
+      expect(screen.getAllByText("₹299.50").length).toBeGreaterThan(0);
     });
 
     // Change category dropdown to food
@@ -316,6 +346,525 @@ describe("ExpensesPage Component Integration Suite", () => {
     await waitFor(() => {
       expect(screen.getByText(/no expenses recorded yet/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /log your first expense/i })).toBeInTheDocument();
+    });
+  });
+
+  it("9. renders filtered ratio count and clear filters button in ledger header when active filters are present", async () => {
+    // When filtered by food, returns 1 expense out of 3 in the period
+    vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
+      expenses: [mockExpenses[0]!],
+      total: 1,
+    });
+    vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue(mockSummary);
+
+    render(<ExpensesPage />);
+
+    // Await initial load and find filter
+    const catSelect = await screen.findByLabelText(/filter by category/i);
+    fireEvent.change(catSelect, { target: { value: "food" } });
+
+    await waitFor(() => {
+      // Period summary pulse card still shows total period count: 3
+      expect(screen.getAllByText("3").length).toBeGreaterThan(0);
+      // Ledger header displays: Showing 1 of 3 transactions (filtered)
+      expect(screen.getByText(/showing/i)).toBeInTheDocument();
+      expect(screen.getByText("(filtered)")).toBeInTheDocument();
+      // Clear filters button is present in the ledger header
+      expect(screen.getByRole("button", { name: "Clear active filters" })).toBeInTheDocument();
+    });
+
+    // Clicking clear filters resets category filter
+    fireEvent.click(screen.getByRole("button", { name: "Clear active filters" }));
+
+    await waitFor(() => {
+      expect(expensesApi.fetchExpenses).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: undefined })
+      );
+    });
+  });
+
+  it("10. renders monthly budget tracker card with limit, spent, remaining, utilization, and progress bar", async () => {
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+      // Budget limit ₹500.00
+      expect(screen.getByText("₹500.00")).toBeInTheDocument();
+      // Remaining: ₹200.50
+      expect(screen.getByText("₹200.50")).toBeInTheDocument();
+      // Utilization: 59.9%
+      expect(screen.getByText("59.9%")).toBeInTheDocument();
+      // Progressbar element
+      const progressBar = screen.getByRole("progressbar");
+      expect(progressBar).toHaveAttribute("aria-valuenow", "59.9");
+    });
+  });
+
+  it("11. renders empty budget state when no budget exists, opens modal, and sets new budget", async () => {
+    vi.spyOn(expensesApi, "fetchMonthlyBudget").mockResolvedValue({
+      budget: null,
+      month: "2026-10",
+      startDate: "2026-10-01",
+      endDate: "2026-10-31",
+      budgetAmountCents: null,
+      spentAmountCents: 29950,
+      remainingAmountCents: 0,
+      overBudgetAmountCents: 0,
+      utilizationPercent: 0,
+      transactionCount: 3,
+      isExceeded: false,
+    });
+
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no spending limit configured for this month/i)).toBeInTheDocument();
+    });
+
+    // Click "Set Monthly Budget"
+    fireEvent.click(screen.getByRole("button", { name: /set monthly budget/i }));
+
+    // Budget modal opens
+    expect(screen.getByRole("heading", { name: /set monthly budget/i })).toBeInTheDocument();
+
+    // Enter budget amount: 1000.00
+    const amountInput = screen.getByLabelText(/monthly budget limit/i);
+    fireEvent.change(amountInput, { target: { value: "1000.00" } });
+
+    // Click "Save Budget"
+    fireEvent.click(screen.getByRole("button", { name: "Save Budget" }));
+
+    await waitFor(() => {
+      expect(expensesApi.saveMonthlyBudget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          month: "2026-10",
+          amountCents: 100000,
+        })
+      );
+    });
+  });
+
+  it("12. renders exceeded budget state with over-budget amount and danger alert when spending exceeds limit", async () => {
+    vi.spyOn(expensesApi, "fetchMonthlyBudget").mockResolvedValue({
+      budget: mockBudget,
+      month: "2026-10",
+      startDate: "2026-10-01",
+      endDate: "2026-10-31",
+      budgetAmountCents: 20000, // ₹200.00 limit
+      spentAmountCents: 29950, // ₹299.50 spent
+      remainingAmountCents: 0,
+      overBudgetAmountCents: 9950, // ₹99.50 over budget
+      utilizationPercent: 149.8,
+      transactionCount: 3,
+      isExceeded: true,
+    });
+
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+      // Over budget metric value
+      expect(screen.getByText("+₹99.50")).toBeInTheDocument();
+      // Over budget warning text
+      expect(screen.getByText(/budget exceeded/i)).toBeInTheDocument();
+      // Progressbar is clamped at 100%
+      const progressBar = screen.getByRole("progressbar");
+      expect(progressBar).toHaveAttribute("aria-valuenow", "100");
+    });
+  });
+
+  it("13. budget modal validates invalid amounts and closes on Escape", async () => {
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit.*budget/i }));
+
+    expect(screen.getByRole("heading", { name: /edit monthly budget/i })).toBeInTheDocument();
+
+    const amountInput = screen.getByLabelText(/monthly budget limit/i);
+    fireEvent.change(amountInput, { target: { value: "-100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Budget" }));
+
+    expect(screen.getByText(/please enter a valid positive budget amount/i)).toBeInTheDocument();
+
+    // Closes on Escape
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("heading", { name: /edit monthly budget/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it("14. maintains monthly budget target on active calendar month when expenses table toggles to rolling 30d filter", async () => {
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+      expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith(expensesApi.getCurrentCalendarMonth());
+    });
+
+    // Reset calls count
+    vi.mocked(expensesApi.fetchMonthlyBudget).mockClear();
+    vi.mocked(expensesApi.fetchExpenses).mockClear();
+
+    // Toggle to "Last 30 Days" rolling filter
+    const btn30d = screen.getByRole("button", { name: /last 30 days/i });
+    fireEvent.click(btn30d);
+
+    await waitFor(() => {
+      // Table & summary re-fetch with rolling 30-day range
+      expect(expensesApi.fetchExpenses).toHaveBeenCalledTimes(1);
+      // But Monthly Budget continues targeting the current active calendar month, not the rolling range's previous month start
+      expect(expensesApi.fetchMonthlyBudget).toHaveBeenCalledWith(expensesApi.getCurrentCalendarMonth());
+    });
+  });
+
+  it("15. removes monthly budget with confirmation and renders unconfigured empty state", async () => {
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+    });
+
+    // Open Edit Budget modal
+    fireEvent.click(screen.getByRole("button", { name: /edit.*budget/i }));
+
+    expect(screen.getByRole("heading", { name: /edit monthly budget/i })).toBeInTheDocument();
+
+    // Find and click "Remove Budget"
+    const removeBtn = screen.getByRole("button", { name: /remove budget/i });
+    fireEvent.click(removeBtn);
+
+    // Confirmation alert prompt appears
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText(/your recorded expenses will not be deleted/i)).toBeInTheDocument();
+
+    // Test cancellation of confirmation: click "Keep Budget"
+    const keepBtn = screen.getByRole("button", { name: /keep budget/i });
+    fireEvent.click(keepBtn);
+
+    // Confirmation dismissed, back to standard actions
+    expect(screen.queryByText(/your recorded expenses will not be deleted/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update Budget" })).toBeInTheDocument();
+
+    // Now proceed with removal: click "Remove Budget" then "Confirm Remove"
+    fireEvent.click(screen.getByRole("button", { name: /remove budget/i }));
+
+    // Mock fetchMonthlyBudget to return null budget after deletion
+    vi.mocked(expensesApi.fetchMonthlyBudget).mockResolvedValueOnce({
+      budget: null,
+      month: expensesApi.getCurrentCalendarMonth(),
+      startDate: "2026-10-01",
+      endDate: "2026-10-31",
+      budgetAmountCents: null,
+      spentAmountCents: 29950,
+      remainingAmountCents: 0,
+      overBudgetAmountCents: 0,
+      utilizationPercent: 0,
+      transactionCount: 3,
+      isExceeded: false,
+    });
+
+    const confirmRemoveBtn = screen.getByRole("button", { name: /confirm remove/i });
+    fireEvent.click(confirmRemoveBtn);
+
+    await waitFor(() => {
+      expect(expensesApi.deleteMonthlyBudget).toHaveBeenCalledWith(expensesApi.getCurrentCalendarMonth());
+      // Modal closed
+      expect(screen.queryByRole("heading", { name: /edit monthly budget/i })).not.toBeInTheDocument();
+      // Toast message appears
+      expect(screen.getByText(/monthly budget removed successfully/i)).toBeInTheDocument();
+      // Card shows unconfigured empty state
+      expect(screen.getByText(/no spending limit configured for this month/i)).toBeInTheDocument();
+    });
+  });
+
+  it("16. handles monthly budget deletion failure and shows error message without closing dialog", async () => {
+    vi.mocked(expensesApi.deleteMonthlyBudget).mockRejectedValueOnce(
+      new Error("Network connection error")
+    );
+
+    render(<ExpensesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Monthly Budget Tracker")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit.*budget/i }));
+
+    // Click Remove Budget -> Confirm Remove
+    fireEvent.click(screen.getByRole("button", { name: /remove budget/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm remove/i }));
+
+    await waitFor(() => {
+      // Modal remains open and shows error banner
+      expect(screen.getByRole("heading", { name: /edit monthly budget/i })).toBeInTheDocument();
+      expect(screen.getByText("Network connection error")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Fixed INR Currency Formatting & Safe Parsing (Milestone 5.3B)", () => {
+  describe("formatCents", () => {
+    it("formats integer paise to INR with standard Indian digit grouping and 2 decimal places", () => {
+      expect(expensesApi.formatCents(15000)).toBe("₹150.00");
+      expect(expensesApi.formatCents(15050)).toBe("₹150.50");
+      expect(expensesApi.formatCents(12500000)).toBe("₹1,25,000.00");
+      expect(expensesApi.formatCents(1)).toBe("₹0.01");
+      expect(expensesApi.formatCents(0)).toBe("₹0.00");
+    });
+  });
+
+  describe("parseCurrencyInputToCents", () => {
+    it("parses whole rupees and one or two decimal places into exact paise without drift", () => {
+      expect(expensesApi.parseCurrencyInputToCents("150")).toBe(15000);
+      expect(expensesApi.parseCurrencyInputToCents("150.5")).toBe(15050);
+      expect(expensesApi.parseCurrencyInputToCents("150.50")).toBe(15050);
+      expect(expensesApi.parseCurrencyInputToCents("0.01")).toBe(1);
+      expect(expensesApi.parseCurrencyInputToCents("1,25,000.00")).toBe(12500000);
+      expect(expensesApi.parseCurrencyInputToCents(" 150.50 ")).toBe(15050);
+    });
+
+    it("rejects negative values and zero", () => {
+      expect(expensesApi.parseCurrencyInputToCents("-150")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("-0.01")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("0")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("0.00")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("0.0")).toBeNull();
+    });
+
+    it("rejects malformed input and repeated decimal points", () => {
+      expect(expensesApi.parseCurrencyInputToCents("abc")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("   ")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("$150")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("₹150")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("150.50.10")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("1.2.3")).toBeNull();
+    });
+
+    it("rejects excess fractional digits beyond 2 decimal places", () => {
+      expect(expensesApi.parseCurrencyInputToCents("150.505")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("0.001")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("42.1234")).toBeNull();
+    });
+
+    it("enforces maximum supported signed 32-bit integer amount and rejects overflow", () => {
+      // MAX_SUPPORTED_PAISE is 2147483647 (₹21,474,836.47)
+      expect(expensesApi.parseCurrencyInputToCents("21474836.47")).toBe(2147483647);
+      expect(expensesApi.parseCurrencyInputToCents("21474836.48")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("999999999999")).toBeNull();
+    });
+  });
+
+  describe("getCurrentCalendarMonth", () => {
+    it("returns ISO year-month string formatted as YYYY-MM", () => {
+      const octDate = new Date(2026, 9, 15);
+      expect(expensesApi.getCurrentCalendarMonth(octDate)).toBe("2026-10");
+
+      const janDate = new Date(2025, 0, 1);
+      expect(expensesApi.getCurrentCalendarMonth(janDate)).toBe("2025-01");
+    });
+  });
+
+  describe("ExpenseModal invalid input handling", () => {
+    beforeEach(() => {
+      vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
+        expenses: mockExpenses,
+        total: mockExpenses.length,
+      });
+      vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue(mockSummary);
+      vi.spyOn(expensesApi, "createExpense").mockResolvedValue({
+        id: "exp-new",
+        userId: "user-1",
+        amountCents: 5000,
+        date: "2026-10-12",
+        categoryId: "food",
+        description: null,
+        createdAt: "2026-10-12T14:00:00.000Z",
+        updatedAt: "2026-10-12T14:00:00.000Z",
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("prevents submission and displays validation error when entering excess decimal precision", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      fireEvent.change(amountInput, { target: { value: "50.123" } });
+
+      const saveButton = screen.getByRole("button", { name: /save expense/i });
+      fireEvent.click(saveButton);
+
+      expect(
+        screen.getByText(/please enter a valid amount greater than zero/i)
+      ).toBeInTheDocument();
+      expect(expensesApi.createExpense).not.toHaveBeenCalled();
+    });
+
+    it("prevents submission and displays validation error on overflow amount", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      fireEvent.change(amountInput, { target: { value: "99999999999" } });
+
+      const saveButton = screen.getByRole("button", { name: /save expense/i });
+      fireEvent.click(saveButton);
+
+      expect(
+        screen.getByText(/please enter a valid amount greater than zero/i)
+      ).toBeInTheDocument();
+      expect(expensesApi.createExpense).not.toHaveBeenCalled();
+    });
+
+    it("prevents submission and rejects malformed grouping separators such as 1,2,000.00", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      fireEvent.change(amountInput, { target: { value: "1,2,000.00" } });
+
+      const saveButton = screen.getByRole("button", { name: /save expense/i });
+      fireEvent.click(saveButton);
+
+      expect(
+        screen.getByText(/please enter a valid amount greater than zero/i)
+      ).toBeInTheDocument();
+      expect(expensesApi.createExpense).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Grouping separator validation in parseCurrencyInputToCents", () => {
+    it("accepts valid Indian grouping formats", () => {
+      expect(expensesApi.parseCurrencyInputToCents("1,000")).toBe(100000);
+      expect(expensesApi.parseCurrencyInputToCents("12,000")).toBe(1200000);
+      expect(expensesApi.parseCurrencyInputToCents("1,25,000")).toBe(12500000);
+      expect(expensesApi.parseCurrencyInputToCents("12,50,000.50")).toBe(125000050);
+      expect(expensesApi.parseCurrencyInputToCents("1,00,00,000")).toBe(1000000000);
+    });
+
+    it("accepts valid Western grouping formats", () => {
+      expect(expensesApi.parseCurrencyInputToCents("125,000")).toBe(12500000);
+      expect(expensesApi.parseCurrencyInputToCents("1,250,000.00")).toBe(125000000);
+    });
+
+    it("rejects malformed grouping separators such as 1,2,000.00", () => {
+      expect(expensesApi.parseCurrencyInputToCents("1,2,000.00")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("1,2,000")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("12,00")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents(",150")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("150,")).toBeNull();
+      expect(expensesApi.parseCurrencyInputToCents("1,,500")).toBeNull();
+    });
+  });
+
+  describe("CategoryDistributionBar Composition Semantics & Accessibility", () => {
+    beforeEach(() => {
+      vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
+        expenses: mockExpenses,
+        total: mockExpenses.length,
+      });
+      vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue(mockSummary);
+    });
+
+    it("exposes category breakdown as composition image/region rather than false 100% progressbar", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      // Assert role="progressbar" does NOT exist
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+      // Assert composition visualization exists with accessible label
+      expect(
+        screen.getByRole("img", { name: /spending breakdown across 3 categories/i })
+      ).toBeInTheDocument();
+
+      // Assert interactive filter pills exist with aria-pressed
+      const housingPill = screen.getByRole("button", {
+        name: /filter by housing & utilities/i,
+      });
+      expect(housingPill).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("renders calm zero-data composition placeholder when zero expenses exist", async () => {
+      vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
+        expenses: [],
+        total: 0,
+      });
+      vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue({
+        startDate: "2026-10-01",
+        endDate: "2026-10-31",
+        totalAmountCents: 0,
+        transactionCount: 0,
+        byCategory: [],
+      });
+
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(
+          screen.getByText(/no category expenditures recorded in this reporting period/i)
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("ExpenseModal Accessibility & Keyboard Navigation", () => {
+    beforeEach(() => {
+      vi.spyOn(expensesApi, "fetchExpenses").mockResolvedValue({
+        expenses: mockExpenses,
+        total: mockExpenses.length,
+      });
+      vi.spyOn(expensesApi, "fetchExpenseSummary").mockResolvedValue(mockSummary);
+    });
+
+    it("closes modal on Escape key press", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
+      expect(screen.getByRole("heading", { name: "Log Expense" })).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("heading", { name: "Log Expense" })).not.toBeInTheDocument();
+    });
+
+    it("navigates category radio group using arrow keys", async () => {
+      render(<ExpensesPage />);
+      await waitFor(() => {
+        expect(screen.getByText("₹299.50")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Log new expense" }));
+      const foodTile = screen.getByRole("radio", { name: /food & dining/i });
+      expect(foodTile).toHaveAttribute("aria-checked", "true");
+
+      // Press ArrowRight to move to housing
+      fireEvent.keyDown(foodTile, { key: "ArrowRight" });
+      const housingTile = screen.getByRole("radio", { name: /housing & utilities/i });
+      expect(housingTile).toHaveAttribute("aria-checked", "true");
     });
   });
 });

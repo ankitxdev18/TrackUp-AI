@@ -1,14 +1,20 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createExpense,
   deleteExpense,
+  deleteMonthlyBudget,
   fetchExpenses,
   fetchExpenseSummary,
+  fetchMonthlyBudget,
+  getCurrentCalendarMonth,
+  saveMonthlyBudget,
   updateExpense,
   type Expense,
   type ExpenseSummaryResponse,
+  type MonthlyBudgetSummary,
 } from "../api/expenses";
+import { BudgetModal } from "./expenses/BudgetModal";
 import { CategoryDistributionBar } from "./expenses/CategoryDistributionBar";
 import { DeleteExpenseDialog } from "./expenses/DeleteExpenseDialog";
 import {
@@ -18,6 +24,7 @@ import {
 import { ExpenseLedgerTable } from "./expenses/ExpenseLedgerTable";
 import { ExpenseModal } from "./expenses/ExpenseModal";
 import { ExpensesHeader } from "./expenses/ExpensesHeader";
+import { MonthlyBudgetCard } from "./expenses/MonthlyBudgetCard";
 import { SpendingPulseCards } from "./expenses/SpendingPulseCards";
 import "./ExpensesPage.css";
 
@@ -28,16 +35,26 @@ export function ExpensesPage() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
+  const [budgetSummary, setBudgetSummary] = useState<MonthlyBudgetSummary | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
   const hasLoadedRef = useRef(false);
+
+  const showFeedback = (msg: string) => {
+    setFeedbackMessage(msg);
+    setTimeout(() => {
+      setFeedbackMessage((current) => (current === msg ? null : current));
+    }, 3500);
+  };
 
   // Compute period boundaries YYYY-MM-DD
   const { startDate, endDate } = useMemo(() => {
@@ -73,6 +90,10 @@ export function ExpensesPage() {
     };
   }, [period]);
 
+  // The Monthly Budget tracker always targets the active calendar month,
+  // regardless of rolling or historical date filters applied to the expenses table.
+  const activeCalendarMonth = useMemo(() => getCurrentCalendarMonth(), []);
+
   const loadData = useCallback(
     async (forceInitial?: boolean) => {
       const isInitial = forceInitial ?? !hasLoadedRef.current;
@@ -84,7 +105,7 @@ export function ExpensesPage() {
         }
         setError(null);
 
-        const [expensesRes, summaryRes] = await Promise.all([
+        const [expensesRes, summaryRes, budgetRes] = await Promise.all([
           fetchExpenses({
             startDate,
             endDate,
@@ -93,10 +114,14 @@ export function ExpensesPage() {
             limit: 200,
           }),
           fetchExpenseSummary(startDate, endDate),
+          fetchMonthlyBudget(activeCalendarMonth).catch(() => null),
         ]);
 
         setExpenses(expensesRes.expenses);
         setSummary(summaryRes);
+        if (budgetRes) {
+          setBudgetSummary(budgetRes);
+        }
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "Failed to load financial records"
@@ -107,7 +132,7 @@ export function ExpensesPage() {
         hasLoadedRef.current = true;
       }
     },
-    [startDate, endDate, selectedCategory, searchQuery]
+    [startDate, endDate, activeCalendarMonth, selectedCategory, searchQuery]
   );
 
   useEffect(() => {
@@ -132,8 +157,10 @@ export function ExpensesPage() {
   }) => {
     if (editingExpense) {
       await updateExpense(editingExpense.id, data);
+      showFeedback("Expense updated successfully");
     } else {
       await createExpense(data);
+      showFeedback("Expense logged successfully");
     }
     // Refresh page data to ensure aggregations reflect update
     await loadData();
@@ -141,7 +168,22 @@ export function ExpensesPage() {
 
   const handleConfirmDelete = async (id: string) => {
     await deleteExpense(id);
+    showFeedback("Expense deleted successfully");
     await loadData();
+  };
+
+  const handleSaveBudget = async (input: { month: string; amountCents: number }) => {
+    await saveMonthlyBudget(input);
+    showFeedback("Monthly budget saved successfully");
+    const updated = await fetchMonthlyBudget(input.month);
+    setBudgetSummary(updated);
+  };
+
+  const handleDeleteBudget = async (month: string) => {
+    await deleteMonthlyBudget(month);
+    showFeedback("Monthly budget removed successfully");
+    const updated = await fetchMonthlyBudget(month);
+    setBudgetSummary(updated);
   };
 
   const handleResetFilters = () => {
@@ -158,12 +200,20 @@ export function ExpensesPage() {
         onOpenCreateModal={handleOpenCreateModal}
       />
 
+      {/* Mutation Feedback Toast */}
+      {feedbackMessage && (
+        <div className="expenses-feedback-toast" role="status" aria-live="polite">
+          <CheckCircle2 size={16} />
+          <span>{feedbackMessage}</span>
+        </div>
+      )}
+
       {/* Error Banner with Retry */}
-      {error && (
+      {error && summary && (
         <div className="expenses-error-banner" role="alert">
           <AlertCircle size={18} />
           <div className="error-text">
-            <strong>Unable to load expenses:</strong> {error}
+            <strong>Unable to update financial records:</strong> {error}
           </div>
           <button
             type="button"
@@ -175,8 +225,24 @@ export function ExpensesPage() {
         </div>
       )}
 
-      {/* Initial Loading Shimmer */}
-      {loading && !summary ? (
+      {/* Dedicated Error State when no summary data could be fetched */}
+      {error && !summary && expenses.length === 0 ? (
+        <div className="expenses-error-card" role="alert">
+          <div className="error-icon-wrap" aria-hidden="true">
+            <AlertCircle size={28} />
+          </div>
+          <h2 className="error-title">Unable to Load Financial Data</h2>
+          <p className="error-desc">{error}</p>
+          <button
+            type="button"
+            className="btn-retry"
+            onClick={() => loadData(true)}
+          >
+            Retry Connection
+          </button>
+        </div>
+      ) : loading && !summary ? (
+        /* Initial Loading Shimmer */
         <div className="expenses-skeleton-wrap" aria-label="Loading expenses">
           <div className="skeleton-cards-grid">
             <div className="skeleton-card shimmer" />
@@ -201,6 +267,7 @@ export function ExpensesPage() {
             totalAmountCents={summary?.totalAmountCents ?? 0}
             transactionCount={summary?.transactionCount ?? 0}
             byCategory={summary?.byCategory ?? []}
+            isUnavailable={!summary}
           />
 
           <CategoryDistributionBar
@@ -208,6 +275,13 @@ export function ExpensesPage() {
             totalAmountCents={summary?.totalAmountCents ?? 0}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
+          />
+
+          {/* Zone 2.5: Monthly Spending Budget Tracker */}
+          <MonthlyBudgetCard
+            budgetSummary={budgetSummary}
+            onOpenBudgetModal={() => setIsBudgetModalOpen(true)}
+            isLoading={isRefreshing}
           />
 
           {/* Zone 3: Filter & Search Toolbar */}
@@ -224,6 +298,7 @@ export function ExpensesPage() {
           {/* Zone 4: Transaction Ledger */}
           <ExpenseLedgerTable
             expenses={expenses}
+            totalPeriodCount={summary?.transactionCount ?? expenses.length}
             onEditExpense={handleEditExpense}
             onDeleteExpense={setDeletingExpense}
             onOpenCreateModal={handleOpenCreateModal}
@@ -233,12 +308,22 @@ export function ExpensesPage() {
         </div>
       )}
 
-      {/* Create / Edit Modal Dialog */}
+      {/* Create / Edit Expense Modal Dialog */}
       <ExpenseModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleModalSubmit}
         initialExpense={editingExpense}
+      />
+
+      {/* Set / Edit Budget Dialog */}
+      <BudgetModal
+        isOpen={isBudgetModalOpen}
+        onClose={() => setIsBudgetModalOpen(false)}
+        onSubmit={handleSaveBudget}
+        onDelete={handleDeleteBudget}
+        currentMonth={activeCalendarMonth}
+        existingBudgetAmountCents={budgetSummary?.budgetAmountCents}
       />
 
       {/* Delete Confirmation Dialog */}

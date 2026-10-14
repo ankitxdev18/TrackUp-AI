@@ -93,18 +93,68 @@ export function getCategoryMeta(categoryId: string): CategoryMeta {
   return CATEGORY_MAP[categoryId as CanonicalCategory] || CATEGORY_MAP.other;
 }
 
-export function formatCents(cents: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+export const MAX_SUPPORTED_PAISE = 2147483647; // PostgreSQL signed 32-bit integer maximum
+
+export function formatCents(cents: number, currency = "INR"): string {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(cents / 100);
 }
 
-export function parseCurrencyInputToCents(val: string): number {
-  const clean = val.replace(/[^0-9.]/g, "");
-  const floatVal = parseFloat(clean);
-  if (isNaN(floatVal) || floatVal <= 0) return 0;
-  return Math.round(floatVal * 100);
+export function parseCurrencyInputToCents(val: string): number | null {
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (!trimmed) return null;
+
+  // Split into whole integer rupees and optional fractional paise
+  const parts = trimmed.split(".");
+  if (parts.length > 2) return null; // Reject multiple decimal points
+  const wholePart = parts[0]!;
+  const fractionStr = parts[1];
+
+  // If grouping commas are present, enforce strict grouping patterns
+  if (wholePart.includes(",")) {
+    // Valid Indian format: e.g. 1,000 or 12,000 or 1,25,000 or 12,50,000
+    const isIndianGrouping = /^\d{1,2}(,\d{2})*,\d{3}$/.test(wholePart);
+    // Valid Western format: e.g. 1,000 or 12,000 or 125,000 or 1,250,000
+    const isWesternGrouping = /^\d{1,3}(,\d{3})+$/.test(wholePart);
+    if (!isIndianGrouping && !isWesternGrouping) {
+      return null;
+    }
+  } else {
+    // No commas: whole rupees must consist exclusively of one or more digits
+    if (!/^\d+$/.test(wholePart)) return null;
+  }
+
+  // Reject excess fractional precision (more than 2 decimal digits) or invalid fraction characters
+  if (fractionStr !== undefined) {
+    if (fractionStr.length > 2 || !/^\d+$/.test(fractionStr)) {
+      return null;
+    }
+  }
+
+  // Bound check whole rupees digit count to prevent integer overflow
+  const cleanWhole = wholePart.replace(/,/g, "");
+  if (cleanWhole.length > 10) return null;
+  const whole = parseInt(cleanWhole, 10);
+  if (isNaN(whole)) return null;
+
+  const fraction = fractionStr
+    ? parseInt(fractionStr.padEnd(2, "0"), 10)
+    : 0;
+  if (isNaN(fraction)) return null;
+
+  const totalPaise = whole * 100 + fraction;
+
+  // Must be strictly greater than zero and within signed 32-bit integer bounds
+  if (totalPaise <= 0 || totalPaise > MAX_SUPPORTED_PAISE) {
+    return null;
+  }
+
+  return totalPaise;
 }
 
 export interface Expense {
@@ -326,6 +376,207 @@ export async function deleteExpense(
       response.status,
       errorData.code || "DELETE_FAILED",
       errorData.error || "Failed to delete expense"
+    );
+  }
+
+  return response.json();
+}
+
+export interface MonthlyBudget {
+  id: string;
+  userId: string;
+  month: string;
+  amountCents: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonthlyBudgetSummary {
+  budget: MonthlyBudget | null;
+  month: string;
+  startDate: string;
+  endDate: string;
+  budgetAmountCents: number | null;
+  spentAmountCents: number;
+  remainingAmountCents: number;
+  overBudgetAmountCents: number;
+  utilizationPercent: number;
+  transactionCount: number;
+  isExceeded: boolean;
+}
+
+export interface SetBudgetInput {
+  month: string;
+  amountCents: number;
+}
+
+export async function fetchMonthlyBudget(
+  month?: string
+): Promise<MonthlyBudgetSummary> {
+  const query = month ? `?month=${encodeURIComponent(month)}` : "";
+  const response = await fetch(`/api/expenses/budget${query}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new ExpenseApiError(
+      response.status,
+      errorData.code || "FETCH_BUDGET_FAILED",
+      errorData.error || "Failed to fetch monthly budget"
+    );
+  }
+
+  return response.json();
+}
+
+export async function createMonthlyBudget(
+  input: SetBudgetInput
+): Promise<MonthlyBudget> {
+  const response = await fetch("/api/expenses/budget", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new ExpenseApiError(
+      response.status,
+      errorData.code || "CREATE_BUDGET_FAILED",
+      errorData.error || "Failed to create monthly budget"
+    );
+  }
+
+  const data = await response.json();
+  return data.budget;
+}
+
+export async function updateMonthlyBudget(
+  input: SetBudgetInput
+): Promise<MonthlyBudget> {
+  const response = await fetch("/api/expenses/budget", {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new ExpenseApiError(
+      response.status,
+      errorData.code || "UPDATE_BUDGET_FAILED",
+      errorData.error || "Failed to update monthly budget"
+    );
+  }
+
+  const data = await response.json();
+  return data.budget;
+}
+
+export async function saveMonthlyBudget(
+  input: SetBudgetInput
+): Promise<MonthlyBudget> {
+  let response = await fetch("/api/expenses/budget", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (response.status === 409) {
+    response = await fetch("/api/expenses/budget", {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(input),
+    });
+  }
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new ExpenseApiError(
+      response.status,
+      errorData.code || "SAVE_BUDGET_FAILED",
+      errorData.error || "Failed to save monthly budget"
+    );
+  }
+
+  const data = await response.json();
+  return data.budget;
+}
+
+/**
+ * Returns canonical ISO year-month string 'YYYY-MM' for the user's active calendar month.
+ */
+export function getCurrentCalendarMonth(date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+}
+
+export async function deleteMonthlyBudget(
+  month: string
+): Promise<{ success: boolean; message: string; month: string }> {
+  const response = await fetch(
+    `/api/expenses/budget?month=${encodeURIComponent(month)}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new ExpenseApiError(
+      response.status,
+      errorData.code || "DELETE_BUDGET_FAILED",
+      errorData.error || "Failed to delete monthly budget"
     );
   }
 

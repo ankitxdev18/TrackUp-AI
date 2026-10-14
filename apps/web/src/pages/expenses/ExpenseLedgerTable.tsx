@@ -1,5 +1,5 @@
 import { Edit2, MoreVertical, Plus, Receipt, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   formatCents,
   getCategoryMeta,
@@ -8,6 +8,7 @@ import {
 
 interface ExpenseLedgerTableProps {
   expenses: Expense[];
+  totalPeriodCount?: number;
   onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (expense: Expense) => void;
   onOpenCreateModal: () => void;
@@ -17,6 +18,7 @@ interface ExpenseLedgerTableProps {
 
 export function ExpenseLedgerTable({
   expenses,
+  totalPeriodCount,
   onEditExpense,
   onDeleteExpense,
   onOpenCreateModal,
@@ -24,6 +26,33 @@ export function ExpenseLedgerTable({
   onResetFilters,
 }: ExpenseLedgerTableProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!activeMenuId) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        menuContainerRef.current &&
+        !menuContainerRef.current.contains(e.target as Node)
+      ) {
+        setActiveMenuId(null);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeMenuId]);
 
   const formatDate = (isoDate: string) => {
     if (!isoDate) return "";
@@ -78,6 +107,34 @@ export function ExpenseLedgerTable({
 
   return (
     <div className="expenses-ledger-wrapper">
+      {/* Ledger Header Status Bar */}
+      <div className="expenses-ledger-header-bar">
+        <span className="ledger-count-meta">
+          {hasFilters && totalPeriodCount !== undefined && totalPeriodCount !== expenses.length ? (
+            <>
+              Showing <strong className="count-highlight">{expenses.length}</strong> of{" "}
+              <strong>{totalPeriodCount}</strong> transactions
+              <span className="ledger-filtered-tag"> (filtered)</span>
+            </>
+          ) : (
+            <>
+              Showing <strong className="count-highlight">{expenses.length}</strong>{" "}
+              {expenses.length === 1 ? "transaction" : "transactions"}
+            </>
+          )}
+        </span>
+        {hasFilters && (
+          <button
+            type="button"
+            className="btn-ledger-clear-filters"
+            onClick={onResetFilters}
+            aria-label="Clear active filters"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {/* Desktop Table View */}
       <table className="expenses-table" aria-label="Transaction ledger">
         <thead>
@@ -118,14 +175,19 @@ export function ExpenseLedgerTable({
                   {expense.description ? (
                     <span className="desc-text">{expense.description}</span>
                   ) : (
-                    <span className="desc-muted">—</span>
+                    <span className="desc-muted" aria-label="No description">
+                      —
+                    </span>
                   )}
                 </td>
                 <td className="cell-amount font-tabular">
                   {formatCents(expense.amountCents)}
                 </td>
                 <td className="cell-actions">
-                  <div className="row-action-menu-wrap">
+                  <div
+                    className="row-action-menu-wrap"
+                    ref={isMenuOpen ? menuContainerRef : undefined}
+                  >
                     <button
                       type="button"
                       className="btn-row-action"
@@ -133,6 +195,7 @@ export function ExpenseLedgerTable({
                         setActiveMenuId(isMenuOpen ? null : expense.id)
                       }
                       aria-label="Transaction actions"
+                      aria-haspopup="menu"
                       aria-expanded={isMenuOpen}
                     >
                       <MoreVertical size={14} />
@@ -142,6 +205,7 @@ export function ExpenseLedgerTable({
                       <div
                         className="row-action-dropdown"
                         role="menu"
+                        aria-label="Transaction actions"
                         onMouseLeave={() => setActiveMenuId(null)}
                       >
                         <button
@@ -178,51 +242,74 @@ export function ExpenseLedgerTable({
         </tbody>
       </table>
 
-      {/* Mobile Card Feed View */}
+      {/* Mobile Card Feed View (Decoupled click targets, avoiding nested button traps) */}
       <div className="expenses-mobile-feed" aria-label="Transactions mobile feed">
         {expenses.map((expense) => {
           const meta = getCategoryMeta(expense.categoryId);
           const CategoryIcon = meta.icon;
 
           return (
-            <div
-              key={expense.id}
-              className="expense-mobile-card"
-              onClick={() => onEditExpense(expense)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Expense: ${meta.name}, ${formatCents(expense.amountCents)}`}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onEditExpense(expense);
-              }}
-            >
+            <div key={expense.id} className="expense-mobile-card">
               <div
-                className="mobile-card-icon"
-                style={{
-                  backgroundColor: meta.bgColor,
-                  color: meta.color,
+                className="mobile-card-clickable"
+                onClick={() => onEditExpense(expense)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Edit ${meta.name} transaction: ${formatCents(expense.amountCents)}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onEditExpense(expense);
+                  }
                 }}
-                aria-hidden="true"
               >
-                <CategoryIcon size={18} />
+                <div
+                  className="mobile-card-icon"
+                  style={{
+                    backgroundColor: meta.bgColor,
+                    color: meta.color,
+                  }}
+                  aria-hidden="true"
+                >
+                  <CategoryIcon size={18} />
+                </div>
+
+                <div className="mobile-card-content">
+                  <div className="mobile-card-primary">
+                    <span className="mobile-card-desc">
+                      {expense.description || meta.name}
+                    </span>
+                    <span className="mobile-card-amount font-tabular">
+                      {formatCents(expense.amountCents)}
+                    </span>
+                  </div>
+                  <div className="mobile-card-secondary">
+                    <span className="mobile-card-category">{meta.name}</span>
+                    <span className="mobile-card-dot" aria-hidden="true">•</span>
+                    <span className="mobile-card-date font-tabular">
+                      {formatDate(expense.date)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="mobile-card-content">
-                <div className="mobile-card-primary">
-                  <span className="mobile-card-desc">
-                    {expense.description || meta.name}
-                  </span>
-                  <span className="mobile-card-amount font-tabular">
-                    {formatCents(expense.amountCents)}
-                  </span>
-                </div>
-                <div className="mobile-card-secondary">
-                  <span className="mobile-card-category">{meta.name}</span>
-                  <span className="mobile-card-dot">•</span>
-                  <span className="mobile-card-date font-tabular">
-                    {formatDate(expense.date)}
-                  </span>
-                </div>
+              <div className="mobile-card-actions">
+                <button
+                  type="button"
+                  className="btn-mobile-edit"
+                  onClick={() => onEditExpense(expense)}
+                  aria-label={`Edit ${meta.name} expense`}
+                >
+                  <Edit2 size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="btn-mobile-delete"
+                  onClick={() => onDeleteExpense(expense)}
+                  aria-label={`Delete ${meta.name} expense`}
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             </div>
           );

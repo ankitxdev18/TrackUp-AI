@@ -9,14 +9,16 @@ interface SpendingPulseCardsProps {
   totalAmountCents: number;
   transactionCount: number;
   byCategory: CategorySummaryItem[];
+  isUnavailable?: boolean;
 }
 
 export function SpendingPulseCards({
   totalAmountCents,
   transactionCount,
   byCategory,
+  isUnavailable = false,
 }: SpendingPulseCardsProps) {
-  const topCategoryItem = byCategory.length > 0 ? byCategory[0] : null;
+  const topCategoryItem = byCategory && byCategory.length > 0 ? byCategory[0] : null;
   const topCategoryMeta = topCategoryItem
     ? getCategoryMeta(topCategoryItem.categoryId)
     : null;
@@ -32,10 +34,10 @@ export function SpendingPulseCards({
           </div>
         </div>
         <div className="pulse-card-value font-tabular">
-          {formatCents(totalAmountCents)}
+          {isUnavailable ? "—" : formatCents(totalAmountCents)}
         </div>
         <div className="pulse-card-meta">
-          Net expenditures in selected window
+          {isUnavailable ? "Summary data unavailable" : "Total spend for selected period"}
         </div>
       </div>
 
@@ -48,10 +50,14 @@ export function SpendingPulseCards({
           </div>
         </div>
         <div className="pulse-card-value font-tabular">
-          {transactionCount}
+          {isUnavailable ? "—" : transactionCount}
         </div>
         <div className="pulse-card-meta">
-          {transactionCount === 1 ? "1 expense recorded" : `${transactionCount} expenses recorded`}
+          {isUnavailable
+            ? "Record count unavailable"
+            : transactionCount === 1
+            ? "1 transaction in period"
+            : `${transactionCount} total transactions in period`}
         </div>
       </div>
 
@@ -63,7 +69,12 @@ export function SpendingPulseCards({
             <PieChart size={15} />
           </div>
         </div>
-        {topCategoryMeta && topCategoryItem ? (
+        {isUnavailable ? (
+          <>
+            <div className="pulse-card-value pulse-empty-cat">—</div>
+            <div className="pulse-card-meta">Category metrics unavailable</div>
+          </>
+        ) : topCategoryMeta && topCategoryItem ? (
           <>
             <div className="pulse-card-value pulse-top-cat">
               <span
@@ -73,18 +84,18 @@ export function SpendingPulseCards({
                   color: topCategoryMeta.color,
                 }}
               >
-                <topCategoryMeta.icon size={14} />
+                <topCategoryMeta.icon size={14} aria-hidden="true" />
                 <span>{topCategoryMeta.name}</span>
               </span>
             </div>
             <div className="pulse-card-meta font-tabular">
-              {formatCents(topCategoryItem.totalAmountCents)} ({topCategoryItem.percentage}%)
+              {formatCents(topCategoryItem.totalAmountCents)} ({topCategoryItem.percentage}% of period)
             </div>
           </>
         ) : (
           <>
             <div className="pulse-card-value pulse-empty-cat">None</div>
-            <div className="pulse-card-meta">No category activity recorded</div>
+            <div className="pulse-card-meta">No category activity in period</div>
           </>
         )}
       </div>

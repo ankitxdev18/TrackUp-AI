@@ -31,10 +31,17 @@ export function ExpensesHeader({
           </div>
           <h1 className="expenses-title">Expenses</h1>
         </div>
-        <p className="expenses-subtitle">
-          Track personal spending, audit transactions, and review category breakdowns.
-          <span className="expenses-active-period-badge">{periodLabel}</span>
-        </p>
+        <div className="expenses-subtitle-row">
+          <p className="expenses-subtitle">
+            Track personal spending, audit transactions, and review category breakdowns.
+          </p>
+          <span
+            className="expenses-active-period-badge font-tabular"
+            aria-label={`Current reporting window: ${periodLabel}`}
+          >
+            {periodLabel}
+          </span>
+        </div>
       </div>
 
       <div className="expenses-header-actions">

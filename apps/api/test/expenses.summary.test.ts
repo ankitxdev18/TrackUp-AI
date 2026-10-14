@@ -69,28 +69,28 @@ describe("Milestone 5.7: Expenses Spending Summary & Category Aggregations", () 
       // Inside target period (2026-10-01 to 2026-10-31)
       {
         userId: userAId,
-        amountCents: 5000, // $50.00
+        amountCents: 5000, // ₹50.00 (5000 paise)
         date: "2026-10-02",
         categoryId: "food",
         description: "Dinner out",
       },
       {
         userId: userAId,
-        amountCents: 2500, // $25.00
+        amountCents: 2500, // ₹25.00 (2500 paise)
         date: "2026-10-15",
         categoryId: "food",
         description: "Groceries",
       },
       {
         userId: userAId,
-        amountCents: 10000, // $100.00
+        amountCents: 10000, // ₹100.00 (10000 paise)
         date: "2026-10-10",
         categoryId: "housing",
         description: "Electricity bill",
       },
       {
         userId: userAId,
-        amountCents: 2500, // $25.00
+        amountCents: 2500, // ₹25.00 (2500 paise)
         date: "2026-10-20",
         categoryId: "transport",
         description: "Gas fill-up",
@@ -204,7 +204,7 @@ describe("Milestone 5.7: Expenses Spending Summary & Category Aggregations", () 
       expect(data.startDate).toBe("2026-10-01");
       expect(data.endDate).toBe("2026-10-31");
 
-      // Expected total: $50 + $25 + $100 + $25 = $200 = 20000 cents
+      // Expected total: ₹50 + ₹25 + ₹100 + ₹25 = ₹200 = 20000 cents (paise)
       expect(data.totalAmountCents).toBe(20000);
       expect(data.transactionCount).toBe(4);
 

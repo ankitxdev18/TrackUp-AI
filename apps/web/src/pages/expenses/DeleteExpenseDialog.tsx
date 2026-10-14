@@ -1,5 +1,5 @@
 import { AlertTriangle, Loader2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatCents, getCategoryMeta, type Expense } from "../../api/expenses";
 
 interface DeleteExpenseDialogProps {
@@ -17,6 +17,51 @@ export function DeleteExpenseDialog({
 }: DeleteExpenseDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+      setError(null);
+      setLoading(false);
+    } else if (previousFocusedElementRef.current) {
+      previousFocusedElementRef.current.focus?.();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) {
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen || !expense) return null;
 
@@ -38,6 +83,7 @@ export function DeleteExpenseDialog({
   return (
     <div className="expense-modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={dialogRef}
         className="expense-modal-card delete-modal-card"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

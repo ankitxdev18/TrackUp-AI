@@ -71,3 +71,46 @@ export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
 export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
 export type ExpenseSummaryQuery = z.infer<typeof expenseSummaryQuerySchema>;
+
+export const MONTH_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])$/;
+
+export const createBudgetSchema = z.object({
+  month: z
+    .string({ message: "Month is required" })
+    .regex(MONTH_REGEX, "Month must be formatted as YYYY-MM"),
+  amountCents: z
+    .number({ message: "Amount is required" })
+    .int("Amount must be an integer number of paise")
+    .positive("Budget amount must be greater than zero")
+    .max(2147483647, "Budget amount exceeds maximum permitted value"),
+});
+
+export const updateBudgetSchema = z.object({
+  month: z
+    .string()
+    .regex(MONTH_REGEX, "Month must be formatted as YYYY-MM")
+    .optional(),
+  amountCents: z
+    .number({ message: "Amount is required" })
+    .int("Amount must be an integer number of paise")
+    .positive("Budget amount must be greater than zero")
+    .max(2147483647, "Budget amount exceeds maximum permitted value"),
+});
+
+export const getBudgetQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(MONTH_REGEX, "Month must be formatted as YYYY-MM")
+    .optional(),
+});
+
+export const deleteBudgetQuerySchema = z.object({
+  month: z
+    .string({ message: "Month is required" })
+    .regex(MONTH_REGEX, "Month must be formatted as YYYY-MM"),
+});
+
+export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
+export type UpdateBudgetInput = z.infer<typeof updateBudgetSchema>;
+export type GetBudgetQuery = z.infer<typeof getBudgetQuerySchema>;
+export type DeleteBudgetQuery = z.infer<typeof deleteBudgetQuerySchema>;

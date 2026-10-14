@@ -27,19 +27,21 @@ export function ExpenseFilterToolbar({
   return (
     <div className="expenses-toolbar" role="toolbar" aria-label="Transaction filters">
       {/* Period Quick Select */}
-      <div className="toolbar-period-group">
+      <div className="toolbar-period-group" role="group" aria-label="Reporting period">
         <button
           type="button"
           className={`toolbar-period-btn ${period === "month" ? "is-active" : ""}`}
           onClick={() => onPeriodChange("month")}
+          aria-pressed={period === "month"}
         >
-          <Calendar size={13} />
+          <Calendar size={13} aria-hidden="true" />
           <span>This Month</span>
         </button>
         <button
           type="button"
           className={`toolbar-period-btn ${period === "30d" ? "is-active" : ""}`}
           onClick={() => onPeriodChange("30d")}
+          aria-pressed={period === "30d"}
         >
           <span>Last 30 Days</span>
         </button>
@@ -47,6 +49,7 @@ export function ExpenseFilterToolbar({
           type="button"
           className={`toolbar-period-btn ${period === "last_month" ? "is-active" : ""}`}
           onClick={() => onPeriodChange("last_month")}
+          aria-pressed={period === "last_month"}
         >
           <span>Last Month</span>
         </button>
