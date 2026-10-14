@@ -538,3 +538,87 @@ export const expenses = pgTable(
 export type Expense = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
 
+/**
+ * TrackUp Savings Goal Entity Schema (Milestone 5.4 / Savings Piggy-Bank)
+ *
+ * Implements dedicated target savings tracking:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - userId: Foreign key reference to users.id with cascade on delete
+ * - name: Name of the savings goal (e.g. "Emergency Fund", "New Laptop", <= 100 chars)
+ * - targetAmountCents: Target monetary amount in integer paise, strictly > 0
+ * - status: Goal lifecycle state ('ACTIVE' | 'COMPLETED' | 'ARCHIVED', default 'ACTIVE')
+ * - createdAt: Timestamp of record creation with timezone
+ * - updatedAt: Timestamp of last modification with timezone
+ */
+export const savingsGoals = pgTable(
+  "savings_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    targetAmountCents: integer("target_amount_cents").notNull(),
+    status: varchar("status", { length: 20 }).default("ACTIVE").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check("savings_goals_target_positive_check", sql`${table.targetAmountCents} > 0`),
+    index("savings_goals_user_id_idx").on(table.userId),
+    uniqueIndex("savings_goals_user_active_idx")
+      .on(table.userId)
+      .where(sql`${table.status} = 'ACTIVE'`),
+  ]
+);
+
+export type SavingsGoal = typeof savingsGoals.$inferSelect;
+export type NewSavingsGoal = typeof savingsGoals.$inferInsert;
+
+/**
+ * TrackUp Savings Contribution Ledger Entity Schema (Milestone 5.4 / Savings Piggy-Bank)
+ *
+ * Implements immutable deposit entries towards a savings goal:
+ * - id: UUIDv4 primary key generated via PostgreSQL gen_random_uuid()
+ * - savingsGoalId: Foreign key reference to savings_goals.id with cascade on delete
+ * - userId: Foreign key reference to users.id with cascade on delete (for direct tenant isolation)
+ * - amountCents: Monetary deposit in integer paise, strictly > 0
+ * - note: Optional descriptive context / narrative (<= 500 chars)
+ * - createdAt: Timestamp of deposit with timezone
+ */
+export const savingsContributions = pgTable(
+  "savings_contributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    savingsGoalId: uuid("savings_goal_id")
+      .notNull()
+      .references(() => savingsGoals.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    note: varchar("note", { length: 500 }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "savings_contributions_amount_positive_check",
+      sql`${table.amountCents} > 0`
+    ),
+    index("savings_contributions_goal_created_idx").on(
+      table.savingsGoalId,
+      table.createdAt.desc()
+    ),
+    index("savings_contributions_user_id_idx").on(table.userId),
+  ]
+);
+
+export type SavingsContribution = typeof savingsContributions.$inferSelect;
+export type NewSavingsContribution = typeof savingsContributions.$inferInsert;
+

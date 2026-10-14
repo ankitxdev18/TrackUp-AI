@@ -16,6 +16,7 @@ import { taskRoutes } from "./routes/task.routes.js";
 import { notificationRoutes } from "./routes/notification.routes.js";
 import { analyticsRoutes } from "./routes/analytics.routes.js";
 import { expenseRoutes } from "./routes/expense.routes.js";
+import { savingsRoutes } from "./routes/savings.routes.js";
 import { runSafeSessionCleanup } from "./auth/session.js";
 
 export interface BuildAppOptions {
@@ -136,6 +137,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   server.register(notificationRoutes, { prefix: "/api/notifications" });
   server.register(analyticsRoutes, { prefix: "/api/analytics" });
   server.register(expenseRoutes, { prefix: "/api/expenses" });
+  server.register(savingsRoutes, { prefix: "/api/savings" });
 
   // 4. Periodic background session cleanup lifecycle
   if (options.enableSessionCleanup) {
