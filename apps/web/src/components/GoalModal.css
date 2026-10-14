@@ -1,11 +1,149 @@
+/* Goal Modal Overlay & Dialog Styles */
+.modal-backdrop,
+.goal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content,
 .goal-modal-content {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+  width: 100%;
   max-width: 520px;
+  max-height: min(90vh, 90dvh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.goal-modal-content .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.goal-modal-content .modal-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.goal-modal-content .btn-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease;
+}
+
+.goal-modal-content .btn-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.goal-modal-content .btn-modal-close:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.goal-modal-content .modal-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 20px 0;
+  padding: 8px 12px;
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-danger);
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .goal-modal-form {
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  max-height: calc(min(90vh, 90dvh) - 65px);
+}
+
+.goal-modal-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-modal-form .form-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.goal-modal-form .label-required {
+  color: var(--color-danger);
+}
+
+.goal-modal-form .form-input,
+.goal-modal-form .form-textarea,
+.goal-modal-form .form-select {
+  padding: 8px 12px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.goal-modal-form .form-input:focus,
+.goal-modal-form .form-textarea:focus,
+.goal-modal-form .form-select:focus {
+  border-color: var(--primary);
+  background-color: var(--bg-surface);
 }
 
 .form-row-grid {
@@ -47,8 +185,66 @@
   font-variant-numeric: tabular-nums;
 }
 
+.goal-modal-form .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-2);
+}
+
+.goal-modal-form .btn-secondary {
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.goal-modal-form .btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.goal-modal-form .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background-color: var(--primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.goal-modal-form .btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
 @media (max-width: 640px) {
   .form-row-grid {
     grid-template-columns: 1fr;
   }
+
+  .modal-backdrop,
+  .goal-modal-backdrop {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .goal-modal-content {
+    max-height: min(92vh, 92dvh);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 }
+

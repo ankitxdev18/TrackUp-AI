@@ -29,11 +29,15 @@ export function GoalModal({
   const [error, setError] = useState<string | null>(null);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   const isEditing = Boolean(goalToEdit);
 
   useEffect(() => {
     if (isOpen) {
+      previousFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
       if (goalToEdit) {
         setTitle(goalToEdit.title);
         setDescription(goalToEdit.description || "");
@@ -50,23 +54,50 @@ export function GoalModal({
       setError(null);
       setLoading(false);
       setTimeout(() => titleInputRef.current?.focus(), 50);
+    } else if (previousFocusedElementRef.current) {
+      previousFocusedElementRef.current.focus?.();
     }
   }, [isOpen, goalToEdit]);
 
+  // Focus trap & Escape key handler
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape" && !loading) {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
 
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -112,12 +143,15 @@ export function GoalModal({
 
   return (
     <div
-      className="modal-backdrop"
-      onClick={onClose}
+      className="modal-backdrop goal-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
       role="presentation"
       data-testid="goal-modal-backdrop"
     >
       <div
+        ref={modalRef}
         className="modal-content goal-modal-content"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
