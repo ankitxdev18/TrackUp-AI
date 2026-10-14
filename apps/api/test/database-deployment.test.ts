@@ -137,17 +137,34 @@ describe("Phase 1B.3c: Database Security & Deployment Configuration", () => {
   });
 
   describe("4. Deployment Configuration Artifacts Verification", () => {
-    it("verifies apps/web/vercel.json exists and defines SPA rewrites to index.html", () => {
+    it("verifies apps/web/vercel.json prioritizes /api/:path* proxy rewrite over SPA fallback", () => {
       const vercelConfigPath = path.resolve(__dirname, "../../web/vercel.json");
       expect(fs.existsSync(vercelConfigPath)).toBe(true);
 
       const content = JSON.parse(fs.readFileSync(vercelConfigPath, "utf8"));
       expect(content.rewrites).toBeDefined();
-      expect(
-        content.rewrites.some(
-          (r: any) => r.source === "/(.*)" && r.destination === "/index.html"
-        )
-      ).toBe(true);
+      expect(Array.isArray(content.rewrites)).toBe(true);
+      expect(content.rewrites.length).toBeGreaterThanOrEqual(2);
+
+      const apiRewriteIndex = content.rewrites.findIndex(
+        (r: any) => r.source === "/api/:path*"
+      );
+      const spaFallbackIndex = content.rewrites.findIndex(
+        (r: any) => r.source === "/(.*)" && r.destination === "/index.html"
+      );
+
+      // 1. API rewrite must exist
+      expect(apiRewriteIndex).toBeGreaterThanOrEqual(0);
+      const apiRewrite = content.rewrites[apiRewriteIndex];
+      expect(apiRewrite.destination).toBe(
+        "https://trackup-api.onrender.com/api/:path*"
+      );
+
+      // 2. SPA fallback must exist
+      expect(spaFallbackIndex).toBeGreaterThanOrEqual(0);
+
+      // 3. API rewrite must strictly precede SPA fallback to prevent /api/* routing to index.html
+      expect(apiRewriteIndex).toBeLessThan(spaFallbackIndex);
     });
 
     it("verifies root render.yaml exists and configures web service, db, health check, and migrations", () => {

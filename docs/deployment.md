@@ -23,8 +23,25 @@ This document defines the production deployment topology, security policies, dat
 ```
 
 - **Frontend (Web):** Deployed to **Vercel** as a static single-page application (SPA). Client-side deep linking and direct page refreshes (`/login`, `/dashboard`, `/tasks`, `/projects`) are routed to `index.html` via `apps/web/vercel.json`.
-- **Backend (API):** Deployed to **Render** as a Node.js Web Service running Fastify (`0.0.0.0:10000`). Reverse-proxy headers from Render's edge load balancer are validated via `TRUST_PROXY=true`.
+- **API Routing & Reverse Proxy:** Vercel edge rewrites proxy all relative `/api/*` requests directly to the Render backend service (`https://trackup-api.onrender.com/api/:path*`) before the SPA fallback rule catches other routes.
+- **Backend (API):** Deployed to **Render** as a Node.js Web Service running Fastify (`0.0.0.0:10000`). Reverse-proxy headers from upstream load balancers are validated via `TRUST_PROXY=true`.
 - **Database:** Managed **Render PostgreSQL** (PostgreSQL 16).
+
+### Same-Origin Architecture & Cookie Security Model
+1. **Public Origin Uniformity:** The browser communicates exclusively with the frontend's public origin (e.g., `https://app.trackup.com` or `https://trackup.vercel.app`), making all API requests to relative `/api/*` endpoints.
+2. **RFC 6265bis `__Host-` Prefix Compliance:**
+   - Production session cookies are named `__Host-trackup_session`.
+   - Set with attributes: `Secure; HttpOnly; Path=/; SameSite=Lax; (Domain explicitly omitted)`.
+   - Because the browser communicates with the same origin, the cookie is treated as first-party and is completely immune to third-party cookie deprecation in Safari (ITP), Firefox (ETP), and Chrome.
+3. **Rewrite Order Precedence in `apps/web/vercel.json`:**
+   - Rule 1 (`/api/:path*` -> `https://trackup-api.onrender.com/api/:path*`): Takes strict precedence. Relays HTTP methods, query strings, headers (`Origin`, `Cookie`), and JSON request bodies; forwards `Set-Cookie` and JSON error status codes (400, 401, 403, 404, 500) downstream without masking.
+   - Rule 2 (`/(.*)` -> `/index.html`): Catch-all SPA fallback ensuring client-side routes render properly.
+4. **CORS & CSRF Defense:**
+   - Render's `CORS_ORIGIN` environment variable is configured to match the public frontend origin (`https://app.trackup.com`).
+   - Fastify's CSRF hook (`createCsrfProtection`) strictly validates that `Origin` and `Referer` match `CORS_ORIGIN`. Cross-site requests (`Sec-Fetch-Site: cross-site`) or untrusted origins are rejected with 403 `CSRF_ORIGIN_INVALID`.
+5. **Local Development Continuity:**
+   - In local development, Vite's dev server (`apps/web/vite.config.ts`) proxies `/api` to `http://localhost:4000`.
+   - Development cookies use `trackup_session` with `Secure=false` so plain HTTP `localhost:5173` functions seamlessly.
 
 ---
 
