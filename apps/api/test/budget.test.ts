@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { buildApp } from "../src/app.js";
@@ -246,6 +246,69 @@ describe("Milestone A: Monthly Budget Tracker Backend Integration Suite", () => 
 
     expect(dupRes.statusCode).toBe(409);
     expect(dupRes.json().code).toBe("DUPLICATE_BUDGET");
+  });
+
+  it("5a. handles concurrent budget creation requests for the same user/month without returning HTTP 500", async () => {
+    // Attempt concurrent creations for a brand-new month (2027-05)
+    const [res1, res2] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/api/expenses/budget",
+        headers: authHeadersA,
+        payload: { month: "2027-05", amountCents: 600000 },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/expenses/budget",
+        headers: authHeadersA,
+        payload: { month: "2027-05", amountCents: 600000 },
+      }),
+    ]);
+
+    const statuses = [res1.statusCode, res2.statusCode].sort();
+    // Exactly one must succeed with 201, and the other must receive 409 DUPLICATE_BUDGET (never HTTP 500)
+    expect(statuses).toEqual([201, 409]);
+
+    const conflictRes = res1.statusCode === 409 ? res1 : res2;
+    expect(conflictRes.json()).toEqual({
+      error: "A budget has already been configured for this month",
+      code: "DUPLICATE_BUDGET",
+    });
+
+    const successRes = res1.statusCode === 201 ? res1 : res2;
+    expect(successRes.json().budget.month).toBe("2027-05");
+  });
+
+  it("5b. allows a different user to create a budget for the same month independently", async () => {
+    // User A created a budget for 2027-05 in test 5a.
+    // User B should be able to create a budget for 2027-05 without conflict.
+    const resB = await app.inject({
+      method: "POST",
+      url: "/api/expenses/budget",
+      headers: authHeadersB,
+      payload: { month: "2027-05", amountCents: 900000 },
+    });
+
+    expect(resB.statusCode).toBe(201);
+    expect(resB.json().budget.month).toBe("2027-05");
+    expect(resB.json().budget.amountCents).toBe(900000);
+  });
+
+  it("5c. preserves unexpected database errors as HTTP 500 without mislabeling as DUPLICATE_BUDGET", async () => {
+    const insertSpy = vi.spyOn(db, "insert").mockImplementationOnce(() => {
+      throw Object.assign(new Error("Database connection failure"), { code: "08006" });
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/expenses/budget",
+      headers: authHeadersA,
+      payload: { month: "2026-12", amountCents: 500000 },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json().code).toBe("INTERNAL_SERVER_ERROR");
+    insertSpy.mockRestore();
   });
 
   it("6. updates monthly budget via PUT /api/expenses/budget", async () => {

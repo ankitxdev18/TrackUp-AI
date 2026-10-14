@@ -47,19 +47,45 @@ export const expenseIdParamSchema = z.object({
   id: z.string().regex(UUID_REGEX, "Invalid expense ID format"),
 });
 
+const paginationParam = (
+  name: string,
+  min: number,
+  max: number | undefined,
+  defaultValue: number,
+  minMessage?: string
+) => {
+  let schema = z
+    .number({
+      message: `${name} must be a valid integer`,
+    })
+    .int(`${name} must be an integer`)
+    .min(min, minMessage || `${name} must be at least ${min}`);
+
+  if (max !== undefined) {
+    schema = schema.max(max, `${name} cannot exceed ${max}`);
+  }
+
+  return z.preprocess((val) => {
+    if (val === undefined || val === null) return defaultValue;
+    if (typeof val === "number") return val;
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (trimmed === "") return NaN;
+      if (!/^-?\d+$/.test(trimmed)) return NaN;
+      const num = Number(trimmed);
+      return Number.isSafeInteger(num) ? num : NaN;
+    }
+    return NaN;
+  }, schema);
+};
+
 export const listExpensesQuerySchema = z.object({
   startDate: z.string().regex(ISO_DATE_REGEX).optional(),
   endDate: z.string().regex(ISO_DATE_REGEX).optional(),
   categoryId: z.enum(CANONICAL_CATEGORIES).optional(),
   search: z.string().trim().max(100).optional(),
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Math.min(Math.max(parseInt(val, 10), 1), 200) : 50)),
-  offset: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Math.max(parseInt(val, 10), 0) : 0)),
+  limit: paginationParam("Limit", 1, 200, 50),
+  offset: paginationParam("Offset", 0, undefined, 0, "Offset cannot be negative"),
 });
 
 export const expenseSummaryQuerySchema = z.object({

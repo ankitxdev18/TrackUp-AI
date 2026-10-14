@@ -344,18 +344,36 @@ export const expenseRoutes: FastifyPluginAsync = async (server: FastifyInstance)
         });
       }
 
-      const [newBudget] = await db
-        .insert(monthlyBudgets)
-        .values({
-          userId: user.id,
-          month,
-          amountCents,
-        })
-        .returning();
+      try {
+        const [newBudget] = await db
+          .insert(monthlyBudgets)
+          .values({
+            userId: user.id,
+            month,
+            amountCents,
+          })
+          .returning();
 
-      return reply.status(201).send({
-        budget: newBudget,
-      });
+        return reply.status(201).send({
+          budget: newBudget,
+        });
+      } catch (insertErr: any) {
+        // Handle race condition caught by PostgreSQL unique constraint: monthly_budgets_user_month_unique_idx
+        // Drizzle wraps database driver errors so code/constraint can be on insertErr or insertErr.cause
+        const pgCode = insertErr?.code ?? insertErr?.cause?.code;
+        const pgConstraint = insertErr?.constraint ?? insertErr?.cause?.constraint;
+
+        if (
+          pgCode === "23505" &&
+          (pgConstraint === "monthly_budgets_user_month_unique_idx" || !pgConstraint)
+        ) {
+          return reply.status(409).send({
+            error: "A budget has already been configured for this month",
+            code: "DUPLICATE_BUDGET",
+          });
+        }
+        throw insertErr;
+      }
     } catch (err: unknown) {
       if (err instanceof IdentityError) {
         return reply.status(err.statusCode).send({

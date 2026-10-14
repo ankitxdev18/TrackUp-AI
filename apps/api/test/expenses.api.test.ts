@@ -5,6 +5,7 @@ import { buildApp } from "../src/app.js";
 import { hashPassword } from "../src/auth/password.js";
 import { closeDatabasePool, db } from "../src/db/index.js";
 import { expenses, users } from "../src/db/schema.js";
+import { listExpensesQuerySchema } from "../src/expenses/expense.schema.js";
 
 describe("Milestone 5.6: Expenses CRUD API & Tenant Isolation Suite", () => {
   let app: FastifyInstance;
@@ -361,6 +362,153 @@ describe("Milestone 5.6: Expenses CRUD API & Tenant Isolation Suite", () => {
       expect(data.total).toBe(3); // Total count remains 3
       expect(data.expenses.length).toBe(1);
       expect(data.expenses[0].id).toBe(expenseA2Id); // 2nd item
+    });
+
+    it("12a. applies default limit (50) and offset (0) when omitted", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(3);
+      expect(data.expenses.length).toBe(3);
+    });
+
+    it("12b. accepts maximum permitted limit (200)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=200&offset=0",
+        headers: authHeadersA,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.expenses.length).toBe(3);
+    });
+
+    it("12c. rejects malformed string pagination parameters (limit=abc, offset=abc) with HTTP 400 VALIDATION_ERROR", async () => {
+      const resLimit = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=abc",
+        headers: authHeadersA,
+      });
+      expect(resLimit.statusCode).toBe(400);
+      const bodyLimit = resLimit.json();
+      expect(bodyLimit.code).toBe("VALIDATION_ERROR");
+      expect(bodyLimit.details[0].field).toBe("limit");
+      expect(bodyLimit.details[0].message).toBe("Limit must be a valid integer");
+
+      const resOffset = await app.inject({
+        method: "GET",
+        url: "/api/expenses?offset=abc",
+        headers: authHeadersA,
+      });
+      expect(resOffset.statusCode).toBe(400);
+      const bodyOffset = resOffset.json();
+      expect(bodyOffset.code).toBe("VALIDATION_ERROR");
+      expect(bodyOffset.details[0].field).toBe("offset");
+      expect(bodyOffset.details[0].message).toBe("Offset must be a valid integer");
+    });
+
+    it("12d. rejects empty string pagination parameters with HTTP 400 VALIDATION_ERROR", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=",
+        headers: authHeadersA,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+
+      const resOffset = await app.inject({
+        method: "GET",
+        url: "/api/expenses?offset=",
+        headers: authHeadersA,
+      });
+      expect(resOffset.statusCode).toBe(400);
+      expect(resOffset.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("12e. rejects decimal pagination parameters (limit=1.5, offset=2.5) with HTTP 400 VALIDATION_ERROR", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=1.5",
+        headers: authHeadersA,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("VALIDATION_ERROR");
+
+      const resOffset = await app.inject({
+        method: "GET",
+        url: "/api/expenses?offset=2.5",
+        headers: authHeadersA,
+      });
+      expect(resOffset.statusCode).toBe(400);
+      expect(resOffset.json().code).toBe("VALIDATION_ERROR");
+    });
+
+    it("12f. rejects zero or negative limit and negative offset with HTTP 400 VALIDATION_ERROR", async () => {
+      const resZero = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=0",
+        headers: authHeadersA,
+      });
+      expect(resZero.statusCode).toBe(400);
+      expect(resZero.json().details[0].message).toBe("Limit must be at least 1");
+
+      const resNeg = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=-10",
+        headers: authHeadersA,
+      });
+      expect(resNeg.statusCode).toBe(400);
+      expect(resNeg.json().details[0].message).toBe("Limit must be at least 1");
+
+      const resNegOffset = await app.inject({
+        method: "GET",
+        url: "/api/expenses?offset=-5",
+        headers: authHeadersA,
+      });
+      expect(resNegOffset.statusCode).toBe(400);
+      expect(resNegOffset.json().details[0].message).toBe("Offset cannot be negative");
+    });
+
+    it("12g. rejects limit exceeding maximum permitted value (limit=201) with HTTP 400 VALIDATION_ERROR", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/expenses?limit=201",
+        headers: authHeadersA,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().details[0].message).toBe("Limit cannot exceed 200");
+    });
+
+    it("12h. validates schema boundaries directly without producing NaN", () => {
+      // Default fallback verification
+      const defaultParsed = listExpensesQuerySchema.parse({});
+      expect(defaultParsed.limit).toBe(50);
+      expect(defaultParsed.offset).toBe(0);
+
+      // Boundaries
+      expect(listExpensesQuerySchema.parse({ limit: "1" }).limit).toBe(1);
+      expect(listExpensesQuerySchema.parse({ limit: "200" }).limit).toBe(200);
+      expect(listExpensesQuerySchema.parse({ offset: "0" }).offset).toBe(0);
+      expect(listExpensesQuerySchema.parse({ offset: "999" }).offset).toBe(999);
+
+      // Malformed inputs never return NaN and always fail safeParse
+      expect(listExpensesQuerySchema.safeParse({ limit: "abc" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ offset: "abc" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ offset: "" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "1.5" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "0" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "-1" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ offset: "-1" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "201" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "Infinity" }).success).toBe(false);
+      expect(listExpensesQuerySchema.safeParse({ limit: "NaN" }).success).toBe(false);
     });
   });
 
