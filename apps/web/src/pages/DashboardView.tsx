@@ -14,7 +14,7 @@ import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { GoalsWidget } from "./dashboard/GoalsWidget";
 import { OverdueTriage } from "./dashboard/OverdueTriage";
 import { ProjectsWidget } from "./dashboard/ProjectsWidget";
-import { SavingsWidget } from "./dashboard/SavingsWidget";
+import { FinancialOverview } from "./dashboard/FinancialOverview";
 import { TodayHabitsWidget } from "./dashboard/TodayHabitsWidget";
 import { TodayJournalWidget } from "./dashboard/TodayJournalWidget";
 import { TodayScheduleWidget } from "./dashboard/TodayScheduleWidget";
@@ -224,7 +224,7 @@ export function DashboardView() {
         <div className="dashboard-horizon-col">
           <TodayJournalWidget />
 
-          <SavingsWidget />
+          <FinancialOverview />
 
           <GoalsWidget
             goals={goals}

@@ -1167,6 +1167,148 @@
   flex-shrink: 0;
 }
 
+/* Financial Overview Section & Spending Widget */
+.dashboard-financial-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dash-spending-headline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.dash-spending-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.dash-spending-period-caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dash-spending-count-pill {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.dash-spending-budget-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.dash-spending-budget-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dash-spending-recent-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.dash-spending-recent-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.dash-expense-mini-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: var(--radius-xs);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.12s ease;
+}
+
+.dash-expense-mini-item:hover {
+  background-color: var(--bg-elevated);
+}
+
+.dash-expense-mini-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.dash-expense-mini-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dash-expense-icon-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-expense-mini-details {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-expense-mini-desc {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.dash-expense-mini-date {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.dash-expense-mini-amount {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
 /* Responsive Rules */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -1297,6 +1439,7 @@
   .dash-project-fill,
   .dash-journal-card,
   .dash-schedule-item,
+  .dash-expense-mini-item,
   .dash-skeleton-row,
   .dash-skeleton-card {
     animation: none !important;

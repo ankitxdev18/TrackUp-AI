@@ -552,6 +552,44 @@ export function getCurrentCalendarMonth(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
+/**
+ * Derives YYYY-MM formatted calendar month string for a given instant in a specified timezone.
+ * Gracefully falls back to browser-local month if timezone is missing, unsupported, or invalid.
+ */
+export function getCalendarMonthInTimezone(timeZone?: string, date = new Date()): string {
+  if (timeZone) {
+    try {
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+      });
+      const parts = formatter.formatToParts(date);
+      const year = parts.find((p) => p.type === "year")?.value;
+      const month = parts.find((p) => p.type === "month")?.value;
+      if (year && month) {
+        return `${year}-${month}`;
+      }
+    } catch {
+      // Graceful fallback to browser local
+    }
+  }
+  return getCurrentCalendarMonth(date);
+}
+
+/**
+ * Returns user-friendly month name like "October 2026" from a canonical "YYYY-MM" string.
+ */
+export function formatMonthName(monthStr: string): string {
+  try {
+    const [year, month] = monthStr.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, 15));
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  } catch {
+    return monthStr;
+  }
+}
+
 export async function deleteMonthlyBudget(
   month: string
 ): Promise<{ success: boolean; message: string; month: string }> {

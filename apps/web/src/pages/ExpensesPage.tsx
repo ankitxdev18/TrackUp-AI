@@ -8,7 +8,7 @@ import {
   fetchExpenses,
   fetchExpenseSummary,
   fetchMonthlyBudget,
-  getCurrentCalendarMonth,
+  getCalendarMonthInTimezone,
   saveMonthlyBudget,
   updateExpense,
   type Expense,
@@ -28,31 +28,6 @@ import { ExpensesHeader } from "./expenses/ExpensesHeader";
 import { MonthlyBudgetCard } from "./expenses/MonthlyBudgetCard";
 import { SpendingPulseCards } from "./expenses/SpendingPulseCards";
 import "./ExpensesPage.css";
-
-/**
- * Derives YYYY-MM formatted calendar month string for a given instant in a specified timezone.
- * Gracefully falls back to browser-local month if timezone is missing, unsupported, or invalid.
- */
-function getCalendarMonthInTimezone(timeZone?: string, date = new Date()): string {
-  if (timeZone) {
-    try {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-      });
-      const parts = formatter.formatToParts(date);
-      const year = parts.find((p) => p.type === "year")?.value;
-      const month = parts.find((p) => p.type === "month")?.value;
-      if (year && month) {
-        return `${year}-${month}`;
-      }
-    } catch {
-      // Graceful fallback to browser local
-    }
-  }
-  return getCurrentCalendarMonth(date);
-}
 
 /**
  * Calculates milliseconds remaining until the next calendar midnight boundary (plus 1s buffer)
