@@ -9,6 +9,12 @@
  * - PATCH /api/savings/:id/status
  */
 
+import { parseCurrencyInputToCents } from "./expenses";
+
+export { parseCurrencyInputToCents };
+
+export const MAX_SUPPORTED_PAISE = 2147483647; // Signed 32-bit integer maximum
+
 export type SavingsGoalStatus = "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
 /**

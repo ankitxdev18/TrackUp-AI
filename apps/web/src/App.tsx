@@ -20,6 +20,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ExpensesPage } from "./pages/ExpensesPage";
+import { SavingsPage } from "./pages/SavingsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TasksPage } from "./pages/TasksPage";
 import { RouterProvider, useRouter } from "./router/Router";
@@ -104,6 +105,9 @@ function AppRoutes() {
 
       case "/expenses":
         return <ExpensesPage />;
+
+      case "/savings":
+        return <SavingsPage />;
 
       case "/health":
         return (

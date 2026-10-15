@@ -9,6 +9,7 @@ import {
   LogOut,
   Moon,
   MoreHorizontal,
+  PiggyBank,
   Receipt,
   Settings,
   Sparkles,
@@ -139,6 +140,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const navFinance = [
     { label: "Expenses", href: "/expenses", icon: Receipt },
+    { label: "Savings", href: "/savings", icon: PiggyBank },
     { label: "Analytics", href: "/analytics", icon: TrendingUp },
   ];
 
@@ -163,6 +165,7 @@ export function AppShell({ children }: AppShellProps) {
     if (path.startsWith("/goals")) return "Goals";
     if (path.startsWith("/analytics")) return "Analytics";
     if (path.startsWith("/expenses")) return "Expenses";
+    if (path.startsWith("/savings")) return "Savings";
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/journal")) return "Journal";
     if (path.startsWith("/ideas")) return "Ideas";
@@ -500,6 +503,15 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Receipt size={16} />
                 <span>Expenses</span>
+              </Link>
+              <Link
+                to="/savings"
+                className={`drawer-nav-item ${isRouteActive(path, "/savings") ? "active" : ""}`}
+                aria-current={isRouteActive(path, "/savings") ? "page" : undefined}
+                onClick={() => setIsMoreOpen(false)}
+              >
+                <PiggyBank size={16} />
+                <span>Savings</span>
               </Link>
               <Link
                 to="/analytics"

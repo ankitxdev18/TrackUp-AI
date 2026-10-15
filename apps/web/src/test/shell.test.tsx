@@ -174,6 +174,7 @@ describe("TrackUp Product Shell & Landing Page (Milestone 1 & 2)", () => {
         "/journal",
         "/ideas",
         "/expenses",
+        "/savings",
         "/analytics",
         "/settings",
       ]);
