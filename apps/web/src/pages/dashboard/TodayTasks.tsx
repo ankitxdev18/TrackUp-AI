@@ -11,6 +11,7 @@ interface TodayTasksProps {
   updatingTaskId?: string | null;
   onQuickAdd: (title: string) => Promise<void>;
   onOpenModal: () => void;
+  onEditTask?: (task: Task) => void;
 }
 
 export function TodayTasks({
@@ -21,6 +22,7 @@ export function TodayTasks({
   updatingTaskId,
   onQuickAdd,
   onOpenModal,
+  onEditTask,
 }: TodayTasksProps) {
   const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
   const totalCount = tasks.length;
@@ -94,6 +96,7 @@ export function TodayTasks({
               key={task.id}
               task={task}
               onToggle={onToggleTask}
+              onEdit={onEditTask}
               isUpdating={updatingTaskId === task.id}
             />
           ))}

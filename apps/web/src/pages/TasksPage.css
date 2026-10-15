@@ -361,6 +361,31 @@
   flex-shrink: 0;
 }
 
+.task-btn-edit {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  opacity: 0.5;
+}
+
+.task-card-item:hover .task-btn-edit,
+.task-btn-edit:focus-visible {
+  opacity: 1;
+}
+
+.task-btn-edit:hover,
+.task-btn-edit:focus-visible {
+  color: var(--color-primary, #6366f1);
+  background-color: var(--bg-surface-hover, rgba(255, 255, 255, 0.06));
+}
+
 .task-btn-delete {
   padding: 4px;
   background: transparent;
@@ -375,11 +400,13 @@
   opacity: 0.5;
 }
 
-.task-card-item:hover .task-btn-delete {
+.task-card-item:hover .task-btn-delete,
+.task-btn-delete:focus-visible {
   opacity: 1;
 }
 
-.task-btn-delete:hover {
+.task-btn-delete:hover,
+.task-btn-delete:focus-visible {
   color: var(--color-danger);
   background-color: var(--color-danger-bg);
 }

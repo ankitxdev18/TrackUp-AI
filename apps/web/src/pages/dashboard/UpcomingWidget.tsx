@@ -8,6 +8,7 @@ interface UpcomingWidgetProps {
   loading: boolean;
   onToggleTask: (task: Task) => void;
   updatingTaskId?: string | null;
+  onEditTask?: (task: Task) => void;
 }
 
 export function UpcomingWidget({
@@ -15,6 +16,7 @@ export function UpcomingWidget({
   loading,
   onToggleTask,
   updatingTaskId,
+  onEditTask,
 }: UpcomingWidgetProps) {
 
   return (
@@ -48,6 +50,7 @@ export function UpcomingWidget({
               key={task.id}
               task={task}
               onToggle={onToggleTask}
+              onEdit={onEditTask}
               isUpdating={updatingTaskId === task.id}
             />
           ))}

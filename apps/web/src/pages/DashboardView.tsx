@@ -35,6 +35,7 @@ export function DashboardView() {
   const [goalsError, setGoalsError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   const todayStr = getTodayDateString();
@@ -120,7 +121,7 @@ export function DashboardView() {
     } catch (err: unknown) {
       // Revert optimistic update
       setTasks(prevTasks);
-      alert("Failed to update task state. Reverting to previous state.");
+      setTasksError(err instanceof Error ? err.message : "Failed to update task state. Reverting to previous state.");
     } finally {
       setUpdatingTaskId(null);
     }
@@ -134,6 +135,18 @@ export function DashboardView() {
       priority: "MEDIUM",
     });
     setTasks((prev) => [newTask, ...prev]);
+  };
+
+  // Open creation modal
+  const handleOpenCreateModal = () => {
+    setEditingTask(null);
+    setIsModalOpen(true);
+  };
+
+  // Open edit modal for a task
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
   };
 
   // Detailed Modal Task Creation
@@ -150,6 +163,13 @@ export function DashboardView() {
         })
       );
     }
+  };
+
+  // Task Updated from Edit Modal
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
   };
 
   // Data Derivations
@@ -203,6 +223,7 @@ export function DashboardView() {
             overdueTasks={overdueTasks}
             onToggleTask={handleToggleTask}
             updatingTaskId={updatingTaskId}
+            onEditTask={handleEditTask}
           />
 
           <TodayTasks
@@ -212,7 +233,8 @@ export function DashboardView() {
             onToggleTask={handleToggleTask}
             updatingTaskId={updatingTaskId}
             onQuickAdd={handleQuickAdd}
-            onOpenModal={() => setIsModalOpen(true)}
+            onOpenModal={handleOpenCreateModal}
+            onEditTask={handleEditTask}
           />
 
           <TodayScheduleWidget />
@@ -243,15 +265,21 @@ export function DashboardView() {
             loading={tasksLoading}
             onToggleTask={handleToggleTask}
             updatingTaskId={updatingTaskId}
+            onEditTask={handleEditTask}
           />
         </div>
       </div>
 
-      {/* Task Creation Modal */}
+      {/* Task Modal (Create & Edit) */}
       <CreateTaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(null);
+        }}
+        taskToEdit={editingTask}
         onTaskCreated={handleTaskCreated}
+        onTaskUpdated={handleTaskUpdated}
         initialDueDate={todayStr}
       />
     </div>

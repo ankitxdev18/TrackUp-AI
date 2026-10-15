@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
-import { getTodayDateString, type Task } from "../api/tasks";
+import { getTodayDateString, getTomorrowDateString, type Task } from "../api/tasks";
 
 describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
   const todayStr = getTodayDateString();
@@ -499,6 +499,374 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
         expect(screen.queryByText(/Unable to load dashboard data/i)).not.toBeInTheDocument();
         expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Milestone 5: Task Editing and Rescheduling", () => {
+    const tomorrowStr = getTomorrowDateString();
+
+    it("renders edit button on task item and opens edit modal with prefilled values", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [{ id: "p-1", name: "Alpha Initiative", status: "ACTIVE" }] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [mockTasks[0]] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      const editBtn = screen.getByRole("button", { name: "Edit task: Complete quarterly review" });
+      expect(editBtn).toBeInTheDocument();
+
+      fireEvent.click(editBtn);
+
+      // Verify modal header indicates edit mode and projects have loaded
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Edit Task" })).toBeInTheDocument();
+        expect(within(screen.getByRole("dialog")).getByText("Alpha Initiative")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Update task details and schedule")).toBeInTheDocument();
+
+      // Verify prefilled inputs
+      const dialog = screen.getByRole("dialog");
+      const titleInput = within(dialog).getByPlaceholderText("What needs to be done?") as HTMLInputElement;
+      expect(titleInput.value).toBe("Complete quarterly review");
+
+      const highPill = within(dialog).getByRole("radio", { name: "High" });
+      expect(highPill).toHaveAttribute("aria-checked", "true");
+
+      const dateInput = within(dialog).getByLabelText(/^Due Date/i) as HTMLInputElement;
+      expect(dateInput.value).toBe(todayStr);
+
+      const submitBtn = within(dialog).getByRole("button", { name: "Save Changes" });
+      expect(submitBtn).toBeInTheDocument();
+    });
+
+    it("updates task title, priority, due date, and project association", async () => {
+      let patchBody: any = null;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return {
+            ok: true,
+            json: async () => ({
+              projects: [{ id: "p-1", name: "Alpha Initiative", status: "ACTIVE" }],
+            }),
+          } as Response;
+        }
+
+        if (method === "PATCH") {
+          patchBody = JSON.parse(String(init?.body || "{}"));
+          return {
+            ok: true,
+            json: async () => ({
+              task: {
+                ...mockTasks[0],
+                ...patchBody,
+                projectName: patchBody.projectId === "p-1" ? "Alpha Initiative" : null,
+              },
+            }),
+          } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [{ ...mockTasks[0] }] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+
+      const dialog = screen.getByRole("dialog");
+      const titleInput = within(dialog).getByPlaceholderText("What needs to be done?");
+      fireEvent.change(titleInput, { target: { value: "Updated review title" } });
+
+      // Change priority to Low
+      fireEvent.click(within(dialog).getByRole("radio", { name: "Low" }));
+
+      // Select project after options load
+      await waitFor(() => {
+        expect(within(dialog).getByText("Alpha Initiative")).toBeInTheDocument();
+      });
+      const projectSelect = within(dialog).getByLabelText(/^Project/i);
+      fireEvent.change(projectSelect, { target: { value: "p-1" } });
+
+      // Change due date to tomorrow via quick button
+      fireEvent.click(within(dialog).getByRole("button", { name: "Tomorrow" }));
+
+      // Submit
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+
+      await waitFor(() => {
+        expect(patchBody).toEqual({
+          title: "Updated review title",
+          priority: "LOW",
+          dueDate: tomorrowStr,
+          projectId: "p-1",
+        });
+        expect(screen.getByText("Updated review title")).toBeInTheDocument();
+        expect(screen.getByTitle("Project: Alpha Initiative")).toBeInTheDocument();
+      });
+    });
+
+    it("supports Today, Tomorrow, and Clear quick date actions in edit modal", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return {
+            ok: true,
+            json: async () => ({ projects: [{ id: "p-demo", name: "Demo Project", status: "ACTIVE" }] }),
+          } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [mockTasks[0]] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+
+      const dialog = screen.getByRole("dialog");
+      await waitFor(() => {
+        expect(within(dialog).getByText("Demo Project")).toBeInTheDocument();
+      });
+      const dateInput = within(dialog).getByLabelText(/^Due Date/i) as HTMLInputElement;
+      expect(dateInput.value).toBe(todayStr);
+
+      // Click Tomorrow
+      fireEvent.click(within(dialog).getByRole("button", { name: "Tomorrow" }));
+      expect(dateInput.value).toBe(tomorrowStr);
+
+      // Click Clear (aria-label="Clear due date")
+      fireEvent.click(within(dialog).getByRole("button", { name: /Clear/i }));
+      expect(dateInput.value).toBe("");
+
+      // Click Today
+      fireEvent.click(within(dialog).getByRole("button", { name: "Today" }));
+      expect(dateInput.value).toBe(todayStr);
+    });
+
+    it("displays API failure inside modal without closing and preserves user input", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          return {
+            ok: false,
+            status: 400,
+            json: async () => ({ code: "INVALID_PROJECT", error: "Project not found or not owned by user" }),
+          } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [mockTasks[0]] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+
+      const titleInput = screen.getByPlaceholderText("What needs to be done?") as HTMLInputElement;
+      fireEvent.change(titleInput, { target: { value: "Tentative edit title" } });
+
+      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+      // Modal stays open and renders error alert
+      await waitFor(() => {
+        expect(screen.getByText("Project not found or not owned by user")).toBeInTheDocument();
+      });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      // User input was preserved
+      expect(titleInput.value).toBe("Tentative edit title");
+    });
+
+    it("discards unsaved edits without sending request when cancelled or Escape pressed", async () => {
+      let patchCalled = false;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          patchCalled = true;
+          return { ok: true, json: async () => ({}) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [mockTasks[0]] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      // Test Cancel button
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+      const titleInput = screen.getByPlaceholderText("What needs to be done?");
+      fireEvent.change(titleInput, { target: { value: "Discarded title" } });
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(patchCalled).toBe(false);
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+
+      // Test Escape key
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+      fireEvent.change(screen.getByPlaceholderText("What needs to be done?"), { target: { value: "Discarded 2" } });
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(patchCalled).toBe(false);
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+    });
+
+    it("recalculates filter tab membership and counts after rescheduling in TasksPage", async () => {
+      let tasksList = [...mockTasks];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated = { ...tasksList[0], ...body };
+          tasksList = tasksList.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: tasksList }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      // Initial counts: Today = 2 (t-1, t-2), Upcoming = 1 (t-3)
+      const todayTab = screen.getByRole("tab", { name: /Today/i });
+      const upcomingTab = screen.getByRole("tab", { name: /Upcoming/i });
+      expect(within(todayTab).getByText("2")).toBeInTheDocument();
+      expect(within(upcomingTab).getByText("1")).toBeInTheDocument();
+
+      // Edit t-1 from Today to Tomorrow
+      fireEvent.click(screen.getByRole("button", { name: "Edit task: Complete quarterly review" }));
+      fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+      // Tab counts recalculate: Today = 1, Upcoming = 2
+      await waitFor(() => {
+        expect(within(todayTab).getByText("1")).toBeInTheDocument();
+        expect(within(upcomingTab).getByText("2")).toBeInTheDocument();
+      });
+
+      // Switch to Today tab: t-1 is no longer in Today tab
+      fireEvent.click(todayTab);
+      expect(screen.queryByText("Complete quarterly review")).not.toBeInTheDocument();
+
+      // Switch to Upcoming tab: t-1 is now visible in Upcoming tab
+      fireEvent.click(upcomingTab);
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+    });
+
+    it("reschedules an overdue task from OverdueTriage into TodayTasks on Dashboard", async () => {
+      const overdueTask: Task = {
+        id: "t-overdue-1",
+        userId: "user-1",
+        title: "Triage overdue client invoice",
+        status: "TODO",
+        priority: "HIGH",
+        dueDate: "2020-01-01",
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let currentTasks = [overdueTask, ...mockTasks];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated = { ...overdueTask, ...body };
+          currentTasks = currentTasks.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: currentTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      // Initially OverdueTriage is visible with overdue task
+      await waitFor(() => {
+        expect(screen.getByText("Overdue · 1 task")).toBeInTheDocument();
+        expect(screen.getByText("Triage overdue client invoice")).toBeInTheDocument();
+      });
+
+      // Header indicates 1 overdue
+      expect(screen.getByText(/1 overdue/i)).toBeInTheDocument();
+
+      // Click Edit on the overdue task in OverdueTriage
+      const editOverdueBtn = screen.getByRole("button", { name: "Edit task: Triage overdue client invoice" });
+      fireEvent.click(editOverdueBtn);
+
+      // Reschedule to Today
+      fireEvent.click(screen.getByRole("button", { name: "Today" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+      // After update: OverdueTriage disappears completely
+      await waitFor(() => {
+        expect(screen.queryByText(/Overdue ·/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/1 overdue/i)).not.toBeInTheDocument();
+      });
+
+      // Task is now inside TodayTasks
+      expect(screen.getByText("Triage overdue client invoice")).toBeInTheDocument();
+
+      // Today's tasks count in header updated: 1 of 3 completed
+      expect(screen.getByText("1 of 3 completed")).toBeInTheDocument();
     });
   });
 });

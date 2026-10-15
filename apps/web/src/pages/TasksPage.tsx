@@ -30,6 +30,7 @@ export function TasksPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   const todayStr = getTodayDateString();
@@ -75,7 +76,7 @@ export function TasksPage() {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
     } catch (err: unknown) {
       setTasks(previousTasks);
-      alert(err instanceof Error ? err.message : "Failed to update task state. Reverting.");
+      setError(err instanceof Error ? err.message : "Failed to update task state. Reverting.");
     } finally {
       setUpdatingTaskId(null);
     }
@@ -90,8 +91,20 @@ export function TasksPage() {
       await deleteTask(id);
     } catch (err: unknown) {
       setTasks(previousTasks);
-      alert(err instanceof Error ? err.message : "Failed to delete task. Restoring.");
+      setError(err instanceof Error ? err.message : "Failed to delete task. Restoring.");
     }
+  };
+
+  // Open creation modal
+  const handleOpenCreateModal = () => {
+    setEditingTask(null);
+    setIsModalOpen(true);
+  };
+
+  // Open edit modal for a task
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
   };
 
   // Inline Quick Add
@@ -116,6 +129,12 @@ export function TasksPage() {
     ) {
       setTasks((prev) => [newTask, ...prev]);
     }
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
   };
 
   // Derived filtered tasks memoized for performance
@@ -189,7 +208,7 @@ export function TasksPage() {
         <button
           type="button"
           className="btn-create-task"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           aria-label="Add Task"
         >
           <Plus size={15} />
@@ -270,10 +289,18 @@ export function TasksPage() {
         <div className="tasks-error-banner" role="alert">
           <AlertCircle size={18} />
           <div className="error-text">
-            <strong>Unable to load tasks:</strong> {error}
+            <span>{error}</span>
           </div>
           <button type="button" className="btn-retry" onClick={loadTasks}>
             Retry
+          </button>
+          <button
+            type="button"
+            className="btn-retry btn-dismiss"
+            onClick={() => setError(null)}
+            style={{ marginLeft: "8px" }}
+          >
+            Dismiss
           </button>
         </div>
       )}
@@ -283,7 +310,7 @@ export function TasksPage() {
         <div className="tasks-quick-add-wrap">
           <QuickAddTask
             onQuickAdd={handleQuickAdd}
-            onOpenDetailedModal={() => setIsModalOpen(true)}
+            onOpenDetailedModal={handleOpenCreateModal}
             disabled={loading}
           />
         </div>
@@ -317,7 +344,7 @@ export function TasksPage() {
                 <button
                   type="button"
                   className="btn-empty-action"
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={handleOpenCreateModal}
                 >
                   <Plus size={14} />
                   <span>{emptyStateConfig.actionText}</span>
@@ -332,6 +359,7 @@ export function TasksPage() {
                   task={task}
                   onToggle={handleToggleTask}
                   onDelete={handleDeleteTask}
+                  onEdit={handleEditTask}
                   isUpdating={updatingTaskId === task.id}
                 />
               ))}
@@ -340,11 +368,16 @@ export function TasksPage() {
         </div>
       )}
 
-      {/* Creation Modal */}
+      {/* Task Modal (Create & Edit) */}
       <CreateTaskModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(null);
+        }}
+        taskToEdit={editingTask}
         onTaskCreated={handleTaskCreated}
+        onTaskUpdated={handleTaskUpdated}
         initialDueDate={activeFilter === "today" ? todayStr : null}
         initialProjectId={
           selectedProjectFilter !== "all" && selectedProjectFilter !== "none"

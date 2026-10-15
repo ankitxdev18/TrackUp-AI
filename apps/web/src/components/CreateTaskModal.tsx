@@ -7,13 +7,16 @@ import {
   getTomorrowDateString,
   type Task,
   TaskApiError,
+  updateTask,
 } from "../api/tasks";
 import "./CreateTaskModal.css";
 
-interface CreateTaskModalProps {
+export interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTaskCreated: (task: Task) => void;
+  onTaskCreated?: (task: Task) => void;
+  onTaskUpdated?: (task: Task) => void;
+  taskToEdit?: Task | null;
   initialDueDate?: string | null;
   initialProjectId?: string | null;
 }
@@ -22,9 +25,12 @@ export function CreateTaskModal({
   isOpen,
   onClose,
   onTaskCreated,
+  onTaskUpdated,
+  taskToEdit,
   initialDueDate,
   initialProjectId,
 }: CreateTaskModalProps) {
+  const isEditMode = Boolean(taskToEdit);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [dueDate, setDueDate] = useState<string>(initialDueDate || "");
@@ -36,18 +42,32 @@ export function CreateTaskModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (isOpen) {
-      setTitle("");
-      setPriority("MEDIUM");
-      setDueDate(initialDueDate || "");
-      setProjectId(initialProjectId || "");
+      if (taskToEdit) {
+        setTitle(taskToEdit.title);
+        setPriority(taskToEdit.priority);
+        setDueDate(taskToEdit.dueDate || "");
+        setProjectId(taskToEdit.projectId || "");
+      } else {
+        setTitle("");
+        setPriority("MEDIUM");
+        setDueDate(initialDueDate || "");
+        setProjectId(initialProjectId || "");
+      }
       setError(null);
       setLoading(false);
 
       // Load user's projects for project selector
       fetchProjects()
         .then((data) => {
-          setProjectsList(data.filter((p) => p.status === "ACTIVE"));
+          if (!isMounted) return;
+          setProjectsList(
+            data.filter(
+              (p) => p.status === "ACTIVE" || (taskToEdit && p.id === taskToEdit.projectId)
+            )
+          );
         })
         .catch(() => {
           // ignore background failure to fetch projects list
@@ -55,7 +75,11 @@ export function CreateTaskModal({
 
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [isOpen, initialDueDate, initialProjectId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, taskToEdit, initialDueDate, initialProjectId]);
 
   // Handle escape key
   useEffect(() => {
@@ -79,23 +103,42 @@ export function CreateTaskModal({
       return;
     }
 
+    if (loading) return;
+
     try {
       setLoading(true);
       setError(null);
-      const newTask = await createTask({
-        title: trimmedTitle,
-        priority,
-        dueDate: dueDate ? dueDate : null,
-        projectId: projectId ? projectId : null,
-      });
 
-      onTaskCreated(newTask);
-      onClose();
+      if (isEditMode && taskToEdit) {
+        const updated = await updateTask(taskToEdit.id, {
+          title: trimmedTitle,
+          priority,
+          dueDate: dueDate ? dueDate : null,
+          projectId: projectId ? projectId : null,
+        });
+
+        onTaskUpdated?.(updated);
+        onClose();
+      } else {
+        const newTask = await createTask({
+          title: trimmedTitle,
+          priority,
+          dueDate: dueDate ? dueDate : null,
+          projectId: projectId ? projectId : null,
+        });
+
+        onTaskCreated?.(newTask);
+        onClose();
+      }
     } catch (err: unknown) {
       if (err instanceof TaskApiError) {
         setError(err.message);
       } else {
-        setError("Failed to create task. Please try again.");
+        setError(
+          isEditMode
+            ? "Failed to update task. Please try again."
+            : "Failed to create task. Please try again."
+        );
       }
     } finally {
       setLoading(false);
@@ -119,10 +162,12 @@ export function CreateTaskModal({
         <div className="modal-header">
           <div className="modal-title-group">
             <h2 id="create-task-heading" className="modal-title">
-              Create New Task
+              {isEditMode ? "Edit Task" : "Create New Task"}
             </h2>
             <span className="modal-subtitle">
-              Add an action item to your personal Life OS
+              {isEditMode
+                ? "Update task details and schedule"
+                : "Add an action item to your personal Life OS"}
             </span>
           </div>
           <button
@@ -283,10 +328,10 @@ export function CreateTaskModal({
               {loading ? (
                 <>
                   <Loader2 size={16} className="spin-icon" />
-                  <span>Creating...</span>
+                  <span>{isEditMode ? "Saving..." : "Creating..."}</span>
                 </>
               ) : (
-                <span>Create Task</span>
+                <span>{isEditMode ? "Save Changes" : "Create Task"}</span>
               )}
             </button>
           </div>
@@ -295,3 +340,5 @@ export function CreateTaskModal({
     </div>
   );
 }
+
+export const TaskModal = CreateTaskModal;

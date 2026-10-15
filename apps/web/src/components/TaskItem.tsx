@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Check, Clock, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Clock, Pencil, Trash2 } from "lucide-react";
 import {
   type Task,
   getDaysOverdue,
@@ -11,6 +11,7 @@ export interface TaskItemProps {
   task: Task;
   onToggle: (task: Task) => void;
   onDelete?: (id: string) => void;
+  onEdit?: (task: Task) => void;
   isUpdating?: boolean;
   isOverdueItem?: boolean;
 }
@@ -19,6 +20,7 @@ export function TaskItem({
   task,
   onToggle,
   onDelete,
+  onEdit,
   isUpdating = false,
   isOverdueItem = false,
 }: TaskItemProps) {
@@ -111,41 +113,56 @@ export function TaskItem({
         </div>
       </div>
 
-      {onDelete && (
+      {(onEdit || onDelete) && (
         <div className="task-actions-wrap">
-          {confirmDelete ? (
-            <div className="task-delete-confirm-box" role="group" aria-label="Confirm deletion">
-              <span className="task-delete-confirm-label">Delete?</span>
-              <button
-                type="button"
-                className="btn-delete-confirm-yes"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  onDelete(task.id);
-                }}
-                aria-label={`Confirm delete task: ${task.title}`}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                className="btn-delete-confirm-cancel"
-                onClick={() => setConfirmDelete(false)}
-                aria-label="Cancel delete"
-              >
-                No
-              </button>
-            </div>
-          ) : (
+          {onEdit && (
             <button
               type="button"
-              className="task-btn-delete"
-              onClick={() => setConfirmDelete(true)}
-              aria-label={`Delete task: ${task.title}`}
-              title="Delete task"
+              className="task-btn-edit"
+              onClick={() => onEdit(task)}
+              disabled={isUpdating}
+              aria-label={`Edit task: ${task.title}`}
+              title="Edit task"
             >
-              <Trash2 size={14} />
+              <Pencil size={13} aria-hidden="true" />
             </button>
+          )}
+
+          {onDelete && (
+            confirmDelete ? (
+              <div className="task-delete-confirm-box" role="group" aria-label="Confirm deletion">
+                <span className="task-delete-confirm-label">Delete?</span>
+                <button
+                  type="button"
+                  className="btn-delete-confirm-yes"
+                  onClick={() => {
+                    setConfirmDelete(false);
+                    onDelete(task.id);
+                  }}
+                  aria-label={`Confirm delete task: ${task.title}`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  className="btn-delete-confirm-cancel"
+                  onClick={() => setConfirmDelete(false)}
+                  aria-label="Cancel delete"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="task-btn-delete"
+                onClick={() => setConfirmDelete(true)}
+                aria-label={`Delete task: ${task.title}`}
+                title="Delete task"
+              >
+                <Trash2 size={14} />
+              </button>
+            )
           )}
         </div>
       )}

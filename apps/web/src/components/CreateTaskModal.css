@@ -305,3 +305,12 @@
 .required-star {
   color: var(--color-danger);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-card,
+  .spin-icon {
+    animation: none !important;
+    transition: none !important;
+  }
+}

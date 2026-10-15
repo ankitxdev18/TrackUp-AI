@@ -6,12 +6,14 @@ interface OverdueTriageProps {
   overdueTasks: Task[];
   onToggleTask: (task: Task) => void;
   updatingTaskId?: string | null;
+  onEditTask?: (task: Task) => void;
 }
 
 export function OverdueTriage({
   overdueTasks,
   onToggleTask,
   updatingTaskId,
+  onEditTask,
 }: OverdueTriageProps) {
   if (overdueTasks.length === 0) {
     return null;
@@ -41,6 +43,7 @@ export function OverdueTriage({
             key={task.id}
             task={task}
             onToggle={onToggleTask}
+            onEdit={onEditTask}
             isUpdating={updatingTaskId === task.id}
             isOverdueItem={true}
           />
