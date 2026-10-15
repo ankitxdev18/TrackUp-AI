@@ -135,6 +135,21 @@
   color: var(--primary);
 }
 
+.filter-tab.filter-tab-overdue .filter-count.has-overdue {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.filter-tab.filter-tab-overdue.active {
+  border-bottom-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.filter-tab.filter-tab-overdue.active .filter-count.has-overdue {
+  background-color: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
 /* Project Filter Select */
 .tasks-project-filter-wrap {
   position: relative;

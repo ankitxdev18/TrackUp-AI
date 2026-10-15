@@ -72,6 +72,7 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
       expect(screen.getByRole("tab", { name: /All Tasks/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /Today/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /Upcoming/i })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Overdue/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /Completed/i })).toBeInTheDocument();
 
       // Tasks appear after load
@@ -867,6 +868,360 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
 
       // Today's tasks count in header updated: 1 of 3 completed
       expect(screen.getByText("1 of 3 completed")).toBeInTheDocument();
+    });
+  });
+
+  describe("Milestone 7: Overdue Task Visibility", () => {
+    const overdueTask1: Task = {
+      id: "t-od-1",
+      userId: "user-1",
+      title: "File quarterly tax report",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: "2020-01-15",
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const overdueTask2: Task = {
+      id: "t-od-2",
+      userId: "user-1",
+      title: "Renew domain registration",
+      status: "TODO",
+      priority: "MEDIUM",
+      dueDate: "2020-02-01",
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const completedOverdueTask: Task = {
+      id: "t-od-completed",
+      userId: "user-1",
+      title: "Archive old audit logs",
+      status: "COMPLETED",
+      priority: "LOW",
+      dueDate: "2020-01-01",
+      completedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const backlogTaskNoDate: Task = {
+      id: "t-backlog",
+      userId: "user-1",
+      title: "Brainstorm marketing ideas",
+      status: "TODO",
+      priority: "LOW",
+      dueDate: null,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const mixedTasks: Task[] = [
+      overdueTask1,
+      overdueTask2,
+      completedOverdueTask,
+      backlogTaskNoDate,
+      ...mockTasks,
+    ];
+
+    it("displays incomplete overdue tasks and excludes today, future, completed, and dateless tasks", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mixedTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      });
+
+      // Tab count check: 2 overdue tasks (t-od-1, t-od-2)
+      const overdueTab = screen.getByRole("tab", { name: /Overdue/i });
+      expect(within(overdueTab).getByText("2")).toBeInTheDocument();
+
+      // Click Overdue tab
+      fireEvent.click(overdueTab);
+      expect(overdueTab).toHaveAttribute("aria-selected", "true");
+
+      // Incomplete overdue tasks are present
+      expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      expect(screen.getByText("Renew domain registration")).toBeInTheDocument();
+
+      // Today's tasks are excluded
+      expect(screen.queryByText("Complete quarterly review")).not.toBeInTheDocument();
+      expect(screen.queryByText("Daily morning workout")).not.toBeInTheDocument();
+
+      // Upcoming tasks are excluded
+      expect(screen.queryByText("Plan road trip itinerary")).not.toBeInTheDocument();
+
+      // Completed overdue tasks are excluded
+      expect(screen.queryByText("Archive old audit logs")).not.toBeInTheDocument();
+
+      // Dateless backlog tasks are excluded
+      expect(screen.queryByText("Brainstorm marketing ideas")).not.toBeInTheDocument();
+    });
+
+    it("completing an overdue task removes it and updates the overdue count immediately", async () => {
+      let currentTasks = [...mixedTasks];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated = {
+            ...overdueTask1,
+            ...body,
+            completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+          };
+          currentTasks = currentTasks.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: currentTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      });
+
+      const overdueTab = screen.getByRole("tab", { name: /Overdue/i });
+      expect(within(overdueTab).getByText("2")).toBeInTheDocument();
+
+      fireEvent.click(overdueTab);
+
+      // Check off the first overdue task
+      const checkbox = screen.getByRole("checkbox", { name: "Mark File quarterly tax report as complete" });
+      fireEvent.click(checkbox);
+
+      // Immediately removed from Overdue list and count decrements to 1
+      await waitFor(() => {
+        expect(within(overdueTab).getByText("1")).toBeInTheDocument();
+        expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+      });
+
+      // The second overdue task remains visible
+      expect(screen.getByText("Renew domain registration")).toBeInTheDocument();
+
+      // Switching to Completed tab shows the completed task
+      const completedTab = screen.getByRole("tab", { name: /Completed/i });
+      fireEvent.click(completedTab);
+      expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+    });
+
+    it("rescheduling an overdue task to today removes it from overdue and moves it to today", async () => {
+      let currentTasks = [...mixedTasks];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated = { ...overdueTask1, ...body };
+          currentTasks = currentTasks.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: currentTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      });
+
+      const overdueTab = screen.getByRole("tab", { name: /Overdue/i });
+      const todayTab = screen.getByRole("tab", { name: /Today/i });
+
+      // Initial: Overdue = 2, Today = 2
+      expect(within(overdueTab).getByText("2")).toBeInTheDocument();
+      expect(within(todayTab).getByText("2")).toBeInTheDocument();
+
+      fireEvent.click(overdueTab);
+
+      // Edit task-od-1
+      const editBtn = screen.getByRole("button", { name: "Edit task: File quarterly tax report" });
+      fireEvent.click(editBtn);
+
+      // Reschedule to Today
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Today" }));
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+
+      // Updates in place: Overdue = 1, Today = 3
+      await waitFor(() => {
+        expect(within(overdueTab).getByText("1")).toBeInTheDocument();
+        expect(within(todayTab).getByText("3")).toBeInTheDocument();
+      });
+
+      // No longer in Overdue list
+      expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+
+      // Switch to Today tab: task is now visible
+      fireEvent.click(todayTab);
+      expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+    });
+
+    it("rescheduling an overdue task to a future date removes it from overdue and moves it to upcoming", async () => {
+      let currentTasks = [...mixedTasks];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated = { ...overdueTask1, ...body };
+          currentTasks = currentTasks.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: currentTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      });
+
+      const overdueTab = screen.getByRole("tab", { name: /Overdue/i });
+      const upcomingTab = screen.getByRole("tab", { name: /Upcoming/i });
+
+      // Initial: Overdue = 2, Upcoming = 1
+      expect(within(overdueTab).getByText("2")).toBeInTheDocument();
+      expect(within(upcomingTab).getByText("1")).toBeInTheDocument();
+
+      fireEvent.click(overdueTab);
+
+      const editBtn = screen.getByRole("button", { name: "Edit task: File quarterly tax report" });
+      fireEvent.click(editBtn);
+
+      // Reschedule to Tomorrow
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Tomorrow" }));
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+
+      // Updates in place: Overdue = 1, Upcoming = 2
+      await waitFor(() => {
+        expect(within(overdueTab).getByText("1")).toBeInTheDocument();
+        expect(within(upcomingTab).getByText("2")).toBeInTheDocument();
+      });
+
+      // No longer in Overdue list
+      expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+
+      // Switch to Upcoming tab: task is now visible
+      fireEvent.click(upcomingTab);
+      expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+    });
+
+    it("displays encouraging empty state when there are no overdue tasks", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        // Only return non-overdue tasks
+        return { ok: true, json: async () => ({ tasks: mockTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      });
+
+      const overdueTab = screen.getByRole("tab", { name: /Overdue/i });
+      expect(within(overdueTab).getByText("0")).toBeInTheDocument();
+
+      fireEvent.click(overdueTab);
+
+      expect(screen.getByText("No overdue tasks.")).toBeInTheDocument();
+      expect(screen.getByText("You're all caught up on scheduled work. Keep up the great pace!")).toBeInTheDocument();
+    });
+
+    it("preserves behavior of All, Today, Upcoming, and Completed tabs", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: mixedTasks }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/tasks");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      });
+
+      const allTab = screen.getByRole("tab", { name: /All Tasks/i });
+      const todayTab = screen.getByRole("tab", { name: /Today/i });
+      const upcomingTab = screen.getByRole("tab", { name: /Upcoming/i });
+      const completedTab = screen.getByRole("tab", { name: /Completed/i });
+
+      // All tab count = total mixed tasks (7 tasks)
+      expect(within(allTab).getByText("7")).toBeInTheDocument();
+      // Today tab count = 2 tasks (t-1, t-2)
+      expect(within(todayTab).getByText("2")).toBeInTheDocument();
+      // Upcoming tab count = 1 task (t-3)
+      expect(within(upcomingTab).getByText("1")).toBeInTheDocument();
+      // Completed tab count = 2 tasks (t-2, t-od-completed)
+      expect(within(completedTab).getByText("2")).toBeInTheDocument();
+
+      // Click Today tab: shows today's tasks
+      fireEvent.click(todayTab);
+      expect(screen.getByText("Complete quarterly review")).toBeInTheDocument();
+      expect(screen.getByText("Daily morning workout")).toBeInTheDocument();
+      expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+
+      // Click Upcoming tab: shows upcoming tasks
+      fireEvent.click(upcomingTab);
+      expect(screen.getByText("Plan road trip itinerary")).toBeInTheDocument();
+      expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+
+      // Click Completed tab: shows completed tasks
+      fireEvent.click(completedTab);
+      expect(screen.getByText("Daily morning workout")).toBeInTheDocument();
+      expect(screen.getByText("Archive old audit logs")).toBeInTheDocument();
+      expect(screen.queryByText("File quarterly tax report")).not.toBeInTheDocument();
+
+      // Click All tab: shows all tasks
+      fireEvent.click(allTab);
+      expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
+      expect(screen.getByText("Brainstorm marketing ideas")).toBeInTheDocument();
     });
   });
 });

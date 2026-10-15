@@ -20,7 +20,7 @@ import { QuickAddTask } from "./dashboard/QuickAddTask";
 import { TaskItem } from "../components/TaskItem";
 import "./TasksPage.css";
 
-type FilterType = "all" | "today" | "upcoming" | "completed";
+type FilterType = "all" | "today" | "upcoming" | "overdue" | "completed";
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -146,6 +146,9 @@ export function TasksPage() {
       if (activeFilter === "upcoming") {
         return t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED";
       }
+      if (activeFilter === "overdue") {
+        return Boolean(t.dueDate && t.dueDate < todayStr && t.status !== "COMPLETED");
+      }
       if (activeFilter === "completed") {
         return t.status === "COMPLETED";
       }
@@ -158,6 +161,9 @@ export function TasksPage() {
   const todayCount = tasks.filter((t) => t.dueDate === todayStr).length;
   const upcomingCount = tasks.filter(
     (t) => t.dueDate && t.dueDate > todayStr && t.status !== "COMPLETED"
+  ).length;
+  const overdueCount = tasks.filter(
+    (t) => t.dueDate && t.dueDate < todayStr && t.status !== "COMPLETED"
   ).length;
   const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
 
@@ -176,6 +182,13 @@ export function TasksPage() {
           desc: "Tasks scheduled for future dates will automatically show up here.",
           actionText: "Add Task",
           showAction: true,
+        };
+      case "overdue":
+        return {
+          title: "No overdue tasks.",
+          desc: "You're all caught up on scheduled work. Keep up the great pace!",
+          actionText: null,
+          showAction: false,
         };
       case "completed":
         return {
@@ -250,6 +263,25 @@ export function TasksPage() {
           >
             <span>Upcoming</span>
             <span className="filter-count">{upcomingCount}</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === "overdue"}
+            className={`filter-tab ${activeFilter === "overdue" ? "active" : ""} ${
+              overdueCount > 0 ? "filter-tab-overdue" : ""
+            }`}
+            onClick={() => setActiveFilter("overdue")}
+          >
+            <span>Overdue</span>
+            <span
+              className={`filter-count ${
+                overdueCount > 0 ? "has-overdue" : ""
+              }`}
+            >
+              {overdueCount}
+            </span>
           </button>
 
           <button
@@ -332,7 +364,7 @@ export function TasksPage() {
           {filteredTasks.length === 0 ? (
             <div className="tasks-empty-state">
               <div className="empty-icon-wrap" aria-hidden="true">
-                {activeFilter === "completed" ? (
+                {activeFilter === "completed" || activeFilter === "overdue" ? (
                   <CheckCircle2 size={32} />
                 ) : (
                   <Calendar size={32} />
