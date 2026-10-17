@@ -31,6 +31,8 @@ export function BrandIcon({
   const isBadge = variant === "badge";
 
   if (isBadge) {
+    const tileStroke = isMonochrome ? "currentColor" : "#ffffff";
+    const chevronStroke = accentColor || (isMonochrome ? "currentColor" : "#ffffff");
     return (
       <svg
         width={size}
@@ -43,27 +45,31 @@ export function BrandIcon({
         aria-hidden="true"
         {...props}
       >
-        {/* Sleek rounded-square squircle tile */}
+        <defs>
+          <linearGradient id="trackup-lavender-tile" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#7c6ff6" />
+            <stop offset="100%" stopColor="#5947df" />
+          </linearGradient>
+        </defs>
+        {/* Rounded lavender squircle tile */}
         <rect
           width="24"
           height="24"
-          rx="5.5"
-          fill="#0e1015"
-          stroke="rgba(255, 255, 255, 0.12)"
-          strokeWidth="0.8"
+          rx="6"
+          fill={isMonochrome ? "#0e1015" : "url(#trackup-lavender-tile)"}
         />
         {/* Circular tracking progress ring */}
         <path
-          d="M8.3 9A5.5 5.5 0 1 0 15.7 9"
-          stroke="#f4f4f5"
-          strokeWidth="1.8"
+          d="M8.2 8.8A5.5 5.5 0 1 0 15.8 8.8"
+          stroke={tileStroke}
+          strokeWidth="1.85"
           strokeLinecap="round"
         />
         {/* Upward progress chevron */}
         <path
-          d="M8.7 12L12 7.5L15.3 12"
-          stroke={stemColor}
-          strokeWidth="2.0"
+          d="M8.5 12L12 7.2L15.5 12"
+          stroke={chevronStroke}
+          strokeWidth="2.05"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

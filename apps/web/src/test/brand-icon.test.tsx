@@ -49,10 +49,11 @@ describe("TrackUp Brand Identity & BrandIcon Component", () => {
 
     expect(svg).toHaveAttribute("width", "48");
     expect(rect).toBeInTheDocument();
-    expect(rect).toHaveAttribute("rx", "5.5");
-    expect(rect).toHaveAttribute("fill", "#0e1015");
+    expect(rect).toHaveAttribute("rx", "6");
+    expect(rect).toHaveAttribute("fill", "url(#trackup-lavender-tile)");
     expect(paths.length).toBe(2);
-    expect(paths[1]).toHaveAttribute("stroke", "#7c6ff6");
+    expect(paths[0]).toHaveAttribute("stroke", "#ffffff");
+    expect(paths[1]).toHaveAttribute("stroke", "#ffffff");
     expect(paths[1]).toHaveAttribute("stroke-linejoin", "round");
   });
 

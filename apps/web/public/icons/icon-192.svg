@@ -1,5 +1,11 @@
 <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" rx="44" fill="#0e1015" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" />
-  <path d="M67 72A44 44 0 1 0 125 72" stroke="#f4f4f5" stroke-width="15" stroke-linecap="round" />
-  <path d="M70 96L96 60L122 96" stroke="#7c6ff6" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+  <defs>
+    <linearGradient id="pwa-192-tile" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7c6ff6" />
+      <stop offset="100%" stop-color="#5947df" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="46" fill="url(#pwa-192-tile)" />
+  <path d="M66 70.4A44 44 0 1 0 126 70.4" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+  <path d="M68 96L96 57.6L124 96" stroke="#ffffff" stroke-width="16.5" stroke-linecap="round" stroke-linejoin="round" />
 </svg>
