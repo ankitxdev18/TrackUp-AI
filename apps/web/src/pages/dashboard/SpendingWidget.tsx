@@ -17,16 +17,12 @@ import {
   type Expense,
   type MonthlyBudgetSummary,
 } from "../../api/expenses";
-import { useAuth } from "../../context/AuthContext";
+import { useOptionalAuth } from "../../context/AuthContext";
 import { Link, useRouter } from "../../router/Router";
 
 function useSafeUserTimezone(): string | undefined {
-  try {
-    const auth = useAuth();
-    return auth?.user?.timezone;
-  } catch {
-    return undefined;
-  }
+  const auth = useOptionalAuth();
+  return auth?.user?.timezone;
 }
 
 function formatExpenseDate(dateStr: string): string {

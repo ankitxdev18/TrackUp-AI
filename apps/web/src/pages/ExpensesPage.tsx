@@ -1,6 +1,8 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useOptionalAuth } from "../context/AuthContext";
+
+
 import {
   createExpense,
   deleteExpense,
@@ -68,12 +70,8 @@ function getMsUntilNextMidnight(timeZone?: string, now = new Date()): number {
  * Safe hook to read user timezone from AuthContext without throwing if mounted outside AuthProvider.
  */
 function useSafeUserTimezone(): string | undefined {
-  try {
-    const auth = useAuth();
-    return auth?.user?.timezone;
-  } catch {
-    return undefined;
-  }
+  const auth = useOptionalAuth();
+  return auth?.user?.timezone;
 }
 
 export interface ExpensesPageProps {
