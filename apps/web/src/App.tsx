@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import {
   BookOpen,
   Compass,
@@ -7,23 +8,54 @@ import {
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthPage } from "./pages/AuthPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { CalendarPage } from "./pages/CalendarPage";
-import { DashboardView } from "./pages/DashboardView";
-import { FeaturePlaceholder } from "./pages/FeaturePlaceholder";
-import { GoalDetailPage } from "./pages/GoalDetailPage";
-import { GoalsPage } from "./pages/GoalsPage";
-import { HabitsPage } from "./pages/HabitsPage";
-import { IdeasPage } from "./pages/IdeasPage";
-import { JournalPage } from "./pages/journal/JournalPage";
 import { LandingPage } from "./pages/LandingPage";
-import { ProjectDetailPage } from "./pages/ProjectDetailPage";
-import { ProjectsPage } from "./pages/ProjectsPage";
-import { ExpensesPage } from "./pages/ExpensesPage";
-import { SavingsPage } from "./pages/SavingsPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { TasksPage } from "./pages/TasksPage";
+import {
+  AnalyticsPage,
+  CalendarPage,
+  DashboardView,
+  FeaturePlaceholder,
+  GoalDetailPage,
+  GoalsPage,
+  HabitsPage,
+  IdeasPage,
+  JournalPage,
+  ProjectDetailPage,
+  ProjectsPage,
+  ExpensesPage,
+  SavingsPage,
+  SettingsPage,
+  TasksPage,
+} from "./pages/lazyPages";
 import { RouterProvider, useRouter } from "./router/Router";
+import { AuthProvider } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
+
+function RouteLoadingFallback() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "40vh",
+        color: "var(--text-muted)",
+      }}
+      role="status"
+      aria-label="Loading page content"
+    >
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          border: "2px solid rgba(124, 111, 246, 0.15)",
+          borderTopColor: "var(--primary)",
+          borderRadius: "50%",
+          animation: "spin 0.6s linear infinite",
+        }}
+      />
+    </div>
+  );
+}
 
 function AppRoutes() {
   const { path } = useRouter();
@@ -47,7 +79,9 @@ function AppRoutes() {
     return (
       <ProtectedRoute>
         <AppShell>
-          <ProjectDetailPage projectId={projectId} />
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <ProjectDetailPage projectId={projectId} />
+          </Suspense>
         </AppShell>
       </ProtectedRoute>
     );
@@ -58,7 +92,9 @@ function AppRoutes() {
     return (
       <ProtectedRoute>
         <AppShell>
-          <GoalDetailPage goalId={goalId} />
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <GoalDetailPage goalId={goalId} />
+          </Suspense>
         </AppShell>
       </ProtectedRoute>
     );
@@ -136,13 +172,14 @@ function AppRoutes() {
 
   return (
     <ProtectedRoute>
-      <AppShell>{renderPrivateContent()}</AppShell>
+      <AppShell>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          {renderPrivateContent()}
+        </Suspense>
+      </AppShell>
     </ProtectedRoute>
   );
 }
-
-import { AuthProvider } from "./context/AuthContext";
-import { NotificationProvider } from "./context/NotificationContext";
 
 export function App() {
   return (
@@ -157,4 +194,3 @@ export function App() {
 }
 
 export default App;
-

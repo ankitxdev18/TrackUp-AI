@@ -1,0 +1,18 @@
+# TrackUp — Personal Life OS
+
+> Track your life. Build a better you. The unified personal operating system for tasks, habits, projects, and intentional living.
+
+TrackUp is a high-performance personal operating system designed to bring calm and clarity to daily execution. It consolidates task management, multi-week project planning, habit streaks, strategic goal tracking, and personal progress analytics into a single cohesive interface.
+
+## Core Capabilities
+- Tasks: Fast capture, priority tiers (Low, Medium, High), due dates, and virtual views for Today, Upcoming, and Overdue.
+- Projects: Structured workspaces to organize tasks, track milestones, and visualize project velocity.
+- Goals: Strategic milestone tracking connecting long-term aspirations directly to day-to-day execution.
+- Habits: Atomic habit tracking with streak counters and consistency monitoring.
+- Analytics: Unified personal insights, completion velocity, and productivity trends.
+- Expenses & Savings: Personal finance budgeting and savings goal tracking.
+
+## Links
+- [Home](https://trackup-life-os.vercel.app/)
+- [Sign In](https://trackup-life-os.vercel.app/login)
+- [Get Started](https://trackup-life-os.vercel.app/signup)
