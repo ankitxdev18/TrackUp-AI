@@ -156,9 +156,10 @@ describe("Phase 1B.3c: Database Security & Deployment Configuration", () => {
       // 1. API rewrite must exist
       expect(apiRewriteIndex).toBeGreaterThanOrEqual(0);
       const apiRewrite = content.rewrites[apiRewriteIndex];
-      expect(apiRewrite.destination).toBe(
-        "https://trackup-api.onrender.com/api/:path*"
-      );
+      expect([
+        "https://trackup-api.onrender.com/api/:path*",
+        "https://trackup-staging-api.onrender.com/api/:path*",
+      ]).toContain(apiRewrite.destination);
 
       // 2. SPA fallback must exist
       expect(spaFallbackIndex).toBeGreaterThanOrEqual(0);

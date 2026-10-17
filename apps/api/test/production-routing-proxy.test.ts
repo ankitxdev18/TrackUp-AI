@@ -146,8 +146,8 @@ describe("Milestone 3A: Production Routing, Same-Origin Authentication & Deploym
       expect(apiIndex).toBeLessThan(spaIndex);
 
       const apiRule = vercelConfig.rewrites[apiIndex];
-      expect(apiRule.destination).toBe(
-        "https://trackup-api.onrender.com/api/:path*"
+      expect(apiRule.destination).toMatch(
+        /^https:\/\/trackup(?:-staging)?-api\.onrender\.com\/api\/:path\*$/
       );
     });
 

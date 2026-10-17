@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { registerApi } from "../api/auth";
+import { BrandIcon } from "../components/BrandIcon";
 import { getSafeReturnTo } from "../components/ProtectedRoute";
 import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
@@ -16,6 +17,7 @@ export function AuthPage({ mode }: AuthPageProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -41,13 +43,20 @@ export function AuthPage({ mode }: AuthPageProps) {
 
       setLoading(true);
       try {
-        await registerApi({ name, email, password });
-        setSuccess("Account created successfully! Please sign in with your credentials.");
+        await registerApi({ name: name.trim(), email: email.trim(), password });
+        setSuccess("Account created successfully! Redirecting to sign in...");
         setTimeout(() => {
           navigate("/login");
         }, 1200);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Registration failed.");
+        const msg = err instanceof Error ? err.message : "Registration failed.";
+        if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+          setError("We couldn't connect to TrackUp. Please check your connection and try again.");
+        } else if (msg.includes("EMAIL_ALREADY_EXISTS") || msg.toLowerCase().includes("already registered")) {
+          setError("This email may already be registered. Try signing in.");
+        } else {
+          setError(msg || "We couldn't create your account. Please try again.");
+        }
       } finally {
         setLoading(false);
       }
@@ -64,7 +73,7 @@ export function AuthPage({ mode }: AuthPageProps) {
 
       setLoading(true);
       try {
-        await login({ email, password });
+        await login({ email: email.trim(), password });
         setSuccess("Logged in successfully! Loading workspace...");
         const searchParams = new URLSearchParams(
           typeof window !== "undefined" ? window.location.search : ""
@@ -75,7 +84,12 @@ export function AuthPage({ mode }: AuthPageProps) {
           navigate(destination);
         }, 400);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Invalid email or password.");
+        const msg = err instanceof Error ? err.message : "Invalid email or password.";
+        if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+          setError("We couldn't connect to TrackUp. Please check your connection and try again.");
+        } else {
+          setError(msg || "Invalid email or password.");
+        }
       } finally {
         setLoading(false);
       }
@@ -87,19 +101,7 @@ export function AuthPage({ mode }: AuthPageProps) {
       <div className="auth-container">
         <div className="auth-header">
           <Link to="/" className="auth-logo" aria-label="TrackUp Home">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
+            <BrandIcon size={36} variant="badge" />
           </Link>
           <h1 className="auth-title">
             {mode === "signup" ? "Create your account" : "Welcome back"}
@@ -112,14 +114,14 @@ export function AuthPage({ mode }: AuthPageProps) {
         </div>
 
         {error && (
-          <div className="auth-message error" role="alert">
+          <div className="auth-message error" role="alert" aria-live="assertive">
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="auth-message success" role="status">
+          <div className="auth-message success" role="status" aria-live="polite">
             <CheckCircle2 size={16} />
             <span>{success}</span>
           </div>
@@ -138,6 +140,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                 placeholder="Alex Mercer"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                disabled={loading}
                 required
                 autoComplete="name"
               />
@@ -155,6 +158,7 @@ export function AuthPage({ mode }: AuthPageProps) {
               placeholder="alex@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               required
               autoComplete="email"
             />
@@ -164,18 +168,31 @@ export function AuthPage({ mode }: AuthPageProps) {
             <label htmlFor="auth-password" className="form-label">
               Password
             </label>
-            <input
-              id="auth-password"
-              type="password"
-              className="form-input"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="auth-password"
+                type={showPassword ? "text" : "password"}
+                className="form-input password-input"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                aria-describedby={mode === "signup" ? "password-helper-text" : undefined}
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Hide" : "Show"}
+                tabIndex={0}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {mode === "signup" && (
-              <span className="form-helper">
+              <span id="password-helper-text" className="form-helper">
                 Minimum 10 characters. Full Unicode supported.
               </span>
             )}
@@ -186,13 +203,16 @@ export function AuthPage({ mode }: AuthPageProps) {
             className="btn-auth-submit"
             disabled={loading}
           >
-            {loading
-              ? mode === "signup"
-                ? "Creating Account..."
-                : "Signing In..."
-              : mode === "signup"
-              ? "Create Account"
-              : "Log In"}
+            {loading ? (
+              <span className="btn-loading-content">
+                <Loader2 size={16} className="btn-spinner" />
+                <span>{mode === "signup" ? "Creating Account..." : "Signing In..."}</span>
+              </span>
+            ) : mode === "signup" ? (
+              "Create Account"
+            ) : (
+              "Log In"
+            )}
           </button>
         </form>
 

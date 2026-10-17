@@ -23,6 +23,7 @@ import { useAuth } from "../context/AuthContext";
 import { Link, useRouter } from "../router/Router";
 import { NotificationBell } from "./notifications/NotificationBell";
 import { applyTheme, getStoredTheme, subscribeTheme, type Theme } from "../utils/theme";
+import { BrandIcon } from "./BrandIcon";
 import "./AppShell.css";
 
 interface AppShellProps {
@@ -190,19 +191,7 @@ export function AppShell({ children }: AppShellProps) {
       <aside className="shell-sidebar" aria-label="Main Navigation">
         <div className="sidebar-header">
           <Link to="/" className="brand-icon" aria-label="TrackUp Home">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
+            <BrandIcon size={20} />
           </Link>
           <Link to="/dashboard" className="brand-title">
             <span>TrackUp</span>

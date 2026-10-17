@@ -258,6 +258,12 @@
   background-color: rgba(255, 255, 255, 0.06);
 }
 
+.landing-nav-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  color: var(--text-primary);
+}
+
 /* Right Auth & Primary CTA */
 .landing-auth-actions {
   display: flex;
@@ -283,6 +289,12 @@
   background-color: rgba(255, 255, 255, 0.06);
 }
 
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  color: var(--text-primary);
+}
+
 .btn-cta-nav {
   background: linear-gradient(135deg, #7c6ff6 0%, #6355ee 100%);
   color: #ffffff;
@@ -304,6 +316,11 @@
   color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(124, 111, 246, 0.45);
+}
+
+.btn-cta-nav:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
 
 .btn-cta-nav:active {
@@ -534,9 +551,9 @@
 .hero-subhead {
   font-size: clamp(1rem, 2vw, 1.1875rem);
   color: #94a3b8;
-  line-height: 1.65;
-  max-width: 660px;
-  margin: 0 auto var(--space-8);
+  line-height: 1.62;
+  max-width: 640px;
+  margin: 0 auto var(--space-7);
   font-weight: 400;
   animation: heroFadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.18s;
@@ -547,7 +564,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-7);
   flex-wrap: wrap;
   animation: heroFadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.26s;
@@ -576,6 +593,11 @@
   color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(124, 111, 246, 0.5);
+}
+
+.btn-hero-primary:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
 
 .btn-hero-primary:active {
@@ -615,6 +637,12 @@
   transform: translateY(-2px);
 }
 
+.btn-hero-secondary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  color: #ffffff;
+}
+
 .btn-hero-secondary:active {
   transform: translateY(1px);
 }
@@ -637,7 +665,7 @@
   font-size: 0.8125rem;
   color: var(--text-muted);
   flex-wrap: wrap;
-  margin-bottom: var(--space-12);
+  margin-bottom: clamp(var(--space-6), 3.5vw, var(--space-9));
   animation: heroFadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: 0.32s;
 }
