@@ -104,3 +104,53 @@ This document defines the production deployment topology, security policies, dat
   - Returns `503 Service Unavailable` (`status: "degraded", db: "disconnected"`) if PostgreSQL is unreachable.
 - **Render Integration:** Configured via `healthCheckPath: /health` in `render.yaml`. Render monitors this endpoint and ensures the new deployment instance is healthy before routing incoming traffic away from the previous container.
 - **Graceful Shutdown:** The Fastify server catches `SIGINT` and `SIGTERM`, draining in-flight HTTP requests, stopping periodic cleanup intervals, and closing database pool connections before exiting.
+
+---
+
+## 6. Staging Environment Architecture & Routing Topology
+
+To guarantee that pre-release verification never mutates production data or exposes unverified features to public users, TrackUp maintains a fully isolated staging deployment.
+
+### Topology Overview
+
+```
+┌───────────────────────────┐         HTTPS / WSS          ┌───────────────────────────────────┐
+│     Vercel Staging CDN    │ ────────────────────────────▶│     Render Staging Web Service    │
+│  (trackup-staging.vercel) │    Credentials: Include      │    (trackup-staging-api.onrender) │
+│   Origin: *.vercel.app    │  Origin: trackup-staging...  │       Fastify Node.js Service     │
+└───────────────────────────┘                              └─────────────────┬─────────────────┘
+              │                                                              │
+     vercel.staging.json                                                     │ Managed TLS
+      SPA Rewrites (/*)                                                      │ rejectUnauthorized: true
+                                                                             ▼
+                                                           ┌───────────────────────────────────┐
+                                                           │   Render Staging PostgreSQL (v16) │
+                                                           │       (trackup-staging-db)        │
+                                                           └───────────────────────────────────┘
+```
+
+### Staging Routing Invariants & Configuration Contract
+1. **Dedicated Routing File (`apps/web/vercel.staging.json`):**
+   - Staging edge routing is defined in `apps/web/vercel.staging.json`.
+   - Rule 1: `/api/:path*` -> `https://trackup-staging-api.onrender.com/api/:path*`.
+   - Rule 2: `/(.*)` -> `/index.html` (SPA client routing fallback).
+   - This ensures staging frontend traffic routes strictly to the staging API and never falls back to the production API.
+2. **Production Routing Isolation (`apps/web/vercel.json`):**
+   - Production routing remains strictly anchored to `https://trackup-api.onrender.com/api/:path*`.
+   - Staging configuration changes have zero dependency or impact on production assets.
+3. **Vercel Staging Deployment Workflows:**
+   - **Vercel CLI / CI:** Deploy using the staging config flag:
+     ```bash
+     cd apps/web && vercel deploy --local-config vercel.staging.json
+     ```
+   - **Branch-Based Vercel Project:** When deploying a dedicated staging project from a `staging` branch, copy or link `vercel.staging.json` as `vercel.json` on the staging branch so Vercel's automated git parser uses the staging destination.
+4. **Render Staging Infrastructure:**
+   - **Web Service:** `trackup-staging-api` (Runtime: Node, Plan: Starter, Port: 10000).
+   - **Database:** `trackup-staging-db` (PostgreSQL 16, Starter plan).
+   - **Environment Variables:**
+     - `NODE_ENV=production`
+     - `DATABASE_URL`: Connection string for `trackup-staging-db` only.
+     - `DATABASE_SSL=true`: Enforces strict TLS certificate verification.
+     - `TRUST_PROXY=true`: Enforces reverse proxy trust for client IP and protocol.
+     - `COOKIE_SECRET`: Unique 32+ character cryptographic secret distinct from production.
+     - `CORS_ORIGIN`: Must be set in the Render Dashboard to match the staging Vercel domain (`https://trackup-staging.vercel.app`). Wildcards remain strictly prohibited.
