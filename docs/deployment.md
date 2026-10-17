@@ -154,3 +154,20 @@ To guarantee that pre-release verification never mutates production data or expo
      - `TRUST_PROXY=true`: Enforces reverse proxy trust for client IP and protocol.
      - `COOKIE_SECRET`: Unique 32+ character cryptographic secret distinct from production.
      - `CORS_ORIGIN`: Must be set in the Render Dashboard to match the staging Vercel domain (`https://trackup-staging.vercel.app`). Wildcards remain strictly prohibited.
+5. **Automated Staging Smoke-Test Runner (`scripts/smoke-test-staging.mjs`):**
+   - TrackUp provides a zero-dependency, automated smoke-test runner executing tests ST-01 through ST-12 against a live staging deployment.
+   - **Preflight Mode (Dry-run without mutating data):**
+     ```bash
+     npm run smoke:staging -- --api-url https://trackup-staging-api.onrender.com --dry-run
+     ```
+   - **Full Mutating Suite Execution (Requires explicit staging confirmation):**
+     ```bash
+     npm run smoke:staging -- --api-url https://trackup-staging-api.onrender.com --frontend-url https://trackup-staging.vercel.app --confirm-staging
+     ```
+   - **Safety Invariants:**
+     - Production hostnames (`trackup-api.onrender.com`, `app.trackup.com`) are rejected immediately.
+     - Mutating requests against remote targets require explicit `--confirm-staging` authorization flag.
+     - `localhost` is rejected by default unless `--allow-localhost` is explicitly supplied.
+     - Redirects are handled manually (`redirect: 'manual'`) to prevent silent cross-origin redirect traversal.
+     - Uses disposable test accounts (`smoke_test_*@trackup.test`) and cleans up created test tasks automatically.
+     - Never logs passwords, cookies, or secrets to stdout/stderr.
