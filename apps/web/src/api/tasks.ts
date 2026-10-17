@@ -159,15 +159,37 @@ export async function deleteTask(
   return response.json();
 }
 
+import {
+  getTodayDateString as getTodayDateStringFromUtils,
+  getUserTimeZone,
+  utcIsoToLocalDate,
+} from "../features/calendar/calendarDateUtils";
+
 /**
- * Returns today's ISO date string 'YYYY-MM-DD' in local timezone
+ * Returns today's ISO date string 'YYYY-MM-DD' evaluated in the specified timezone
+ * (defaults to authenticated user / browser timezone).
  */
-export function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function getTodayDateString(timeZone: string = getUserTimeZone()): string {
+  return getTodayDateStringFromUtils(timeZone);
+}
+
+/**
+ * Evaluates whether a task is marked COMPLETED and has a valid completion timestamp
+ * falling on the specified calendar date in the target timezone.
+ */
+export function isTaskCompletedToday(
+  task: { status: string; completedAt: string | null },
+  todayDateStr: string = getTodayDateString(),
+  timeZone: string = getUserTimeZone()
+): boolean {
+  if (task.status !== "COMPLETED" || !task.completedAt) {
+    return false;
+  }
+  const date = new Date(task.completedAt);
+  if (isNaN(date.getTime())) {
+    return false;
+  }
+  return utcIsoToLocalDate(task.completedAt, timeZone) === todayDateStr;
 }
 
 /**

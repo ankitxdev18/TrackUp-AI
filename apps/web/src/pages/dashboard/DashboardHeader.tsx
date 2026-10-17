@@ -10,6 +10,7 @@ interface DashboardHeaderProps {
   todayRemaining: number;
   overdueCount: number;
   progressPercent: number;
+  completedTodayCount?: number;
 }
 
 export function DashboardHeader({
@@ -18,6 +19,7 @@ export function DashboardHeader({
   todayRemaining,
   overdueCount,
   progressPercent,
+  completedTodayCount = 0,
 }: DashboardHeaderProps) {
   const { user } = useAuth();
 
@@ -65,6 +67,7 @@ export function DashboardHeader({
         todayRemaining={todayRemaining}
         overdueCount={overdueCount}
         progressPercent={progressPercent}
+        completedTodayCount={completedTodayCount}
       />
     </div>
   );

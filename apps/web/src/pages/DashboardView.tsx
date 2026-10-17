@@ -6,9 +6,15 @@ import {
   createTask,
   fetchTasks,
   getTodayDateString,
+  isTaskCompletedToday,
   type Task,
   updateTask,
 } from "../api/tasks";
+import { useAuth } from "../context/AuthContext";
+import {
+  getUserTimeZone,
+  isValidIanaTimeZone,
+} from "../features/calendar/calendarDateUtils";
 import { CreateTaskModal } from "../components/CreateTaskModal";
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { GoalsWidget } from "./dashboard/GoalsWidget";
@@ -23,6 +29,12 @@ import { UpcomingWidget } from "./dashboard/UpcomingWidget";
 import "./DashboardView.css";
 
 export function DashboardView() {
+  const { user } = useAuth();
+  const userTz =
+    user?.timezone && isValidIanaTimeZone(user.timezone)
+      ? user.timezone
+      : getUserTimeZone();
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -38,7 +50,7 @@ export function DashboardView() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
-  const todayStr = getTodayDateString();
+  const todayStr = getTodayDateString(userTz);
 
   const loadTasksData = useCallback(async () => {
     try {
@@ -98,7 +110,16 @@ export function DashboardView() {
 
     // Optimistic UI update
     setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              status: nextStatus,
+              completedAt:
+                nextStatus === "COMPLETED" ? new Date().toISOString() : null,
+            }
+          : t
+      )
     );
 
     if (task.projectId) {
@@ -179,7 +200,18 @@ export function DashboardView() {
   const todayCompleted = todayTasks.filter((t) => t.status === "COMPLETED").length;
   const todayRemaining = todayTotal - todayCompleted;
   const progressPercent =
-    todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
+    todayTotal > 0
+      ? Math.min(100, Math.max(0, Math.round((todayCompleted / todayTotal) * 100)))
+      : 0;
+
+  // Actual daily completed metric (Option C: distinct metric across all sources completed today in user's timezone)
+  const completedTodayCount = tasks.reduce((count, task, index, arr) => {
+    const isFirstOccurrence = arr.findIndex((t) => t.id === task.id) === index;
+    if (isFirstOccurrence && isTaskCompletedToday(task, todayStr, userTz)) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
 
   // Overdue: tasks scheduled before today and not completed
   const overdueTasks = tasks.filter(
@@ -200,6 +232,7 @@ export function DashboardView() {
         todayRemaining={todayRemaining}
         overdueCount={overdueTasks.length}
         progressPercent={progressPercent}
+        completedTodayCount={completedTodayCount}
       />
 
       {/* Error Banner if tasks fail */}

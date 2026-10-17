@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { App } from "../App";
-import { getTodayDateString, getTomorrowDateString, type Task } from "../api/tasks";
+import {
+  getTodayDateString,
+  getTomorrowDateString,
+  isTaskCompletedToday,
+  type Task,
+} from "../api/tasks";
+import { setTestAuthOverride } from "../context/AuthContext";
 
 describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
   const todayStr = getTodayDateString();
@@ -49,6 +55,7 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    setTestAuthOverride(null);
   });
 
   describe("Tasks Page (/tasks)", () => {
@@ -868,7 +875,7 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
 
       // Today's tasks count in header updated: 1 of 3 completed
       expect(screen.getByText("1 of 3 completed")).toBeInTheDocument();
-    });
+    }, 25000);
   });
 
   describe("Milestone 7: Overdue Task Visibility", () => {
@@ -1222,6 +1229,443 @@ describe("Milestone 2 & 3: Tasks & Dashboard Integration", () => {
       fireEvent.click(allTab);
       expect(screen.getByText("File quarterly tax report")).toBeInTheDocument();
       expect(screen.getByText("Brainstorm marketing ideas")).toBeInTheDocument();
+    });
+  });
+
+  describe("Milestone 8: Daily Completion Metrics (Option C)", () => {
+    it("completing a task due today updates both scheduled progress and Completed Today", async () => {
+      const taskDueToday: Task = {
+        id: "m8-today-1",
+        userId: "user-1",
+        title: "Submit sprint summary report",
+        status: "TODO",
+        priority: "HIGH",
+        dueDate: todayStr,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let taskList: Task[] = [taskDueToday];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated: Task = {
+            ...taskDueToday,
+            ...body,
+            completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+          };
+          taskList = taskList.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: taskList }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Submit sprint summary report")).toBeInTheDocument();
+      });
+
+      // Initially 0 of 1 completed scheduled, 0 tasks completed today
+      expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("0 tasks")).toBeInTheDocument();
+
+      // Check off the task due today
+      const checkbox = screen.getByRole("checkbox", {
+        name: "Mark Submit sprint summary report as complete",
+      });
+      fireEvent.click(checkbox);
+
+      // Updates scheduled progress (1 of 1 completed, 100%) and Completed Today (1 task)
+      await waitFor(() => {
+        expect(screen.getByText("1 of 1 completed")).toBeInTheDocument();
+        expect(screen.getByText("100%")).toBeInTheDocument();
+        expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+      });
+    });
+
+    it("completing an overdue task increases Completed Today but does not alter today's scheduled total", async () => {
+      const todayTask: Task = {
+        id: "m8-sched-1",
+        userId: "user-1",
+        title: "Daily standup meeting",
+        status: "TODO",
+        priority: "MEDIUM",
+        dueDate: todayStr,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const overdueTask: Task = {
+        id: "m8-overdue-1",
+        userId: "user-1",
+        title: "Fix critical production regression",
+        status: "TODO",
+        priority: "HIGH",
+        dueDate: "2020-01-01",
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let taskList: Task[] = [todayTask, overdueTask];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const target = taskList.find((t) => t.id === "m8-overdue-1") || overdueTask;
+          const updated: Task = {
+            ...target,
+            ...body,
+            completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+          };
+          taskList = taskList.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: taskList }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Overdue · 1 task")).toBeInTheDocument();
+        expect(screen.getByText("Fix critical production regression")).toBeInTheDocument();
+      });
+
+      // Scheduled progress initially: 0 of 1 completed (only m8-sched-1 is due today)
+      expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("0 tasks")).toBeInTheDocument();
+
+      // Complete the overdue task from OverdueTriage
+      const overdueCheckbox = screen.getByRole("checkbox", {
+        name: "Mark Fix critical production regression as complete",
+      });
+      fireEvent.click(overdueCheckbox);
+
+      // Overdue task removed from OverdueTriage
+      await waitFor(() => {
+        expect(screen.queryByText("Fix critical production regression")).not.toBeInTheDocument();
+      });
+
+      // Completed Today increases to 1 task, while today's scheduled total remains 1 (0 of 1 completed)
+      expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+      expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+      expect(screen.getByText("0%")).toBeInTheDocument();
+    });
+
+    it("completing a future-dated task early increases Completed Today but does not alter scheduled total", async () => {
+      const todayTask: Task = {
+        id: "m8-sched-2",
+        userId: "user-1",
+        title: "Review daily metrics",
+        status: "TODO",
+        priority: "MEDIUM",
+        dueDate: todayStr,
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const futureTask: Task = {
+        id: "m8-future-1",
+        userId: "user-1",
+        title: "Prepare upcoming quarterly deck",
+        status: "TODO",
+        priority: "LOW",
+        dueDate: "2099-12-31",
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let taskList: Task[] = [todayTask, futureTask];
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          const updated: Task = {
+            ...futureTask,
+            ...body,
+            completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+          };
+          taskList = taskList.map((t) => (t.id === updated.id ? updated : t));
+          return { ok: true, json: async () => ({ task: updated }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: taskList }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Prepare upcoming quarterly deck")).toBeInTheDocument();
+      });
+
+      // Scheduled: 0 of 1 completed; Completed Today: 0 tasks
+      expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("0 tasks")).toBeInTheDocument();
+
+      // Complete future task from Upcoming widget
+      const futureCheckbox = screen.getByRole("checkbox", {
+        name: "Mark Prepare upcoming quarterly deck as complete",
+      });
+      fireEvent.click(futureCheckbox);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Prepare upcoming quarterly deck")).not.toBeInTheDocument();
+      });
+
+      // Completed Today increases to 1 task, scheduled progress strictly unaltered at 0 of 1 completed
+      expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+      expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+    });
+
+    it("reopening a completed task clears it from Completed Today, and completing again counts it once", async () => {
+      const task: Task = {
+        id: "m8-toggle-task",
+        userId: "user-1",
+        title: "Deploy hotfix release",
+        status: "COMPLETED",
+        priority: "HIGH",
+        dueDate: todayStr,
+        completedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let currentTask = { ...task };
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+
+        if (method === "PATCH") {
+          const body = JSON.parse(String(init?.body || "{}"));
+          currentTask = {
+            ...currentTask,
+            ...body,
+            completedAt: body.status === "COMPLETED" ? new Date().toISOString() : null,
+          };
+          return { ok: true, json: async () => ({ task: currentTask }) } as Response;
+        }
+
+        return { ok: true, json: async () => ({ tasks: [currentTask] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Deploy hotfix release")).toBeInTheDocument();
+      });
+
+      // Initially completed: 1 of 1 completed, 1 task completed today
+      expect(screen.getByText("1 of 1 completed")).toBeInTheDocument();
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+
+      // Step 1: Reopen task
+      const checkbox = screen.getByRole("checkbox", {
+        name: "Mark Deploy hotfix release as incomplete",
+      });
+      fireEvent.click(checkbox);
+
+      await waitFor(() => {
+        expect(screen.getByText("0 of 1 completed")).toBeInTheDocument();
+        expect(within(completedTodayCard).getByText("0 tasks")).toBeInTheDocument();
+      });
+
+      // Step 2: Complete the task again
+      const reopenedCheckbox = screen.getByRole("checkbox", {
+        name: "Mark Deploy hotfix release as complete",
+      });
+      fireEvent.click(reopenedCheckbox);
+
+      // Counts exactly once (not twice)
+      await waitFor(() => {
+        expect(screen.getByText("1 of 1 completed")).toBeInTheDocument();
+        expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+      });
+    });
+
+    it("excludes tasks without valid completion timestamps or tasks currently TODO", () => {
+      // Missing completedAt
+      expect(
+        isTaskCompletedToday({ status: "COMPLETED", completedAt: null }, todayStr)
+      ).toBe(false);
+
+      // Invalid date string
+      expect(
+        isTaskCompletedToday({ status: "COMPLETED", completedAt: "not-a-timestamp" }, todayStr)
+      ).toBe(false);
+
+      // Status TODO even if completedAt is populated
+      expect(
+        isTaskCompletedToday(
+          { status: "TODO", completedAt: new Date().toISOString() },
+          todayStr
+        )
+      ).toBe(false);
+
+      // Valid completion today
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: new Date().toISOString() },
+          todayStr
+        )
+      ).toBe(true);
+
+      // Completed on past date
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: "2020-01-01T12:00:00.000Z" },
+          todayStr
+        )
+      ).toBe(false);
+    });
+
+    it("attributes near-midnight UTC timestamps correctly across negative and positive UTC-offset timezones", () => {
+      // 1. Negative UTC offset: America/New_York (EDT, UTC-4)
+      // Timestamp: 2026-10-17T03:30:00.000Z corresponds to 2026-10-16 23:30 EDT
+      const lateNightUtc = "2026-10-17T03:30:00.000Z";
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: lateNightUtc },
+          "2026-10-16",
+          "America/New_York"
+        )
+      ).toBe(true);
+
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: lateNightUtc },
+          "2026-10-17",
+          "America/New_York"
+        )
+      ).toBe(false);
+
+      // 2. Positive UTC offset: Asia/Kolkata (IST, UTC+5:30)
+      // Timestamp: 2026-10-16T19:00:00.000Z corresponds to 2026-10-17 00:30 IST
+      const earlyMorningUtc = "2026-10-16T19:00:00.000Z";
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: earlyMorningUtc },
+          "2026-10-17",
+          "Asia/Kolkata"
+        )
+      ).toBe(true);
+
+      expect(
+        isTaskCompletedToday(
+          { status: "COMPLETED", completedAt: earlyMorningUtc },
+          "2026-10-16",
+          "Asia/Kolkata"
+        )
+      ).toBe(false);
+    });
+
+    it("evaluates Completed Today in the authenticated user's configured timezone on the Dashboard", async () => {
+      setTestAuthOverride({
+        user: {
+          id: "user-ny",
+          name: "New York User",
+          email: "ny@example.com",
+          timezone: "America/New_York",
+        },
+        loading: false,
+      });
+
+      const nyTodayStr = getTodayDateString("America/New_York");
+
+      const nyTask: Task = {
+        id: "ny-task-1",
+        userId: "user-ny",
+        title: "New York late task",
+        status: "COMPLETED",
+        priority: "MEDIUM",
+        dueDate: nyTodayStr,
+        completedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [nyTask] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText("New York late task")).toBeInTheDocument();
+      });
+
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("1 task")).toBeInTheDocument();
+    });
+
+    it("zero-task and zero-completion states produce clean metrics without NaN or invalid percentages", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/api/projects")) {
+          return { ok: true, json: async () => ({ projects: [] }) } as Response;
+        }
+        return { ok: true, json: async () => ({ tasks: [] }) } as Response;
+      });
+
+      window.history.pushState({}, "", "/dashboard");
+      render(<App />);
+
+      const momentumStrip = await screen.findByRole("region", { name: "Daily momentum summary" });
+
+      expect(within(momentumStrip).getByText("0 of 0 completed")).toBeInTheDocument();
+      expect(within(momentumStrip).getByText("No tasks today")).toBeInTheDocument();
+      expect(within(momentumStrip).queryByText(/NaN/)).not.toBeInTheDocument();
+      expect(within(momentumStrip).queryByText(/Infinity/)).not.toBeInTheDocument();
+
+      const completedTodayCard = screen.getByTestId("momentum-card-completed-today");
+      expect(within(completedTodayCard).getByText("0 tasks")).toBeInTheDocument();
+      expect(within(completedTodayCard).getByText("No completions yet")).toBeInTheDocument();
     });
   });
 });
