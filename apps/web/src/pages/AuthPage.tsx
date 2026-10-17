@@ -101,7 +101,7 @@ export function AuthPage({ mode }: AuthPageProps) {
       <div className="auth-container">
         <div className="auth-header">
           <Link to="/" className="auth-logo" aria-label="TrackUp Home">
-            <BrandIcon size={28} />
+            <BrandIcon size={36} variant="badge" />
           </Link>
           <h1 className="auth-title">
             {mode === "signup" ? "Create your account" : "Welcome back"}
