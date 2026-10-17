@@ -3,24 +3,29 @@ import React from "react";
 export interface BrandIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number | string;
   className?: string;
+  variant?: "default" | "monochrome";
 }
 
 /**
- * TrackUp Brand Mark Component
+ * TrackUp Progress-Target Brand Mark
  *
- * Minimal, high-contrast circular target icon featuring:
- * - A dark outer circle with subtle crisp border for dark/light contrast
- * - A white concentric circular ring
- * - A dark center bullseye
+ * Distinctive, high-contrast circular tracking symbol featuring:
+ * - A crisp dark outer tracking frame with sub-pixel boundary definition
+ * - A high-contrast white concentric circular progress band
+ * - A precision dark focal core
+ * - An integrated TrackUp lavender accent node (#7c6ff6) symbolizing upward momentum and focus
  *
- * Scalable vector geometry strictly preserving the TrackUp brand reference.
+ * Scalable vector geometry preserving the TrackUp visual identity across desktop, mobile web, and PWA contexts.
  */
 export function BrandIcon({
   size = 24,
   className = "",
+  variant = "default",
   style,
   ...props
 }: BrandIconProps) {
+  const accentColor = variant === "monochrome" ? "#ffffff" : "#7c6ff6";
+
   return (
     <svg
       width={size}
@@ -33,7 +38,7 @@ export function BrandIcon({
       aria-hidden="true"
       {...props}
     >
-      {/* Outer dark circle with subtle high-contrast border definition */}
+      {/* Outer dark tracking ring with subtle high-contrast border definition */}
       <circle
         cx="12"
         cy="12"
@@ -42,10 +47,12 @@ export function BrandIcon({
         stroke="rgba(255, 255, 255, 0.2)"
         strokeWidth="0.8"
       />
-      {/* White concentric circular area */}
+      {/* White concentric progress band */}
       <circle cx="12" cy="12" r="7.2" fill="#ffffff" />
-      {/* Dark center bullseye */}
-      <circle cx="12" cy="12" r="3.6" fill="#09080e" />
+      {/* Precision dark focal core */}
+      <circle cx="12" cy="12" r="3.8" fill="#09080e" />
+      {/* TrackUp signature lavender momentum node */}
+      <circle cx="12" cy="12" r="1.6" fill={accentColor} />
     </svg>
   );
 }
