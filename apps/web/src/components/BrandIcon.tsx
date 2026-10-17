@@ -12,8 +12,8 @@ export interface BrandIconProps extends SVGProps<SVGSVGElement> {
  *
  * Distinctive, modern Life OS symbol combining:
  * 1. A circular tracking ring representing daily execution, habit cycles, and consistency.
- * 2. An upward power/progress stem representing personal activation, momentum, and the "Up" in TrackUp.
- * 3. TrackUp signature lavender accent (#7c6ff6) on the momentum stem.
+ * 2. An upward progress chevron representing personal elevation, forward momentum, and the "Up" in TrackUp.
+ * 3. TrackUp signature lavender accent (#7c6ff6) on the momentum chevron.
  * 4. An optional rounded-square squircle tile for app icons, favicons, and splash screens.
  *
  * Scalable vector geometry preserving the TrackUp visual identity across desktop, mobile web, and PWA contexts.
@@ -52,19 +52,20 @@ export function BrandIcon({
           stroke="rgba(255, 255, 255, 0.12)"
           strokeWidth="0.8"
         />
-        {/* Circular tracking ring */}
+        {/* Circular tracking progress ring */}
         <path
-          d="M9.3 7.2A5.8 5.8 0 1 0 14.7 7.2"
+          d="M8.3 9A5.5 5.5 0 1 0 15.7 9"
           stroke="#f4f4f5"
           strokeWidth="1.8"
           strokeLinecap="round"
         />
-        {/* Vertical upward power/momentum stem */}
+        {/* Upward progress chevron */}
         <path
-          d="M12 5.2V11.2"
+          d="M8.7 12L12 7.5L15.3 12"
           stroke={stemColor}
-          strokeWidth="1.8"
+          strokeWidth="2.0"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     );
@@ -84,18 +85,20 @@ export function BrandIcon({
     >
       {/* Circular tracking progress ring */}
       <path
-        d="M8.2 5.2A8 8 0 1 0 15.8 5.2"
+        d="M6.8 7.8A7.2 7.2 0 1 0 17.2 7.8"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="2.2"
         strokeLinecap="round"
       />
-      {/* TrackUp upward power/momentum stem */}
+      {/* Upward progress chevron */}
       <path
-        d="M12 2.5V11"
+        d="M7.2 11.8L12 5.8L16.8 11.8"
         stroke={stemColor}
-        strokeWidth="2.5"
+        strokeWidth="2.4"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
 }
+

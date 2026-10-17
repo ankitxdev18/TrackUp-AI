@@ -3,6 +3,6 @@
   <rect width="512" height="512" fill="#0b0c0e" />
   <!-- Nested squircle tile inside 80% safe zone -->
   <rect x="56" y="56" width="400" height="400" rx="90" fill="#0e1015" stroke="rgba(255, 255, 255, 0.12)" stroke-width="4" />
-  <path d="M211 176A97 97 0 1 0 301 176" stroke="#f4f4f5" stroke-width="30" stroke-linecap="round" />
-  <path d="M256 142V244" stroke="#7c6ff6" stroke-width="30" stroke-linecap="round" />
+  <path d="M195 205A92 92 0 1 0 317 205" stroke="#f4f4f5" stroke-width="32" stroke-linecap="round" />
+  <path d="M200 256L256 180L312 256" stroke="#7c6ff6" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

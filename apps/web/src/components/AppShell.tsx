@@ -191,7 +191,7 @@ export function AppShell({ children }: AppShellProps) {
       <aside className="shell-sidebar" aria-label="Main Navigation">
         <div className="sidebar-header">
           <Link to="/" className="brand-icon" aria-label="TrackUp Home">
-            <BrandIcon size={18} />
+            <BrandIcon size={20} />
           </Link>
           <Link to="/dashboard" className="brand-title">
             <span>TrackUp</span>

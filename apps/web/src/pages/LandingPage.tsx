@@ -67,7 +67,7 @@ export function LandingPage() {
               onClick={() => setMobileMenuOpen(false)}
             >
               <div className="landing-brand-logo" aria-hidden="true">
-                <BrandIcon size={18} />
+                <BrandIcon size={20} />
               </div>
               <div className="landing-brand-title-wrap">
                 <span className="landing-brand-text">TrackUp</span>
@@ -755,7 +755,7 @@ export function LandingPage() {
           <div className="footer-brand-col">
             <div className="footer-brand">
               <div className="landing-brand-logo small" aria-hidden="true">
-                <BrandIcon size={14} />
+                <BrandIcon size={16} />
               </div>
               <strong>TrackUp Life OS</strong>
             </div>

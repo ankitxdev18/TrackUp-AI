@@ -24,20 +24,21 @@ describe("TrackUp Brand Identity & BrandIcon Component", () => {
     expect(svg).toHaveAttribute("height", "36");
   });
 
-  it("renders standalone variant with circular tracking ring and upward lavender momentum stem", () => {
+  it("renders standalone variant with circular tracking ring and upward lavender progress chevron", () => {
     const { container } = render(<BrandIcon variant="standalone" />);
     const paths = container.querySelectorAll("path");
 
-    // Standalone mark contains 2 path elements: tracking ring and momentum stem
+    // Standalone mark contains 2 path elements: tracking ring and progress chevron
     expect(paths.length).toBe(2);
 
     // 1. Circular tracking progress ring
     expect(paths[0]).toHaveAttribute("stroke", "currentColor");
     expect(paths[0]).toHaveAttribute("stroke-linecap", "round");
 
-    // 2. Upward lavender momentum stem
+    // 2. Upward lavender progress chevron
     expect(paths[1]).toHaveAttribute("stroke", "#7c6ff6");
     expect(paths[1]).toHaveAttribute("stroke-linecap", "round");
+    expect(paths[1]).toHaveAttribute("stroke-linejoin", "round");
   });
 
   it("renders squircle badge variant with rounded tile and scaled tracking geometry", () => {
@@ -52,9 +53,10 @@ describe("TrackUp Brand Identity & BrandIcon Component", () => {
     expect(rect).toHaveAttribute("fill", "#0e1015");
     expect(paths.length).toBe(2);
     expect(paths[1]).toHaveAttribute("stroke", "#7c6ff6");
+    expect(paths[1]).toHaveAttribute("stroke-linejoin", "round");
   });
 
-  it("renders monochrome variant with currentColor stem", () => {
+  it("renders monochrome variant with currentColor chevron", () => {
     const { container } = render(<BrandIcon variant="monochrome" />);
     const paths = container.querySelectorAll("path");
 
